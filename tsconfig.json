@@ -1,0 +1,28 @@
+{
+  "typeAcquisition": {
+    "enable": true
+  },
+  "include": [
+    "./*"
+  ],
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "lib": [
+      "dom",
+      "esnext"
+    ],
+    "baseUrl": ".",
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "downlevelIteration": true,
+    "paths": {
+      "/*": [
+        "./*"
+      ]
+    }
+  }
+}
