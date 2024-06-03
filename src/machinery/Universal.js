@@ -1,13 +1,22 @@
-import { containerMarker } from '/containerMarker.js'
-import { tags } from '/tags.js'
+import { containerMarker } from '/machinery/containerMarker.js'
+import { tags } from '/machinery/tags.js'
 
 const { script } = tags
 
-export function Universal(Component, props) {
+/**
+ * @template {string} T1
+ * @template {(props: object) => any} T2
+ * @param {T1} path
+ * @param {T2} Component
+ * @param {Parameters<T2>[0]} props
+ * @returns
+ */
+export function Universal(path, Component, props) {
   return [
     comment('start'),
     comment(JSON.stringify({
-      componentName: Component.name, // We probably need an import map or something
+      path,
+      // componentName: Component.name, // We probably need an import map or something
       props, // Should be 'safe encode'
     })),
     Component(props),

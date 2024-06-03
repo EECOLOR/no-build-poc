@@ -1,15 +1,14 @@
-import { containerMarker } from '/containerMarker.js'
+import { containerMarker } from '/machinery/containerMarker.js'
 
-findAllComponents().forEach(({ info, nodes }) => {
-  if (nodes.length > 1) throw new Error(`Do not support multiple nodes yet`)
-  /** @type {Array<HTMLElement>} */
-  const [node] = nodes
-  import(`/${info.componentName}.js`)
-    .then(({ [info.componentName]: Component }) => {
-      node.replaceWith(Component(info.props))
-    })
-    .catch(e => console.error(e))
-})
+await Promise.all(
+  findAllComponents().map(async ({ info, nodes }) => {
+    if (nodes.length > 1) throw new Error(`Do not support multiple nodes yet`)
+    /** @type {Array<HTMLElement>} */
+    const [node] = nodes
+    const { default: Component } = await import(info.path)
+    node.replaceWith(Component(info.props))
+  })
+)
 
 function findAllComponents() {
   const containers = document.querySelectorAll(`*[${containerMarker}]`)

@@ -1,5 +1,5 @@
 import styles from './Runtime.css'
-import { tags } from '/tags.js'
+import { tags } from '/machinery/tags.js'
 
 const { p } = tags
 

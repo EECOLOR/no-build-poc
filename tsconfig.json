@@ -3,7 +3,10 @@
     "enable": true
   },
   "include": [
-    "./*"
+    "./*.js",
+    "./src/**/*",
+    "./magic/**/*",
+    "./types/**/*",
   ],
   "compilerOptions": {
     "module": "NodeNext",
@@ -21,7 +24,7 @@
     "downlevelIteration": true,
     "paths": {
       "/*": [
-        "./*"
+        "src/*"
       ]
     }
   }

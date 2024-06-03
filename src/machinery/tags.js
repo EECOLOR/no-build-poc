@@ -43,7 +43,7 @@ function renderClientTag(tagName, attributes, children) {
   return element
 }
 
-/** @param {import('./signal.js').Signal<any>} signal */
+/** @param {import('/machinery/signal.js').Signal<any>} signal */
 function signalAsNode(signal) {
   let node = document.createTextNode(signal.toString())
   const unsubscribe = signal.subscribe(newValue => {

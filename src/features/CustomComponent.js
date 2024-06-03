@@ -1,5 +1,5 @@
-import { tags } from '/tags.js'
-import { createSignal } from '/signal.js'
+import { tags } from '/machinery/tags.js'
+import { createSignal } from '/machinery/signal.js'
 import { Runtime } from './Runtime.js'
 
 import styles from './CustomComponent.css' // uiteindelijk misschien met import assertions

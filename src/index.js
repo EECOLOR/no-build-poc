@@ -1,4 +1,4 @@
-import { tags } from '/tags.js'
+import { tags } from '/machinery/tags.js'
 
 console.log(import.meta)
 
