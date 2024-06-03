@@ -1,9 +1,10 @@
 import { tags } from '/machinery/tags.js'
 import CustomComponent from '/features/CustomComponent.universal.js'
-import hydrateComponentsSrc from '/machinery/hydrate-components.js?fingerprint'
-import indexSrc from '/index.js?fingerprint'
+import { urlToFingerprintedPath } from '../server/urlToFingerprintedPath.js'
 
 const { html, head, body, div, script, link } = tags
+const hydrateComponentsSrc = await urlToFingerprintedPath('/machinery/hydrate-components.js')
+const indexSrc = await urlToFingerprintedPath('/index.js')
 
 export function IndexHtml({ css, importMap }) {
   return (
@@ -16,7 +17,7 @@ export function IndexHtml({ css, importMap }) {
       ),
       body(
         div(
-          div('Component below'),
+          div('Component below:'),
           CustomComponent({ title: 'The title', content: 'The content' }),
         ),
         script({ type: 'module', src: hydrateComponentsSrc})

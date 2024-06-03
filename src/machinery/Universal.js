@@ -11,7 +11,7 @@ const { script } = tags
  * @param {Parameters<T2>[0]} props
  * @returns
  */
-export function Universal(path, Component, props) {
+export default function Universal(path, Component, props) {
   return [
     comment('start'),
     comment(JSON.stringify({

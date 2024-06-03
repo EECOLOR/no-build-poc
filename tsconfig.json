@@ -6,6 +6,7 @@
     "./*.js",
     "./src/**/*",
     "./magic/**/*",
+    "./server/**/*",
     "./types/**/*",
   ],
   "compilerOptions": {
