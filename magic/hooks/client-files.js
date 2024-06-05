@@ -25,7 +25,8 @@ export async function resolve(specifier, context, nextResolve) {
 
   if (clientFiles.has(parentURL) || clientFileSuffixes.some(suffix => url.endsWith(suffix))) {
     clientFiles.add(url)
-    clientFilesPort.postMessage({ url })
+    const { url: browserUrl } = await nextResolve(specifier, { ...context, conditions: ['browser', 'import'] })
+    clientFilesPort.postMessage({ url: browserUrl, specifier })
   }
 
   return result

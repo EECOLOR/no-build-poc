@@ -30,7 +30,7 @@ function shutdown() {
 }
 
 function handleStaticFile(req, res) {
-  if (!req.url.startsWith('/static/'))
+  if (!req.url.startsWith('/static/') && !req.url.startsWith('/static_library/'))
     return notFound(res)
 
   const filePath = staticFileMapping[req.url]
@@ -54,7 +54,7 @@ function serve(res, status, contentType, content) {
 
 function determineMimeType(req) {
   return (
-    req.url.endsWith('.js') ? 'text/javascript' :
+    req.url.endsWith('.js') || req.url.endsWith('.mjs') ? 'text/javascript' :
     req.url.endsWith('.css') ? 'text/css' :
     'application/octet-stream'
   )
@@ -70,12 +70,13 @@ async function processLoaderInfo({ processedCss, clientFiles, manuallyFingerprin
   )
 
   const parsedClientFiles = await Promise.all(
-    clientFiles.map(async ({ url }) => ({ url, parsed: await parseAndFingerprint(url) }))
+    clientFiles.map(async ({ url, specifier }) => ({ url, specifier, parsed: await parseAndFingerprint(url) }))
   )
 
+  // add /static or to support relative imports
   const { css, imports, staticFileMapping } = parsedClientFiles.reduce(
-    ({ css, imports, staticFileMapping }, { url, parsed }) => {
-      const { relativePath, fingerprintedPath } = parsed
+    ({ css, imports, staticFileMapping }, { url, specifier, parsed }) => {
+      const { relativePath, fingerprintedPath, isLibrary } = parsed
 
       if (relativePath.endsWith('.css')) {
         const fingerprintedClassMapPath = `${fingerprintedPath}.js`
@@ -86,12 +87,15 @@ async function processLoaderInfo({ processedCss, clientFiles, manuallyFingerprin
         staticFileMapping[fingerprintedClassMapPath] = cssInfo.classMapAsJsPath
 
         imports[`/${relativePath}`] = fingerprintedClassMapPath
+        imports[`/static/${relativePath}`] = fingerprintedClassMapPath
       }
 
-      if (relativePath.endsWith('.js')) {
-        imports[`/${relativePath}`] = fingerprintedPath
+      if (relativePath.endsWith('.js') || isLibrary) {
+        staticFileMapping[fingerprintedPath] = `./${isLibrary ? 'node_modules' : 'src'}/${relativePath}`
 
-        staticFileMapping[fingerprintedPath] = `./src/${relativePath}`
+        if (!isLibrary || !specifier.startsWith('.'))
+          imports[isLibrary ? specifier : `/${relativePath}`] = fingerprintedPath
+        imports[`/${isLibrary ? 'static_library' : 'static'}/${relativePath}`] = fingerprintedPath
       }
 
       return { css, imports, staticFileMapping }

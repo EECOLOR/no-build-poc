@@ -2,5 +2,9 @@
   "type": "module",
   "scripts": {
     "start": "node --import ./register-hooks.js --watch ./server.js"
+  },
+  "dependencies": {
+    "firebase": "^10.12.2",
+    "three": "^0.165.0"
   }
 }

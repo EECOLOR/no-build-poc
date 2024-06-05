@@ -16,8 +16,17 @@ export async function urlToFingerprintedPath(specifier, parentUrl = undefined) {
 export async function parseAndFingerprint(resolvedUrl) {
   const hash = await computeFileHash(fileURLToPath(resolvedUrl))
   const [bareUrl] = resolvedUrl.split(/[?#]/)
-  const relativePath = path.relative('./src', fileURLToPath(bareUrl))
-  const fingerprintedPath = `/static/${relativePath.replace(/\.(\w+)$/, `.${hash}.$1`)}`
+  const { relativePath, isLibrary } = getRelativePath(bareUrl)
+  const fingerprintedPath = `/${isLibrary ? 'static_library' : 'static'}/${relativePath.replace(/\.(\w+)$/, `.${hash}.$1`)}`
 
-  return { relativePath, fingerprintedPath }
+  return { relativePath, fingerprintedPath, isLibrary }
+}
+
+function getRelativePath(url) {
+  const relativeToRoot = path.relative('./', fileURLToPath(url))
+  const isLibrary = !relativeToRoot.startsWith('src')
+  return {
+    relativePath: path.relative(isLibrary ? './node_modules' : './src', relativeToRoot),
+    isLibrary,
+  }
 }
