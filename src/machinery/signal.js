@@ -3,54 +3,73 @@
 /**
  * @template T
  * @typedef {{
- *   toString(): string
  *   get(): T
- *   subscribe(callback: (T) => void): () => void
+ *   subscribe(callback: (value: T) => void): () => void
+ *   derive<X>(f: (value: T, previous?: X) => X): Signal<X>
  * }} Signal
  */
 
 /**
  * @template T
  * @param {T | (() => T)} initialValue
- * @returns {{ signal: Signal<T>, setValue: (T) => void }}
+ * @returns {[Signal<T>, (newValueOrFunction: T | ((oldValue: T) => T)) => void]}
  */
  export function createSignal(initialValue) {
   let value = isCallable(initialValue) ? initialValue() : initialValue
   let listeners = []
 
-  return {
-    signal: {
-      toString() {
-        return String(value)
-      },
-      get() {
-        return value
-      },
-      subscribe(callback) {
-        listeners.push(callback)
-        return function unsubscribe() {
-          const index = listeners.indexOf(callback)
-          if (index < 0) return
+  const signal = new class SignalClass {
+    get() {
+      return value
+    }
 
-          listeners.splice(index, 1)
-        }
+    subscribe(callback) {
+      listeners.push(callback)
+      return function unsubscribe() {
+        const index = listeners.indexOf(callback)
+        if (index < 0) return
+        listeners.splice(index, 1)
       }
-    },
+    }
 
-    setValue(newValue) {
+    derive(f) {
+      return derived(signal, f)
+    }
+  }
+
+  return [
+    signal,
+    function setValue(newValueOrFunction) {
+      const newValue = isCallable(newValueOrFunction)
+        ? newValueOrFunction(value)
+        : newValueOrFunction
+
       if (newValue === value) return
       value = newValue
-      setTimeout(
-        () => { listeners.forEach(callback => callback(value)) },
-        0
-      )
+
+      listeners.forEach((callback, i) => {
+        setTimeout(() => { callback(value) }, 0)
+      })
     },
-  }
+  ]
 }
 
 /**
+ * @template T
  * @template X
- * @template {() => X} T
+ * @param {Signal<T>} signal
+ * @param {(value: T, previous?: X) => X} f
+ * @returns {Signal<X>} */
+export function derived(signal, f) {
+  const [newSignal, setValue] = createSignal(f(signal.get()))
+  signal.subscribe(newValue => setValue(oldValue => f(newValue, oldValue)))
+  return newSignal
+}
+
+/**
+ * @template {Array<any>} X
+ * @template Y
+ * @template {(...args: X) => Y} T
  * @param {unknown} value
  * @returns {value is T}
  */
