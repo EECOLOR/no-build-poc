@@ -30,6 +30,7 @@ export async function load(url, context, nextLoad) {
   return nextLoad(url, context)
 }
 
+// TODO: use css parser
 function suffixClasses(source, suffix) {
   const classMap = {}
   const modifiedSource = source.replaceAll(/\.([\w]+)/g, (_, className) => {

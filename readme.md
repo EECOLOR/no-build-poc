@@ -1,5 +1,5 @@
 How to deal with:
-- fingerprinting
+- fingerprinting - can be done, but should be done in a build step for production
+- libraries - works
 - config
-- libraries
 - escaping (see https://github.com/WebReflection/html-escaper)

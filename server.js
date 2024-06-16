@@ -1,13 +1,14 @@
 import http from 'node:http'
 import fs from 'node:fs'
-import { parseAndFingerprint, manuallyFingerprinted } from './server/urlToFingerprintedPath.js'
 import { cleanup, clientFiles, processedCss } from './magic/bridge.js'
 import { IndexHtml } from '/IndexHtml.js'
+import { fileURLToPath } from 'node:url'
+import path from 'node:path'
 
 console.log('server starting up')
 
 const { css, importMap, staticFileMapping } =
-  await processLoaderInfo({ processedCss, clientFiles, manuallyFingerprinted })
+  await processLoaderInfo({ processedCss, clientFiles })
 
 const server = http.createServer((req, res) => {
   if (req.url.includes('.'))
@@ -60,7 +61,7 @@ function determineMimeType(req) {
   )
 }
 
-async function processLoaderInfo({ processedCss, clientFiles, manuallyFingerprinted }) {
+async function processLoaderInfo({ processedCss, clientFiles }) {
   const cssLookup = processedCss.reduce(
     (result, x) => {
       result[x.url] = x
@@ -70,45 +71,60 @@ async function processLoaderInfo({ processedCss, clientFiles, manuallyFingerprin
   )
 
   const parsedClientFiles = await Promise.all(
-    clientFiles.map(async ({ url, specifier }) => ({ url, specifier, parsed: await parseAndFingerprint(url) }))
+    clientFiles.map(
+      async ({ url, specifier }) => ({ url, specifier, parsed: getPathInformation(url) })
+    )
   )
 
   // add /static or to support relative imports
   const { css, imports, staticFileMapping } = parsedClientFiles.reduce(
     ({ css, imports, staticFileMapping }, { url, specifier, parsed }) => {
-      const { relativePath, fingerprintedPath, isLibrary } = parsed
+      const { relativePath, publicPath, isLibrary, relativeToRootPath } = parsed
 
       if (relativePath.endsWith('.css')) {
-        const fingerprintedClassMapPath = `${fingerprintedPath}.js`
-        css.push(fingerprintedPath)
+        css.push(publicPath)
+
+        const publicClassMapPath = `${publicPath}.js`
 
         const cssInfo = cssLookup[url]
-        staticFileMapping[fingerprintedPath] = cssInfo.modifiedSourcePath
-        staticFileMapping[fingerprintedClassMapPath] = cssInfo.classMapAsJsPath
+        staticFileMapping[publicPath] = cssInfo.modifiedSourcePath
+        staticFileMapping[publicClassMapPath] = cssInfo.classMapAsJsPath
 
-        imports[`/${relativePath}`] = fingerprintedClassMapPath
-        imports[`/static/${relativePath}`] = fingerprintedClassMapPath
+        imports[publicPath] = publicClassMapPath
       }
 
       if (relativePath.endsWith('.js') || isLibrary) {
-        staticFileMapping[fingerprintedPath] = `./${isLibrary ? 'node_modules' : 'src'}/${relativePath}`
+        staticFileMapping[publicPath] = relativeToRootPath
 
-        if (!isLibrary || !specifier.startsWith('.'))
-          imports[isLibrary ? specifier : `/${relativePath}`] = fingerprintedPath
-        imports[`/${isLibrary ? 'static_library' : 'static'}/${relativePath}`] = fingerprintedPath
+        if (isLibrary && !specifier.startsWith('.'))
+          imports[specifier] = publicPath
       }
 
       return { css, imports, staticFileMapping }
     },
     {
       css: [],
-      imports: {},
-      staticFileMapping: manuallyFingerprinted,
+      imports: {
+        '/': '/static/',
+        '/static/': '/static/',
+        '/static_library/': '/static_library/'
+      },
+      staticFileMapping: {},
     }
   )
 
-  // add /static to support relative imports
-  Object.entries(imports).forEach(([k, v]) => { imports[`/static${k}`] = v })
-
   return { css, importMap: { imports }, staticFileMapping }
+}
+
+function getPathInformation(url) {
+  const [bareUrl] = url.split(/[?#]/)
+  const relativeToRootPath = path.relative('./', fileURLToPath(bareUrl))
+  const isLibrary = !relativeToRootPath.startsWith('src')
+  const relativePath = path.relative(isLibrary ? './node_modules' : './src', relativeToRootPath)
+  return {
+    isLibrary,
+    relativePath,
+    relativeToRootPath,
+    publicPath: `/${isLibrary ? 'static_library' : 'static'}/${relativePath}`,
+  }
 }

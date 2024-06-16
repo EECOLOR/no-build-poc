@@ -1,4 +1,4 @@
-import { resolve, relative } from 'node:path'
+import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 let universalSuffix = null
@@ -18,7 +18,7 @@ export async function initialize(data) {
 export async function load(url, context, nextLoad) {
 
   if (url.endsWith(universalSuffix)) {
-    const componentPath = `/${relative(resolve('./src'), fileURLToPath(url))}`
+    const componentPath = `/${path.relative(path.resolve('./src'), fileURLToPath(url))}`
     const serverSource = [
       `import Component from '${componentPath}#prevent-loader-recursion'`,
       `import Universal from '${universalModule}'`,

@@ -4,7 +4,7 @@ import { processedCssPort, clientFilesPort } from './magic/bridge.js'
 
 const parentURL = import.meta.url
 const universalSuffix = '.universal.js'
-const clientFileSuffixes = [universalSuffix]
+const clientSuffix = '.client.js'
 const universalModule = '/machinery/Universal.js'
 
 register(
@@ -24,5 +24,5 @@ register(
 
 register(
   './magic/hooks/client-files.js',
-  { parentURL, data: { clientFilesPort, clientFileSuffixes }, transferList: [clientFilesPort] }
+  { parentURL, data: { clientFilesPort, clientSuffix, universalSuffix }, transferList: [clientFilesPort] }
 )
