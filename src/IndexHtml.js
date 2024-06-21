@@ -1,5 +1,6 @@
-import { tags } from '/machinery/tags.js'
+import { raw, tags } from '/machinery/tags.js'
 import CustomComponent from '/features/CustomComponent.universal.js'
+// TODO: you probably need a typescript plugin to make this squigly things go away
 import hydrateComponentsSrc from '/machinery/hydrateComponents.client.js'
 import indexSrc from '/index.client.js'
 
@@ -9,7 +10,7 @@ export function IndexHtml({ css, importMap }) {
   return (
     html({ lang: 'en_US' },
       head(
-        script({ type: 'importmap'}, JSON.stringify(importMap)),
+        script({ type: 'importmap'}, raw(JSON.stringify(importMap))),
         script({ type: 'module', src: indexSrc}),
         css.map(href => link({ rel: 'stylesheet', type: 'text/css', href })
         ),

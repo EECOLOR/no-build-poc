@@ -11,10 +11,15 @@
 
 /**
  * @template T
- * @param {T | (() => T)} initialValue
- * @returns {[Signal<T>, (newValueOrFunction: T | ((oldValue: T) => T)) => void]}
+ * @typedef {(newValue: T | ((oldValue: T) => T)) => void} setSignalValue
  */
- export function createSignal(initialValue) {
+
+/**
+ * @template T
+ * @param {T | (() => T)} initialValue
+ * @returns {[Signal<T>, setSignalValue<T>]}
+ */
+export function createSignal(initialValue) {
   let value = isCallable(initialValue) ? initialValue() : initialValue
   let listeners = []
 
@@ -55,24 +60,22 @@
 }
 
 /**
- * @template T
- * @template X
+ * @template T @template X
  * @param {Signal<T>} signal
- * @param {(value: T, previous?: X) => X} f
- * @returns {Signal<X>} */
-export function derived(signal, f) {
-  const [newSignal, setValue] = createSignal(f(signal.get()))
-  signal.subscribe(newValue => setValue(oldValue => f(newValue, oldValue)))
+ * @param {(value: T, previous?: X) => X} deriveValue
+ * @returns {Signal<X>}
+ */
+export function derived(signal, deriveValue) {
+  const [newSignal, setValue] = createSignal(deriveValue(signal.get()))
+  signal.subscribe(newValue => setValue(oldValue => deriveValue(newValue, oldValue)))
   return newSignal
 }
 
 /**
- * @template {Array<any>} X
- * @template Y
- * @template {(...args: X) => Y} T
+ * @template {Array<any>} X @template Y @template {(...args: X) => Y} T
  * @param {unknown} value
  * @returns {value is T}
  */
- function isCallable(value) {
+function isCallable(value) {
   return typeof value === 'function'
 }

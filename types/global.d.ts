@@ -3,7 +3,8 @@ declare module '*.css' {
   export default x
 }
 
-declare module '*.client.js' {
-  const x: string
-  export default x
+declare namespace React {
+  interface HTMLAttributes<T> {
+    'data-banana'?: string
+  }
 }

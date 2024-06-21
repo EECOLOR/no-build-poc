@@ -7,6 +7,8 @@ import path from 'node:path'
 
 console.log('server starting up')
 
+const decoder = new TextDecoder()
+
 const { css, importMap, staticFileMapping } =
   await processLoaderInfo({ processedCss, clientFiles })
 
@@ -14,7 +16,8 @@ const server = http.createServer((req, res) => {
   if (req.url.includes('.'))
     return handleStaticFile(req, res)
 
-  return serve(res, 200, 'text/html', IndexHtml({ css, importMap }))
+  const indexHtml = decoder.decode(IndexHtml({ css, importMap }))
+  return serve(res, 200, 'text/html', indexHtml)
 })
 
 server.listen(8000, () => {

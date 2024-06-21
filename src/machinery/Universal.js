@@ -1,5 +1,5 @@
 import { containerMarker } from '/machinery/containerMarker.js'
-import { tags } from '/machinery/tags.js'
+import { raw, tags } from '/machinery/tags.js'
 
 const { script } = tags
 
@@ -21,16 +21,16 @@ export default function Universal(path, Component, props) {
     })),
     Component(props),
     comment('end'),
-    script(`
-      var d=document,s=d.currentScript,p=s.parentNode;
-      ${/* set marker on container so we can retrieve nodes that contain components */''}
-      p.setAttribute('${containerMarker}','');
-      ${/* remove the script tag itself */''}
-      p.removeChild(s);
-    `.replace(/(^\s*|\n)/gm, ''))
+    script(raw(
+      `var d=document,s=d.currentScript,p=s.parentNode;` +
+      /* set marker on container so we can retrieve nodes that contain components */
+      `p.setAttribute('${containerMarker}','');` +
+      /* remove the script tag itself */
+      `p.removeChild(s);`
+    ))
   ]
 }
 
 function comment(content) {
-  return `<!--${content}-->`
+  return raw(`<!--${content}-->`)
 }

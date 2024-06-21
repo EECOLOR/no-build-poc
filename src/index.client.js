@@ -2,4 +2,4 @@
 import { tags } from '/machinery/tags.js'
 
 console.log('import.client.js:', import.meta)
-console.log('import.client.js:', 'create tag', tags.div({ test: 'attribute' }, tags.p('Test content')))
+console.log('import.client.js:', 'create tag', tags.div({ 'data-banana': 'attribute' }, tags.p('Test content')))

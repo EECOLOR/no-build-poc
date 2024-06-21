@@ -25,7 +25,7 @@ export function CustomComponent({ title, content }) {
   const countDownToThree = 3
 
   return div(
-    h1({ class: styles.title },
+    h1({ className: styles.title },
       title, ' ', $count
     ),
     p(content),
