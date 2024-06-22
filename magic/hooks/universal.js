@@ -23,7 +23,7 @@ export async function load(url, context, nextLoad) {
       `import Component from '${componentPath}#prevent-loader-recursion'`,
       `import Universal from '${universalModule}'`,
       ``,
-      `export default props => Universal('${componentPath}', Component, props)`,
+      `export default (...params) => Universal('${componentPath}', Component, params)`,
       ``,
     ].join('\n')
 

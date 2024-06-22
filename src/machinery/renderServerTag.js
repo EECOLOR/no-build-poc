@@ -21,10 +21,20 @@ function renderServerAttributes(attributes) {
     .flatMap(([k, v]) => {
       if (k.startsWith('on')) return []
       if (k === 'className') k = 'class'
+      if (k === 'style') v = renderStyles(v)
       const value = isSignal(v) ? v.get() : v
       return `${k}="${escapeHtml(String(value))}"`
     })
     .join(' ')
+}
+
+function renderStyles(styles) {
+  // TODO: check an implemention like Preact to see if this needs to be more advanced
+  return Object.entries(styles)
+    .map(([k, v]) =>
+      `${k}: ${v};`
+    )
+    .join('')
 }
 
 /** @returns {string} */

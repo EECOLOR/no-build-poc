@@ -1,5 +1,6 @@
 import { raw, tags } from '/machinery/tags.js'
 import CustomComponent from '/features/CustomComponent.universal.js'
+import CustomContext from './features/CustomContext.universal.js'
 // TODO: you probably need a typescript plugin to make this squigly things go away
 import hydrateComponentsSrc from '/machinery/hydrateComponents.client.js'
 import indexSrc from '/index.client.js'
@@ -17,8 +18,13 @@ export function IndexHtml({ css, importMap }) {
       ),
       body(
         div(
-          div('Component below:'),
-          CustomComponent({ title: 'The title', content: 'The content' }),
+          CustomContext(
+            { color: 'red' },
+            div('Component below:'),
+            LimitationCannotHaveUniversalAsDirectChildOfUniversal(
+              CustomComponent({ title: 'The title', content: 'The content' }),
+            ),
+          )
         ),
         script({ type: 'module', src: hydrateComponentsSrc})
       )
@@ -26,3 +32,6 @@ export function IndexHtml({ css, importMap }) {
   )
 }
 
+function LimitationCannotHaveUniversalAsDirectChildOfUniversal(...children) {
+  return div(...children)
+}

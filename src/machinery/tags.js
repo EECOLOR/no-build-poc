@@ -38,7 +38,7 @@ const emptyObject = {}
 
 /**
  * @template T
- * @typedef {T extends Tag<any> | Raw | string | number | boolean | null | undefined | Signal<any> ? T : never} Child
+ * @typedef {T extends Tag<any> | Raw | string | number | boolean | null | undefined | Signal<any> | Children<T> ? T : never} Child
  */
 
 /** @template T @typedef {Array<Child<any>>} Children */
@@ -54,14 +54,20 @@ export const tags = new Proxy(
   ({}), {
   /** @param {TagNames} tagName */
   get(_, tagName) {
-    return function tag(attributesOrChild = emptyObject, ...children) {
-      const hasAttributes = attributesOrChild.constructor === Object
-      const attributes = hasAttributes ? attributesOrChild : emptyObject
-      if (!hasAttributes) children.unshift(attributesOrChild)
+    return function tag(...params) {
+      const { attributes, children } = partitionAttributesAndChildren(params)
       return new Tag(tagName, attributes, children.flat())
     }
   }
 })
+
+export function partitionAttributesAndChildren(params) {
+  const [attributesOrChild = emptyObject, ...children] = params
+  const hasAttributes = attributesOrChild.constructor === Object
+  const attributes = hasAttributes ? attributesOrChild : emptyObject
+  if (!hasAttributes) children.unshift(attributesOrChild)
+  return { attributes, children }
+}
 
 /** @template {TagNames} tagName */
 export class Tag {

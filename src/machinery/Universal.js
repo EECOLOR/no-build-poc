@@ -1,25 +1,33 @@
 import { containerMarker } from '/machinery/containerMarker.js'
-import { raw, tags } from '/machinery/tags.js'
+import { partitionAttributesAndChildren, raw, tags } from '/machinery/tags.js'
 
 const { script } = tags
 
+const serverSideContext = {
+  get isClient() { return false },
+  get domElements() { return null },
+}
+
+const noAttributes = { attributes: null }
+
 /**
  * @template {string} T1
- * @template {(props: object) => any} T2
+ * @template {(props: object, context?: { domElement: any }) => any} T2
  * @param {T1} path
  * @param {T2} Component
- * @param {Parameters<T2>[0]} props
+ * @param {Parameters<T2>[0]} params
  * @returns
  */
-export default function Universal(path, Component, props) {
+export default function Universal(path, Component, params) {
+  const { attributes } = params.length ? partitionAttributesAndChildren(params) : noAttributes
   return [
     comment('start'),
     comment(JSON.stringify({
       path,
       // componentName: Component.name, // We probably need an import map or something
-      props, // Should be 'safe encode'
+      props: attributes, // Should be 'safe encode'
     })),
-    Component(props),
+    Component.apply(serverSideContext, params),
     comment('end'),
     script(raw(
       `var d=document,s=d.currentScript,p=s.parentNode;` +

@@ -1,19 +1,54 @@
 import { writeToDom } from './domInteraction.js'
 import { renderClientTag } from './renderClientTag.js'
+import { Tag } from './tags.js'
 import { containerMarker } from '/machinery/containerMarker.js'
 
 await Promise.all(
   findAllComponents().map(async ({ info, nodes }) => {
-    if (nodes.length > 1) throw new Error(`Do not support multiple nodes yet`)
-    /** @type {Array<HTMLElement>} */
-    const [node] = nodes
     const { default: Component } = await import(info.path)
-    const component = renderClientTag(Component(info.props))
+    const context = {
+      get isClient() { return true },
+      get domElements() { return nodes },
+    }
+    const renderResult = Component.apply(context, info.props ? [info.props] : [])
+    const renderResultArray = [].concat(renderResult)
+    const nodeReplacements = renderResultArray.map(x =>
+      x instanceof Tag ? renderClientTag(x) : x
+    )
+
+    if (nodes.length !== nodeReplacements.length)
+      throw new Error(
+        `Server side rendering did not produce the same amount of nodes as client side rendering\n` +
+        `- server: ${nodes.length}\n` +
+        `- client: ${nodeReplacements.length}\n`
+      )
+
     writeToDom.outsideAnimationFrame(() => {
-      node.replaceWith(component)
+      // listEquality(node, component)
+      nodes.forEach((node, i) => {
+        const replacement = nodeReplacements[i]
+        if (replacement !== node)
+          node.replaceWith(replacement)
+      })
     })
   })
 )
+
+// /**
+//  * @param {Node} a
+//  * @param {Node} b
+//  */
+// function listEquality(a, b, path = []) {
+//   const equal = a.isEqualNode(b)
+//   console.log(path, equal)
+//   if (!equal) console.log(a, b)
+//   const aChildren = a.childNodes
+//   const bChildren = b.childNodes
+
+//   for (let i = 0; i < aChildren.length; i++) {
+//     listEquality(aChildren[i], bChildren[i], path.concat(i))
+//   }
+// }
 
 function findAllComponents() {
   const containers = document.querySelectorAll(`*[${containerMarker}]`)
