@@ -1,4 +1,5 @@
 import { writeToDom } from './domInteraction.js'
+import { renderClientTag } from './renderClientTag.js'
 import { containerMarker } from '/machinery/containerMarker.js'
 
 await Promise.all(
@@ -7,7 +8,7 @@ await Promise.all(
     /** @type {Array<HTMLElement>} */
     const [node] = nodes
     const { default: Component } = await import(info.path)
-    const component = Component(info.props)
+    const component = renderClientTag(Component(info.props))
     writeToDom.outsideAnimationFrame(() => {
       node.replaceWith(component)
     })

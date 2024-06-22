@@ -71,6 +71,11 @@ export function derived(signal, deriveValue) {
   return newSignal
 }
 
+/** @type {(value: Object) => value is import('./signal.js').Signal<any>}*/
+export function isSignal(value) {
+  return value.get && value.subscribe
+}
+
 /**
  * @template {Array<any>} X @template Y @template {(...args: X) => Y} T
  * @param {unknown} value

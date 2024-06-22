@@ -4,10 +4,9 @@ import { cleanup, clientFiles, processedCss } from './magic/bridge.js'
 import { IndexHtml } from '/IndexHtml.js'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import { renderServerTag } from '/machinery/renderServerTag.js'
 
 console.log('server starting up')
-
-const decoder = new TextDecoder()
 
 const { css, importMap, staticFileMapping } =
   await processLoaderInfo({ processedCss, clientFiles })
@@ -16,7 +15,7 @@ const server = http.createServer((req, res) => {
   if (req.url.includes('.'))
     return handleStaticFile(req, res)
 
-  const indexHtml = decoder.decode(IndexHtml({ css, importMap }))
+  const indexHtml = renderServerTag(IndexHtml({ css, importMap }))
   return serve(res, 200, 'text/html', indexHtml)
 })
 
