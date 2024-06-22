@@ -9,7 +9,10 @@ const emptyObject = {}
  */
 
 /**
- * @typedef {'children' | 'dangerouslySetInnerHTML'} ForbiddenJsxProperties
+ * @typedef {'children' | 'key' | 'ref' | 'dangerouslySetInnerHTML' |
+ *   'defaultChecked' | 'defaultValue' |
+ *   'suppressContentEditableWarning' | 'suppressHydrationWarning'
+ * } ForbiddenJsxProperties
  */
 
 /**
@@ -19,12 +22,9 @@ const emptyObject = {}
 
 /**
  * @template {TagNames} tagName
- * @typedef {AllowSignalValue<Omit<JSX.IntrinsicElements[tagName],
- *  'children' | 'key' | 'ref' | 'dangerouslySetInnerHTML' |
- *  'defaultChecked' | 'defaultValue' |
- *   'suppressContentEditableWarning' | 'suppressHydrationWarning' |
- *  ExcludeTagSpecific<tagName>
- * >>} Attributes
+ * @typedef {AllowSignalValue<
+ *   Omit<JSX.IntrinsicElements[tagName], ForbiddenJsxProperties | ExcludeTagSpecific<tagName>>
+ * >} Attributes
  */
 
 /**
@@ -36,12 +36,6 @@ const emptyObject = {}
  * )} ExcludeTagSpecific
  */
 
-/**
- * @template {TagNames} key
- * @typedef {JSX
- *  .IntrinsicElements[key] extends React.DetailedHTMLProps<infer Y, infer X> ? X : never
- * } HtmlElementFor
- */
 /**
  * @template T
  * @typedef {T extends Tag<any> | Raw | string | number | boolean | null | undefined | Signal<any> ? T : never} Child

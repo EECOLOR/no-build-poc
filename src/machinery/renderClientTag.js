@@ -2,16 +2,28 @@ import { writeToDom } from './domInteraction.js'
 import { isSignal } from './signal.js'
 import { emptyValues, Tag } from './tags.js'
 
+/** @typedef {import('./tags.js').TagNames} TagNames */
+
+/**
+ * @template {TagNames} key
+ * @typedef {key extends any ? HTMLElement :
+ *  JSX.IntrinsicElements[key] extends React.DetailedHTMLProps<infer Y, infer X> ? X : never
+ * } HtmlElementFor
+ */
+
+/**
+ * @template {TagNames} tagName
+ * @param {Tag<tagName>} props
+ * @returns {HtmlElementFor<tagName>}
+ */
 export function renderClientTag({ tagName, attributes, children }) {
-  /** @type {HTMLElement} */
   const element = document.createElement(tagName)
 
   Object.entries(attributes).forEach(([k, v]) => {
     if (k.startsWith('on')) element[k.toLowerCase()] = v
-    else if (v?.get) bindSignalToAttribute(element, k, v)
+    else if (isSignal(v)) bindSignalToAttribute(element, k, v)
     else if (k === 'style') Object.assign(element.style, v)
-    else if (k in element) element[k] = v
-    else element.setAttribute(k, v)
+    else setAttributeOrProperty(element, k, v)
   })
 
   const nodes = combineTextNodes(children.flatMap(asNodes))
@@ -20,13 +32,18 @@ export function renderClientTag({ tagName, attributes, children }) {
   return element
 }
 
+function setAttributeOrProperty(element, k, v) {
+  if (k in element) element[k] = v
+  else element.setAttribute(k, v)
+}
+
 function bindSignalToAttribute(element, attribute, signal) {
-  element.setAttribute(attribute, signal.get())
+  setAttributeOrProperty(element, attribute, signal.get())
 
   // TODO: unsubscribe when element is removed
   const unsubscribe = signal.subscribe(value =>
     writeToDom.outsideAnimationFrame(() => {
-      element.setAttribute(attribute, value)
+      setAttributeOrProperty(element, attribute, value)
     })
   )
 }
