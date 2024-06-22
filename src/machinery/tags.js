@@ -109,10 +109,14 @@ function asEncoded(value) {
   return (
     emptyValues.includes(value) ? emptyUint8Array :
     Array.isArray(value) ? concatUint8Array(...value.map(asEncoded)) :
-    isSignal(value) ? asEncoded(value.get()) :
+    isSignal(value) ? asEncoded([emptyComment()].concat(value.get())) :
     value instanceof Uint8Array ? value :
     raw(escapeHtml(String(value)))
   )
+}
+
+function emptyComment() {
+  return raw('<!---->')
 }
 
 function renderClientTag(tagName, attributes, children) {
@@ -127,10 +131,9 @@ function renderClientTag(tagName, attributes, children) {
     else element.setAttribute(k, v)
   })
 
-  children.forEach(child => {
-    const nodes = asNodes(child)
-    nodes.forEach(node => element.appendChild(node))
-  })
+  const nodes = combineTextNodes(children.flatMap(asNodes))
+  nodes.forEach(node => { element.appendChild(node) })
+
   return element
 }
 
@@ -185,6 +188,17 @@ function asNodes(value) {
     isSignal(value) ? signalAsNodes(value) :
     [document.createTextNode(String(value))]
   )
+}
+
+const emptyArray = []
+function combineTextNodes(nodes) {
+  return nodes.flatMap((node, i) => {
+    if (!i || node.nodeType !== 3) return [node]
+    const previous = nodes[i - 1]
+    if (previous.nodeType !== 3) return [node]
+    previous.nodeValue += node.nodeValue || ' '
+    return emptyArray
+  })
 }
 
 /** @type {(value: Object) => value is import('./signal.js').Signal<any>}*/
