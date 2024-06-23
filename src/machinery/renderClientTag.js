@@ -1,3 +1,4 @@
+import { Component } from './component.js'
 import { writeToDom } from './domInteraction.js'
 import { isSignal } from './signal.js'
 import { emptyValues, Tag } from './tags.js'
@@ -87,9 +88,15 @@ function asNodes(value) {
     Array.isArray(value) ? value.flatMap(asNodes) :
     value instanceof Element ? [value] :
     value instanceof Tag ? [renderClientTag(value)] :
+    value instanceof Component ? asNodes(renderComponent(value)) :
     isSignal(value) ? signalAsNodes(value) :
     [document.createTextNode(String(value))]
   )
+}
+
+function renderComponent({ constructor, props, children }) {
+  const params = props ? [props].concat(children) : children
+  return constructor(...params)
 }
 
 const emptyArray = []

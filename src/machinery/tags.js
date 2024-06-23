@@ -1,3 +1,5 @@
+import { separatePropsAndChildren } from './separatePropsAndChildren.js'
+
 export class Raw { constructor(value) { this.value = value } }
 export function raw(str) { return new Raw(str) }
 export const emptyValues = [false, undefined, null]
@@ -55,19 +57,11 @@ export const tags = new Proxy(
   /** @param {TagNames} tagName */
   get(_, tagName) {
     return function tag(...params) {
-      const { attributes, children } = partitionAttributesAndChildren(params)
-      return new Tag(tagName, attributes, children.flat())
+      const { props, children } = separatePropsAndChildren(params)
+      return new Tag(tagName, props, children.flat())
     }
   }
 })
-
-export function partitionAttributesAndChildren(params) {
-  const [attributesOrChild, ...children] = params
-  const hasAttributes = attributesOrChild?.constructor === Object
-  const attributes = hasAttributes ? attributesOrChild : null
-  if (attributesOrChild && !hasAttributes) children.unshift(attributesOrChild)
-  return { attributes, children }
-}
 
 /** @template {TagNames} tagName */
 export class Tag {

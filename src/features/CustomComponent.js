@@ -6,6 +6,7 @@ import styles from './CustomComponent.css' // uiteindelijk misschien met import 
 import { initializeApp } from 'firebase/app'
 import { serverTimestamp } from 'firebase/database'
 import * as THREE from 'three'
+import { component } from '/machinery/component.js'
 
 const { div, p, h1, button, strong, span, input } = tags
 
@@ -35,6 +36,7 @@ export function CustomComponent({ title, content }) {
     SlotBasedLastFiveCounts({ $count }),
     button({ type: 'button', onPointerDown: handlePointerDown }, 'Add 10'),
     input({ type: 'text', value: $count }),
+    TestRealComponent({ title: 'Real component test' }),
     $count
       .derive(count => count >= countDownToThree)
       .derive(show => show ? ThreeScene() : CountDown({ $count, countDownToThree })),
@@ -44,6 +46,12 @@ export function CustomComponent({ title, content }) {
     setCount(x => x + 10)
   }
 }
+
+const TestRealComponent = component(({ title }) => {
+  return (
+    p(title)
+  )
+})
 
 function ArrayBasedLastFiveCounts({ $count }) {
   const lastFiveCounts = $count.derive(

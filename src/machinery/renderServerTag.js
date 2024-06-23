@@ -1,3 +1,4 @@
+import { Component } from './component.js'
 import { isSignal } from './signal.js'
 import { emptyValues, raw, Raw, Tag } from './tags.js'
 
@@ -47,8 +48,14 @@ function asEncoded(value) {
     isSignal(value) ? asEncoded([emptyComment()].concat(value.get())) :
     value instanceof Raw ? value.value :
     value instanceof Tag ? renderServerTag(value) :
+    value instanceof Component ? asEncoded(renderComponent(value)) :
     escapeHtml(String(value))
   )
+}
+
+function renderComponent({ constructor, props, children }) {
+  const params = props ? [props].concat(children) : children
+  return constructor(...params)
 }
 
 function emptyComment() {

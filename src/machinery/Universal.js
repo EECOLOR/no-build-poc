@@ -1,22 +1,16 @@
+import { separatePropsAndChildren } from './separatePropsAndChildren.js'
 import { containerMarker } from '/machinery/containerMarker.js'
-import { partitionAttributesAndChildren, raw, tags } from '/machinery/tags.js'
+import { raw, tags } from '/machinery/tags.js'
 
 const { script } = tags
 
-const serverSideContext = {
-  get isClient() { return false },
-  get domElements() { return null },
-}
-
-const noAttributes = { attributes: null }
-
 export default function Universal(path, Component, params) {
-  const { attributes } = params.length ? partitionAttributesAndChildren(params) : noAttributes
+  const { props } = separatePropsAndChildren(params)
   return [
     comment('start'),
     comment(JSON.stringify({
       path,
-      props: attributes, // Should be 'safe encode'
+      props, // Should be 'safe encode'
     })),
     Component(...params),
     comment('end'),
