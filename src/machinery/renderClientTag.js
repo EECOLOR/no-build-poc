@@ -19,12 +19,13 @@ import { emptyValues, Tag } from './tags.js'
 export function renderClientTag({ tagName, attributes, children }) {
   const element = document.createElement(tagName)
 
-  Object.entries(attributes).forEach(([k, v]) => {
-    if (k.startsWith('on')) element[k.toLowerCase()] = v
-    else if (isSignal(v)) bindSignalToAttribute(element, k, v)
-    else if (k === 'style') Object.assign(element.style, v)
-    else setAttributeOrProperty(element, k, v)
-  })
+  if (attributes)
+    Object.entries(attributes).forEach(([k, v]) => {
+      if (k.startsWith('on')) element[k.toLowerCase()] = v
+      else if (isSignal(v)) bindSignalToAttribute(element, k, v)
+      else if (k === 'style') Object.assign(element.style, v)
+      else setAttributeOrProperty(element, k, v)
+    })
 
   const nodes = combineTextNodes(children.flatMap(asNodes))
   nodes.forEach(node => { element.appendChild(node) })

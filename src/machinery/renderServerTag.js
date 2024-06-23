@@ -17,6 +17,8 @@ export function renderServerTag({ tagName, attributes, children }) {
 }
 
 function renderServerAttributes(attributes) {
+  if (!attributes) return ''
+
   return Object.entries(attributes)
     .flatMap(([k, v]) => {
       if (k.startsWith('on')) return []

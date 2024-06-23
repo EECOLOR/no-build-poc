@@ -1,20 +1,12 @@
 import { writeToDom } from './domInteraction.js'
 import { renderClientTag } from './renderClientTag.js'
-import { Tag } from './tags.js'
 import { containerMarker } from '/machinery/containerMarker.js'
 
 await Promise.all(
   findAllComponents().map(async ({ info, nodes }) => {
     const { default: Component } = await import(info.path)
-    const context = {
-      get isClient() { return true },
-      get domElements() { return nodes },
-    }
-    const renderResult = Component.apply(context, info.props ? [info.props] : [])
-    const renderResultArray = [].concat(renderResult)
-    const nodeReplacements = renderResultArray.map(x =>
-      x instanceof Tag ? renderClientTag(x) : x
-    )
+    const renderResult = Component(...(info.props ? [info.props] : []))
+    const nodeReplacements = [].concat(renderResult).map(renderClientTag)
 
     if (nodes.length !== nodeReplacements.length)
       throw new Error(

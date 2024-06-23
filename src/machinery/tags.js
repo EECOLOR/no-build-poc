@@ -62,10 +62,10 @@ export const tags = new Proxy(
 })
 
 export function partitionAttributesAndChildren(params) {
-  const [attributesOrChild = emptyObject, ...children] = params
-  const hasAttributes = attributesOrChild.constructor === Object
-  const attributes = hasAttributes ? attributesOrChild : emptyObject
-  if (!hasAttributes) children.unshift(attributesOrChild)
+  const [attributesOrChild, ...children] = params
+  const hasAttributes = attributesOrChild?.constructor === Object
+  const attributes = hasAttributes ? attributesOrChild : null
+  if (attributesOrChild && !hasAttributes) children.unshift(attributesOrChild)
   return { attributes, children }
 }
 
