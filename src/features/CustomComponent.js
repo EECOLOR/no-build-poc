@@ -6,9 +6,9 @@ import styles from './CustomComponent.css' // uiteindelijk misschien met import 
 import { initializeApp } from 'firebase/app'
 import { serverTimestamp } from 'firebase/database'
 import * as THREE from 'three'
-import { component } from '/machinery/component.js'
+import { component, updateContext, useContext } from '/machinery/component.js'
 
-const { div, p, h1, button, strong, span, input } = tags
+const { div, p, h1, button, strong, span, input, ul, li } = tags
 
 export function CustomComponent({ title, content }) {
   const runtime = typeof window === 'undefined' ? 'server' : 'client'
@@ -36,7 +36,8 @@ export function CustomComponent({ title, content }) {
     SlotBasedLastFiveCounts({ $count }),
     button({ type: 'button', onPointerDown: handlePointerDown }, 'Add 10'),
     input({ type: 'text', value: $count }),
-    TestRealComponent({ title: 'Real component test' }),
+    TestRealComponent({ start: 3, title: 'Real component test 1' }),
+    TestRealComponent({ start: 6, title: 'Real component test 2' }),
     $count
       .derive(count => count >= countDownToThree)
       .derive(show => show ? ThreeScene() : CountDown({ $count, countDownToThree })),
@@ -47,9 +48,30 @@ export function CustomComponent({ title, content }) {
   }
 }
 
-const TestRealComponent = component(({ title }) => {
+const TestRealComponent = component(({ start, title }) => {
+  const [$counter, setCounter] = createSignal(start)
+  updateContext({ $value: $counter.derive(counter => `${title} - ${counter}`) })
+
+  if (typeof window !== 'undefined')
+    setInterval(() => setCounter(x => x + start), 1000)
+
+  return div(
+    p(title),
+    ul(
+      li(
+        TestRealChild({ title: 'Child of:' })
+      )
+    )
+  )
+})
+
+const TestRealChild = component(({ title }) => {
+  const context = useContext()
   return (
-    p(title)
+    div(
+      p(title),
+      context.$value
+    )
   )
 })
 

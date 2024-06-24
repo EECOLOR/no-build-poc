@@ -1,3 +1,4 @@
+import { Component } from './component.js'
 import { separatePropsAndChildren } from './separatePropsAndChildren.js'
 
 export class Raw { constructor(value) { this.value = value } }
@@ -19,7 +20,7 @@ const emptyObject = {}
 
 /**
  * @template {object} T
- * @typedef {{ [key in keyof T]: T[key] | Signal<T[key]>}} AllowSignalValue
+ * @typedef {{ [key in keyof T]: (T[key] | Signal<T[key]>)}} AllowSignalValue
  */
 
 /**
@@ -40,17 +41,25 @@ const emptyObject = {}
 
 /**
  * @template T
- * @typedef {T extends Tag<any> | Raw | string | number | boolean | null | undefined | Signal<any> | Children<T> ? T : never} Child
+ * @typedef {T extends (Tag<any> | Signal<any> | Component<any> | Raw | string | number | boolean | null | undefined | Children<T>) ? T : never} Child
  */
 
 /** @template T @typedef {Array<Child<any>>} Children */
 /** @typedef {keyof JSX.IntrinsicElements} TagNames */
+/**
+ * @template T @template {TagNames} tagName
+ * @typedef {(
+ *   T extends Child<T> ? Child<T> :
+ *   T extends Attributes<tagName> ? Attributes<tagName> :
+ *   never
+ * )} ChildOrAttributes
+ */
 
 export const tags = new Proxy(
   /**
    * @type {{
    *   [tagName in TagNames]: <T, X extends Children<X>>
-   *     (childOrAttributes?: Child<T> | Attributes<tagName>, ...children: X) => Tag<tagName>
+   *     (childOrAttributes?: ChildOrAttributes<T, tagName>, ...children: X) => Tag<tagName>
    * }}
    */
   ({}), {

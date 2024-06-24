@@ -1,4 +1,4 @@
-import { Component } from './component.js'
+import { Component, renderComponent } from './component.js'
 import { writeToDom } from './domInteraction.js'
 import { isSignal } from './signal.js'
 import { emptyValues, Tag } from './tags.js'
@@ -13,11 +13,22 @@ import { emptyValues, Tag } from './tags.js'
  */
 
 /**
- * @template {TagNames} tagName
- * @param {Tag<tagName>} props
- * @returns {HtmlElementFor<tagName>}
+ * @template {Tag<any> | Component<any>} T
+ * @param {T} tagOrComponent
+ * @returns {T extends Tag<infer tagName> ? HtmlElementFor<tagName> : T extends Component<T> ? any : never} // We could type this better for components, but that's not for now
  */
-export function renderClientTag({ tagName, attributes, children }) {
+export function render(tagOrComponent) {
+  return (
+    tagOrComponent instanceof Component ? asNodes(...renderComponent(tagOrComponent, {})) :
+    tagOrComponent instanceof Tag ? renderClientTag(tagOrComponent, {}) :
+    throwError(`Can only render tags and components`)
+  )
+}
+
+/** @returns {never} */
+function throwError(message) { throw new Error(message) }
+
+function renderClientTag({ tagName, attributes, children }, context) {
   const element = document.createElement(tagName)
 
   if (attributes)
@@ -28,7 +39,7 @@ export function renderClientTag({ tagName, attributes, children }) {
       else setAttributeOrProperty(element, k, v)
     })
 
-  const nodes = combineTextNodes(children.flatMap(asNodes))
+  const nodes = combineTextNodes(children.flatMap(x => asNodes(x, context)))
   nodes.forEach(node => { element.appendChild(node) })
 
   return element
@@ -50,14 +61,17 @@ function bindSignalToAttribute(element, attribute, signal) {
   )
 }
 
-/** @param {import('./signal.js').Signal<any>} signal */
-function signalAsNodes(signal) {
+/**
+ * @param {import('./signal.js').Signal<any>} signal
+ * @param {any} context
+ */
+function signalAsNodes(signal, context) {
   const marker = comment()
-  let nodes = [marker, ...asNodes(signal.get())]
+  let nodes = [marker, ...asNodes(signal.get(), context)]
 
   // TODO: unsubscribe when element is removed
   const unsubscribe = signal.subscribe(newValue => {
-    const newNodes = asNodes(newValue)
+    const newNodes = asNodes(newValue, context)
     const oldNodes = nodes.slice(1)
 
     swapNodes(marker, newNodes, oldNodes)
@@ -82,21 +96,16 @@ function comment() {
 }
 
 /** @returns {Array<ChildNode>} */
-function asNodes(value) {
+function asNodes(value, context) {
   return (
     emptyValues.includes(value) ? [] :
-    Array.isArray(value) ? value.flatMap(asNodes) :
+    Array.isArray(value) ? value.flatMap(x => asNodes(x, context)) :
     value instanceof Element ? [value] :
-    value instanceof Tag ? [renderClientTag(value)] :
-    value instanceof Component ? asNodes(renderComponent(value)) :
-    isSignal(value) ? signalAsNodes(value) :
+    value instanceof Tag ? [renderClientTag(value, context)] :
+    value instanceof Component ? asNodes(...renderComponent(value, context)) :
+    isSignal(value) ? signalAsNodes(value, context) :
     [document.createTextNode(String(value))]
   )
-}
-
-function renderComponent({ constructor, props, children }) {
-  const params = props ? [props].concat(children) : children
-  return constructor(...params)
 }
 
 const emptyArray = []

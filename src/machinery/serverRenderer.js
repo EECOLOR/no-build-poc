@@ -1,18 +1,29 @@
-import { Component } from './component.js'
+import { Component, renderComponent } from './component.js'
 import { isSignal } from './signal.js'
 import { emptyValues, raw, Raw, Tag } from './tags.js'
 
 const escapeHtml = createHtmlEscape()
 
 /**
- * @template {import('./tags.js').TagNames} T
- * @param {Tag<T>} tag
+ * @template {Tag<any> | Component<any>} T
+ * @param {T} tagOrComponent
  * @returns {string}
  */
-export function renderServerTag({ tagName, attributes, children }) {
+export function render(tagOrComponent) {
+  return (
+    tagOrComponent instanceof Component ? asEncoded(...renderComponent(tagOrComponent, {})) :
+    tagOrComponent instanceof Tag ? renderServerTag(tagOrComponent, {}) :
+    throwError(`Can only render tags and components`)
+  )
+}
+
+/** @returns {never} */
+function throwError(message) { throw new Error(message) }
+
+function renderServerTag({ tagName, attributes, children }, context) {
   return (
     `<${[tagName, renderServerAttributes(attributes)].join(' ')}>` +
-    asEncoded(children) +
+    asEncoded(children, context) +
     `</${tagName}>`
   )
 }
@@ -41,21 +52,16 @@ function renderStyles(styles) {
 }
 
 /** @returns {string} */
-function asEncoded(value) {
+function asEncoded(value, context) {
   return (
     emptyValues.includes(value) ? '' :
-    Array.isArray(value) ? value.map(asEncoded).join('') :
-    isSignal(value) ? asEncoded([emptyComment()].concat(value.get())) :
+    Array.isArray(value) ? value.map(x => asEncoded(x, context)).join('') :
+    isSignal(value) ? asEncoded([emptyComment()].concat(value.get()), context) :
     value instanceof Raw ? value.value :
-    value instanceof Tag ? renderServerTag(value) :
-    value instanceof Component ? asEncoded(renderComponent(value)) :
+    value instanceof Tag ? renderServerTag(value, context) :
+    value instanceof Component ? asEncoded(...renderComponent(value, context)) :
     escapeHtml(String(value))
   )
-}
-
-function renderComponent({ constructor, props, children }) {
-  const params = props ? [props].concat(children) : children
-  return constructor(...params)
 }
 
 function emptyComment() {
