@@ -6,7 +6,11 @@ import styles from './CustomComponent.css' // uiteindelijk misschien met import 
 import { initializeApp } from 'firebase/app'
 import { serverTimestamp } from 'firebase/database'
 import * as THREE from 'three'
-import { component, updateContext, useContext } from '/machinery/component.js'
+import { component, createContext } from '/machinery/component.js'
+
+const customContext = createContext()
+const CustomProvider = customContext.Provider
+const useCustom = customContext.consume
 
 const { div, p, h1, button, strong, span, input, ul, li } = tags
 
@@ -48,29 +52,32 @@ export function CustomComponent({ title, content }) {
   }
 }
 
-const TestRealComponent = component(({ start, title }) => {
+function TestRealComponent({ start, title }) {
   const [$counter, setCounter] = createSignal(start)
-  updateContext({ $value: $counter.derive(counter => `${title} - ${counter}`) })
 
   if (typeof window !== 'undefined')
     setInterval(() => setCounter(x => x + start), 1000)
 
-  return div(
-    p(title),
-    ul(
-      li(
-        TestRealChild({ title: 'Child of:' })
+  return (
+    CustomProvider({ value: $counter.derive(counter => `${title} - ${counter}`) },
+      div(
+        p(title),
+        ul(
+          li(
+            TestRealChild({ title: 'Child of:' })
+          )
+        )
       )
     )
   )
-})
+}
 
 const TestRealChild = component(({ title }) => {
-  const context = useContext()
+  const $value = useCustom()
   return (
     div(
       p(title),
-      context.$value
+      $value
     )
   )
 })

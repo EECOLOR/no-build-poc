@@ -1,17 +1,6 @@
 import { separatePropsAndChildren } from './separatePropsAndChildren.js'
 
-let currentContext = null
-let currentUpdateContext = null
-
-export function useContext() {
-  if (!currentContext) throw new Error('useContext can only be used from within a component')
-  return currentContext
-}
-
-export function updateContext(newValue) {
-  if (!currentUpdateContext) throw new Error('updateContext can only be used from within a component')
-  return currentUpdateContext(newValue)
-}
+let currentComponentNode = null
 
 /**
  * @template T
@@ -35,25 +24,62 @@ export class Component {
 }
 
 /**
- * @template {Component<any>} T
- * @template X
- * @param {T} component
- * @param {X} context
- * @returns {[ReturnType<T['constructor']>, X]}
+ * @template T
+ * @typedef {<R extends Array<any>>(props: { value: T }, ...children: R) => R} ProviderFunction
  */
-export function renderComponent({ constructor, props, children }, context) {
+
+/**
+ * @template T
+ * @returns {{
+ *   Provider: (...params: Parameters<ProviderFunction<T>>) => Component<ProviderFunction<T>>,
+ *   consume(): T,
+ * }}
+ */
+export function createContext() {
+  const contextId = Symbol('context-id')
+
+  return {
+    Provider: component(({ value }, ...children) => {
+      if (!value) throw new Error('No value has been provided to provider')
+      console.log('Provider', currentComponentNode)
+      currentComponentNode[contextId] = value
+      return children
+    }),
+    consume() {
+      console.log('consume', currentComponentNode)
+      const $value = findContextValue(currentComponentNode, contextId)
+      return $value
+    },
+  }
+}
+
+/**
+ * @template {Component<any>} T
+ * @param {T} component
+ * @returns {ReturnType<T['constructor']>}
+ */
+export function renderComponent({ constructor, props, children }, renderResult) {
   const params = props ? [props].concat(children) : children
 
-  let newContext = context
-  currentUpdateContext = (newValue) => {
-    newContext = { ...context, ...newValue }
+  // This will not work when parts of the tree are reactive, the previous version did not have this problem
+  // Before you fix it, first unify the server and client renderer
+  currentComponentNode = createComponentNode(currentComponentNode)
+  const result = renderResult(constructor(...params))
+  currentComponentNode = currentComponentNode.parent
+
+  return result
+}
+
+function createComponentNode(parent = null) {
+  return { parent }
+}
+
+function findContextValue(node, contextId) {
+  let current = node
+  while (current) {
+    const value = current[contextId]
+    if (value) return value
+    current = current.parent
   }
-  currentContext = context
-
-  const result = constructor(...params)
-
-  currentContext = null
-  currentUpdateContext = null
-
-  return [result, newContext]
+  throw new Error(`Could not find value for context, did you create a Provider?`)
 }

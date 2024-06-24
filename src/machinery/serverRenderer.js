@@ -11,8 +11,8 @@ const escapeHtml = createHtmlEscape()
  */
 export function render(tagOrComponent) {
   return (
-    tagOrComponent instanceof Component ? asEncoded(...renderComponent(tagOrComponent, {})) :
-    tagOrComponent instanceof Tag ? renderServerTag(tagOrComponent, {}) :
+    tagOrComponent instanceof Component ? renderComponent(tagOrComponent, asEncoded) :
+    tagOrComponent instanceof Tag ? renderServerTag(tagOrComponent) :
     throwError(`Can only render tags and components`)
   )
 }
@@ -20,10 +20,10 @@ export function render(tagOrComponent) {
 /** @returns {never} */
 function throwError(message) { throw new Error(message) }
 
-function renderServerTag({ tagName, attributes, children }, context) {
+function renderServerTag({ tagName, attributes, children }) {
   return (
     `<${[tagName, renderServerAttributes(attributes)].join(' ')}>` +
-    asEncoded(children, context) +
+    asEncoded(children) +
     `</${tagName}>`
   )
 }
@@ -52,14 +52,14 @@ function renderStyles(styles) {
 }
 
 /** @returns {string} */
-function asEncoded(value, context) {
+function asEncoded(value) {
   return (
     emptyValues.includes(value) ? '' :
-    Array.isArray(value) ? value.map(x => asEncoded(x, context)).join('') :
-    isSignal(value) ? asEncoded([emptyComment()].concat(value.get()), context) :
+    Array.isArray(value) ? value.map(asEncoded).join('') :
+    isSignal(value) ? asEncoded([emptyComment()].concat(value.get())) :
     value instanceof Raw ? value.value :
-    value instanceof Tag ? renderServerTag(value, context) :
-    value instanceof Component ? asEncoded(...renderComponent(value, context)) :
+    value instanceof Tag ? renderServerTag(value) :
+    value instanceof Component ? renderComponent(value, asEncoded) :
     escapeHtml(String(value))
   )
 }
