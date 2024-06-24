@@ -1,7 +1,7 @@
-import { Component, renderComponent } from './component.js'
 import { writeToDom } from './domInteraction.js'
+import { createRenderer } from './renderer.js'
 import { isSignal } from './signal.js'
-import { emptyValues, Tag } from './tags.js'
+import { raw } from './tags.js'
 
 /** @typedef {import('./tags.js').TagNames} TagNames */
 
@@ -12,38 +12,48 @@ import { emptyValues, Tag } from './tags.js'
  * } HtmlElementFor
  */
 
-/**
- * @template {Tag<any> | Component<any>} T
- * @param {T} tagOrComponent
- * @returns {T extends Tag<infer tagName> ? HtmlElementFor<tagName> : T extends Component<T> ? any : never} // We could type this better for components, but that's not for now
- */
-export function render(tagOrComponent) {
-  return (
-    tagOrComponent instanceof Component ? renderComponent(tagOrComponent, asNodes) :
-    tagOrComponent instanceof Tag ? renderClientTag(tagOrComponent) :
-    throwError(`Can only render tags and components`)
-  )
-}
+ export const render = createRenderer(
+  /** @type {import('./renderer.js').RendererConstructor<Node>} */
+  ({ renderValue }) => {
+    return {
+      renderString(value) {
+        return document.createTextNode(value)
+      },
+      renderSignal(signal, context) {
+        const marker = comment()
+        let nodes = renderValue([].concat(raw(marker), signal.get()), context)
 
-/** @returns {never} */
-function throwError(message) { throw new Error(message) }
+        // TODO: unsubscribe when element is removed
+        const unsubscribe = signal.subscribe(newValue => {
+          const newNodes = renderValue(newValue, context)
+          const oldNodes = nodes.slice(1)
 
-function renderClientTag({ tagName, attributes, children }) {
-  const element = document.createElement(tagName)
+          swapNodes(marker, newNodes, oldNodes)
 
-  if (attributes)
-    Object.entries(attributes).forEach(([k, v]) => {
-      if (k.startsWith('on')) element[k.toLowerCase()] = v
-      else if (isSignal(v)) bindSignalToAttribute(element, k, v)
-      else if (k === 'style') Object.assign(element.style, v)
-      else setAttributeOrProperty(element, k, v)
-    })
+          nodes.splice(1, Infinity, ...newNodes)
+        })
 
-  const nodes = combineTextNodes(children.flatMap(asNodes))
-  nodes.forEach(node => { element.appendChild(node) })
+        return nodes
+      },
+      renderTag({ tagName, attributes, children }, context) {
+        const element = document.createElement(tagName)
 
-  return element
-}
+        if (attributes)
+          Object.entries(attributes).forEach(([k, v]) => {
+            if (k.startsWith('on')) element[k.toLowerCase()] = v
+            else if (isSignal(v)) bindSignalToAttribute(element, k, v)
+            else if (k === 'style') Object.assign(element.style, v)
+            else setAttributeOrProperty(element, k, v)
+          })
+
+        const nodes = combineTextNodes(children.flatMap(x => renderValue(x, context)))
+        nodes.forEach(node => { element.appendChild(node) })
+
+        return element
+      }
+    }
+  }
+)
 
 function setAttributeOrProperty(element, k, v) {
   if (k in element) element[k] = v
@@ -61,26 +71,6 @@ function bindSignalToAttribute(element, attribute, signal) {
   )
 }
 
-/**
- * @param {import('./signal.js').Signal<any>} signal
- */
-function signalAsNodes(signal) {
-  const marker = comment()
-  let nodes = [marker, ...asNodes(signal.get())]
-
-  // TODO: unsubscribe when element is removed
-  const unsubscribe = signal.subscribe(newValue => {
-    const newNodes = asNodes(newValue)
-    const oldNodes = nodes.slice(1)
-
-    swapNodes(marker, newNodes, oldNodes)
-
-    nodes.splice(1, Infinity, ...newNodes)
-  })
-
-  return nodes
-}
-
 function swapNodes(marker, newNodes, oldNodes) {
   writeToDom.outsideAnimationFrame(() => {
     const lastNode = newNodes[oldNodes.length - 1] || marker
@@ -92,19 +82,6 @@ function swapNodes(marker, newNodes, oldNodes) {
 
 function comment() {
   return document.createComment('')
-}
-
-/** @returns {Array<ChildNode>} */
-function asNodes(value) {
-  return (
-    emptyValues.includes(value) ? [] :
-    Array.isArray(value) ? value.flatMap(asNodes) :
-    value instanceof Node ? [value] :
-    value instanceof Tag ? [renderClientTag(value)] :
-    value instanceof Component ? renderComponent(value, asNodes) :
-    isSignal(value) ? signalAsNodes(value) :
-    [document.createTextNode(String(value))]
-  )
 }
 
 const emptyArray = []

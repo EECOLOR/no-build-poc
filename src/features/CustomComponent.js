@@ -1,4 +1,4 @@
-import { tags } from '/machinery/tags.js'
+import { raw, tags } from '/machinery/tags.js'
 import { createSignal, derived } from '/machinery/signal.js'
 import { Runtime } from './Runtime.js'
 
@@ -62,10 +62,23 @@ function TestRealComponent({ start, title }) {
     CustomProvider({ value: $counter.derive(counter => `${title} - ${counter}`) },
       div(
         p(title),
-        ul(
-          li(
-            TestRealChild({ title: 'Child of:' })
-          )
+        List(),
+      )
+    )
+  )
+}
+
+function List() {
+  const [$counter, setCounter] = createSignal(1)
+
+  if (typeof window !== 'undefined')
+    setInterval(() => setCounter(x => x + 1), 1000)
+
+  return (
+    ul(
+      li(
+        $counter.derive(counter =>
+          TestRealChild({ title: `[${counter}] Child of:` })
         )
       )
     )
@@ -176,7 +189,7 @@ function Renderer({ width, height, scene, animate }) {
     renderer.render(scene, camera)
   })
 
-  return renderer.domElement
+  return raw(renderer.domElement)
 }
 
 function Camera({ width, height }) {

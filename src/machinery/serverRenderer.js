@@ -1,32 +1,30 @@
-import { Component, renderComponent } from './component.js'
+import { createRenderer } from './renderer.js'
 import { isSignal } from './signal.js'
-import { emptyValues, raw, Raw, Tag } from './tags.js'
+import { raw } from './tags.js'
 
 const escapeHtml = createHtmlEscape()
 
-/**
- * @template {Tag<any> | Component<any>} T
- * @param {T} tagOrComponent
- * @returns {string}
- */
-export function render(tagOrComponent) {
-  return (
-    tagOrComponent instanceof Component ? renderComponent(tagOrComponent, asEncoded) :
-    tagOrComponent instanceof Tag ? renderServerTag(tagOrComponent) :
-    throwError(`Can only render tags and components`)
-  )
-}
-
-/** @returns {never} */
-function throwError(message) { throw new Error(message) }
-
-function renderServerTag({ tagName, attributes, children }) {
-  return (
-    `<${[tagName, renderServerAttributes(attributes)].join(' ')}>` +
-    asEncoded(children) +
-    `</${tagName}>`
-  )
-}
+export const render = createRenderer(
+  /** @type {import('./renderer.js').RendererConstructor<string>} */
+  ({ renderValue }) => {
+    return {
+      renderString(value) {
+        return value
+      },
+      renderSignal(signal, context) {
+        const result = [].concat(emptyComment(), signal.get())
+        return renderValue(result, context)
+      },
+      renderTag({ tagName, attributes, children }, context) {
+        return (
+          `<${[tagName, renderServerAttributes(attributes)].join(' ')}>` +
+          renderValue(children, context).join('') +
+          `</${tagName}>`
+        )
+      }
+    }
+  }
+)
 
 function renderServerAttributes(attributes) {
   if (!attributes) return ''
@@ -49,19 +47,6 @@ function renderStyles(styles) {
       `${k}: ${v};`
     )
     .join('')
-}
-
-/** @returns {string} */
-function asEncoded(value) {
-  return (
-    emptyValues.includes(value) ? '' :
-    Array.isArray(value) ? value.map(asEncoded).join('') :
-    isSignal(value) ? asEncoded([emptyComment()].concat(value.get())) :
-    value instanceof Raw ? value.value :
-    value instanceof Tag ? renderServerTag(value) :
-    value instanceof Component ? renderComponent(value, asEncoded) :
-    escapeHtml(String(value))
-  )
 }
 
 function emptyComment() {

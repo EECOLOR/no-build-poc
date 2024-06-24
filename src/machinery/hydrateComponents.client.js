@@ -1,12 +1,13 @@
 import { writeToDom } from './domInteraction.js'
 import { render } from './clientRenderer.js'
 import { containerMarker } from '/machinery/containerMarker.js'
+import { raw } from './tags.js'
 
 await Promise.all(
   findAllComponents().map(async ({ info, nodes }) => {
     const childrenPlaceholder = document.createComment('[childrenPlaceholder]')
     const { default: Component } = await import(info.path)
-    const renderResult = render(Component(...(info.props ? [info.props] : []).concat(childrenPlaceholder)))
+    const renderResult = render(Component(...(info.props ? [info.props] : []).concat(raw(childrenPlaceholder))))
 
     if (placeHolderWasUsed(childrenPlaceholder))
       moveChildrenToNewParent(childrenPlaceholder, nodes[0])

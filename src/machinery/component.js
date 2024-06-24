@@ -1,6 +1,17 @@
 import { separatePropsAndChildren } from './separatePropsAndChildren.js'
 
-let currentComponentNode = null
+/** @typedef {{ parent?: NodeContext }} NodeContext */
+
+/** @type {NodeContext} */
+let nodeContext = null
+
+function getNodeContext() {
+  return nodeContext
+}
+
+export function _setNodeContext(newNodeContext) {
+  nodeContext = newNodeContext
+}
 
 /**
  * @template T
@@ -41,37 +52,16 @@ export function createContext() {
   return {
     Provider: component(({ value }, ...children) => {
       if (!value) throw new Error('No value has been provided to provider')
-      console.log('Provider', currentComponentNode)
+      const currentComponentNode = getNodeContext()
       currentComponentNode[contextId] = value
       return children
     }),
     consume() {
-      console.log('consume', currentComponentNode)
+      const currentComponentNode = getNodeContext()
       const $value = findContextValue(currentComponentNode, contextId)
       return $value
     },
   }
-}
-
-/**
- * @template {Component<any>} T
- * @param {T} component
- * @returns {ReturnType<T['constructor']>}
- */
-export function renderComponent({ constructor, props, children }, renderResult) {
-  const params = props ? [props].concat(children) : children
-
-  // This will not work when parts of the tree are reactive, the previous version did not have this problem
-  // Before you fix it, first unify the server and client renderer
-  currentComponentNode = createComponentNode(currentComponentNode)
-  const result = renderResult(constructor(...params))
-  currentComponentNode = currentComponentNode.parent
-
-  return result
-}
-
-function createComponentNode(parent = null) {
-  return { parent }
 }
 
 function findContextValue(node, contextId) {

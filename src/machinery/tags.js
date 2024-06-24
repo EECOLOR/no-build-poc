@@ -2,14 +2,9 @@ import { Component } from './component.js'
 import { separatePropsAndChildren } from './separatePropsAndChildren.js'
 
 export class Raw { constructor(value) { this.value = value } }
-export function raw(str) { return new Raw(str) }
-export const emptyValues = [false, undefined, null]
-const emptyObject = {}
+export function raw(value) { return new Raw(value) }
 
-/**
- * @template T
- * @typedef {import('/machinery/signal.js').Signal<T>} Signal
- */
+/** @template T @typedef {import('/machinery/signal.js').Signal<T>} Signal */
 
 /**
  * @typedef {'children' | 'key' | 'ref' | 'dangerouslySetInnerHTML' |
@@ -62,15 +57,17 @@ export const tags = new Proxy(
    *     (childOrAttributes?: ChildOrAttributes<T, tagName>, ...children: X) => Tag<tagName>
    * }}
    */
-  ({}), {
-  /** @param {TagNames} tagName */
-  get(_, tagName) {
-    return function tag(...params) {
-      const { props, children } = separatePropsAndChildren(params)
-      return new Tag(tagName, props, children.flat())
+  ({}),
+  {
+    /** @param {TagNames} tagName */
+    get(_, tagName) {
+      return function tag(...params) {
+        const { props, children } = separatePropsAndChildren(params)
+        return new Tag(tagName, props, children.flat())
+      }
     }
   }
-})
+)
 
 /** @template {TagNames} tagName */
 export class Tag {
