@@ -5,8 +5,8 @@ import { containerMarker } from '/machinery/containerMarker.js'
 await Promise.all(
   findAllComponents().map(async ({ info, nodes }) => {
     const { default: Component } = await import(info.path)
-    const renderResult = Component(...(info.props ? [info.props] : []))
-    const nodeReplacements = [].concat(renderResult).map(x => render(x))
+    const renderResult = render(Component(...(info.props ? [info.props] : [])))
+    const nodeReplacements = [].concat(renderResult)
 
     if (nodes.length !== nodeReplacements.length)
       throw new Error(
