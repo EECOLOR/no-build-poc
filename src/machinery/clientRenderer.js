@@ -100,7 +100,7 @@ function asNodes(value, context) {
   return (
     emptyValues.includes(value) ? [] :
     Array.isArray(value) ? value.flatMap(x => asNodes(x, context)) :
-    value instanceof Element ? [value] :
+    value instanceof Node ? [value] :
     value instanceof Tag ? [renderClientTag(value, context)] :
     value instanceof Component ? asNodes(...renderComponent(value, context)) :
     isSignal(value) ? signalAsNodes(value, context) :

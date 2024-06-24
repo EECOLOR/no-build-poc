@@ -45,7 +45,9 @@ export function renderComponent({ constructor, props, children }, context) {
   const params = props ? [props].concat(children) : children
 
   let newContext = context
-  currentUpdateContext = (newValue) => { newContext = newValue }
+  currentUpdateContext = (newValue) => {
+    newContext = { ...context, ...newValue }
+  }
   currentContext = context
 
   const result = constructor(...params)

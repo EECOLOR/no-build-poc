@@ -4,8 +4,13 @@ import { containerMarker } from '/machinery/containerMarker.js'
 
 await Promise.all(
   findAllComponents().map(async ({ info, nodes }) => {
+    const childrenPlaceholder = document.createComment('[childrenPlaceholder]')
     const { default: Component } = await import(info.path)
-    const renderResult = render(Component(...(info.props ? [info.props] : [])))
+    const renderResult = render(Component(...(info.props ? [info.props] : []).concat(childrenPlaceholder)))
+
+    if (placeHolderWasUsed(childrenPlaceholder))
+      moveChildrenToNewParent(childrenPlaceholder, nodes[0])
+
     const nodeReplacements = [].concat(renderResult)
 
     if (nodes.length !== nodeReplacements.length)
@@ -73,8 +78,8 @@ function executeSteps({ steps, node, data = {}, set = [], originalSteps = steps 
 }
 
 // Predicates
-function isStart(x) { return isComment(x) && x.data === 'start' }
-function isEnd(x) { return isComment(x) && x.data === 'end' }
+function isStart(x) { return isComment(x) && x.data === 'start' } // We should probably capture an id here in case two universal components are rendered without container
+function isEnd(x) { return isComment(x) && x.data === 'end' } // We should probably match a captured id here
 function isComment(x) { return x.nodeType === 8 }
 function not(f) { return x => !f(x) }
 
@@ -98,4 +103,56 @@ function tryNextStep({ steps, ...state }) {
 }
 function commitAndRestart({ node, originalSteps, data, set }) {
   return { node: node.nextSibling, steps: originalSteps, data: {}, set: set.concat(data) }
+}
+
+function placeHolderWasUsed(childrenPlaceholder) {
+  return Boolean(childrenPlaceholder.parentNode)
+}
+
+function moveChildrenToNewParent(childrenPlaceholder, firstOriginalNode) {
+  const startNode = determineStartNode(childrenPlaceholder, firstOriginalNode)
+  let amountOfNodesToMove = determineNodesToMove(childrenPlaceholder, startNode)
+
+  let current = startNode
+  let next = startNode.nextSibling
+  childrenPlaceholder.replaceWith(startNode)
+
+  while (amountOfNodesToMove--) {
+    const newNext = next.nextSibling
+    insertAfter(current, next)
+
+    current = next
+    next = newNext
+  }
+}
+
+function insertAfter(referenceNode, newNode) {
+  referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
+}
+
+function determineStartNode(childrenPlaceholder, rootNode) {
+  const instructions = getInstructions(childrenPlaceholder)
+  return instructions.reduce((result, f) => f(result), rootNode)
+}
+
+function getInstructions(node) {
+  if (node.previousSibling)
+    return getInstructions(node.previousSibling).concat(node => node.nextSibling)
+
+  if (node.parentNode)
+    return getInstructions(node.parentNode).concat(node => node.firstChild)
+
+  return []
+}
+
+function countSiblingAfterNode(node) {
+  let count = 0
+  while (node = node.nextSibling) count++
+  return count
+}
+
+function determineNodesToMove(childrenPlaceholder, startNode) {
+  const nodesToSkip = countSiblingAfterNode(childrenPlaceholder)
+  const nodesAfterStart = countSiblingAfterNode(startNode)
+  return nodesAfterStart - nodesToSkip
 }

@@ -1,10 +1,11 @@
 import { raw, tags } from '/machinery/tags.js'
 import CustomComponent from '/features/CustomComponent.universal.js'
+import UniversalContainer from './features/UniversalContainer.universal.js'
 // TODO: you probably need a typescript plugin to make this squigly things go away
 import hydrateComponentsSrc from '/machinery/hydrateComponents.client.js'
 import indexSrc from '/index.client.js'
 
-const { html, head, body, div, script, link } = tags
+const { html, head, body, script, link } = tags
 
 export function IndexHtml({ css, importMap }) {
   return (
@@ -17,8 +18,7 @@ export function IndexHtml({ css, importMap }) {
         ),
       ),
       body(
-        div(
-          div('Component below:'),
+        UniversalContainer(
           CustomComponent({ title: 'The title', content: 'The content' }),
         ),
         script({ type: 'module', src: hydrateComponentsSrc})
