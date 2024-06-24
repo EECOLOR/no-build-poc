@@ -74,7 +74,11 @@ function bindSignalToAttribute(element, attribute, signal) {
 function swapNodes(marker, newNodes, oldNodes) {
   writeToDom.outsideAnimationFrame(() => {
     const lastNode = newNodes[oldNodes.length - 1] || marker
-    oldNodes.forEach((node, i) => { node.replaceWith(newNodes[i]) })
+    oldNodes.forEach((node, i) => { // A normal loop would probably be better
+      const replacementNode = newNodes[i]
+      if (replacementNode) node.replaceWith(replacementNode)
+      else node.remove()
+    })
     const leftOverNewNodes = newNodes.slice(oldNodes.length)
     lastNode.after(...leftOverNewNodes)
   })

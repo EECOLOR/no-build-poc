@@ -52,20 +52,20 @@ export function createContext() {
   return {
     Provider: component(({ value }, ...children) => {
       if (!value) throw new Error('No value has been provided to provider')
-      const currentComponentNode = getNodeContext()
-      currentComponentNode[contextId] = value
+      const nodeContext = getNodeContext()
+      nodeContext[contextId] = value
       return children
     }),
     consume() {
-      const currentComponentNode = getNodeContext()
-      const $value = findContextValue(currentComponentNode, contextId)
-      return $value
+      const nodeContext = getNodeContext()
+      if (!nodeContext?.parent) throw new Error(`It is unsafe to call 'consume' outside of a component, please wrap you component like this: 'component((props, ...children) => { ... })'`)
+      return findContextValue(nodeContext, contextId)
     },
   }
 }
 
-function findContextValue(node, contextId) {
-  let current = node
+function findContextValue(nodeContext, contextId) {
+  let current = nodeContext
   while (current) {
     const value = current[contextId]
     if (value) return value
