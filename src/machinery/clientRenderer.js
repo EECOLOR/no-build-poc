@@ -23,8 +23,9 @@ import { raw } from './tags.js'
         const marker = comment()
         let nodes = renderValue([].concat(raw(marker), signal.get()), context)
 
-        // TODO: unsubscribe when element is removed
         const unsubscribe = signal.subscribe(newValue => {
+          if (!marker.isConnected) return unsubscribe()
+
           const newNodes = renderValue(newValue, context)
           const oldNodes = nodes.slice(1)
 
@@ -63,12 +64,13 @@ function setAttributeOrProperty(element, k, v) {
 function bindSignalToAttribute(element, attribute, signal) {
   setAttributeOrProperty(element, attribute, signal.get())
 
-  // TODO: unsubscribe when element is removed
-  const unsubscribe = signal.subscribe(value =>
+  const unsubscribe = signal.subscribe(value => {
+    if (!element.isConnected) return unsubscribe()
+
     writeToDom.outsideAnimationFrame(() => {
       setAttributeOrProperty(element, attribute, value)
     })
-  )
+  })
 }
 
 function swapNodes(marker, newNodes, oldNodes) {
