@@ -1,5 +1,5 @@
 import { createRenderer } from './renderer.js'
-import { isSignal } from './signal.js'
+import { Signal } from './signal.js'
 import { raw } from './tags.js'
 
 const escapeHtml = createHtmlEscape()
@@ -34,7 +34,7 @@ function renderServerAttributes(attributes) {
       if (k.startsWith('on')) return []
       if (k === 'className') k = 'class'
       if (k === 'style') v = renderStyles(v)
-      const value = isSignal(v) ? v.get() : v
+      const value = v instanceof Signal ? v.get() : v
       return `${k}="${escapeHtml(String(value))}"`
     })
     .join(' ')

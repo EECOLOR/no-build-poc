@@ -1,5 +1,5 @@
 import { Component, _setNodeContext } from './component.js'
-import { isSignal } from './signal.js'
+import { Signal } from './signal.js'
 import { Raw, Tag } from './tags.js'
 
 export const emptyValues = [false, undefined, null]
@@ -59,7 +59,7 @@ export function createRenderer(constructor) {
       value instanceof Raw ? [value.value] :
       value instanceof Tag ? [renderer.renderTag(value, context)] :
       value instanceof Component ? renderComponent(value, context) :
-      isSignal(value) ? renderer.renderSignal(value, context) :
+      value instanceof Signal ? renderer.renderSignal(value, context) :
       [renderer.renderString(String(value))]
     )
   }

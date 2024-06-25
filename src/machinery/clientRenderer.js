@@ -1,6 +1,6 @@
 import { writeToDom } from './domInteraction.js'
 import { createRenderer } from './renderer.js'
-import { isSignal } from './signal.js'
+import { Signal } from './signal.js'
 import { raw } from './tags.js'
 
 /** @typedef {import('./tags.js').TagNames} TagNames */
@@ -42,7 +42,7 @@ import { raw } from './tags.js'
         if (attributes)
           Object.entries(attributes).forEach(([k, v]) => {
             if (k.startsWith('on')) element[k.toLowerCase()] = v
-            else if (isSignal(v)) bindSignalToAttribute(element, k, v)
+            else if (v instanceof Signal) bindSignalToAttribute(element, k, v)
             else if (k === 'style') Object.assign(element.style, v)
             else setAttributeOrProperty(element, k, v)
           })

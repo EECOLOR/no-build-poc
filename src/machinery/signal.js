@@ -1,13 +1,18 @@
 /* Using signals with functions as values does not work */
 
-/**
- * @template T
- * @typedef {{
- *   get(): T
- *   subscribe(callback: (value: T) => void): () => void
- *   derive<X>(f: (value: T, previous?: X) => X): Signal<X>
- * }} Signal
- */
+/** @template T */
+export class Signal {
+
+  /** @returns {T} */
+  get() { return null }
+
+  /** @param {(value: T) => void} callback @returns {() => void} */
+  subscribe(callback){ return null }
+
+  /** @template X @param {(value: T, previous?: X) => X} f @returns {Signal<X>} */
+  derive(f) { return null }
+}
+Object.defineProperty(Signal, Symbol.hasInstance, { value: o => o.constructor === Signal })
 
 /**
  * @template T
@@ -23,10 +28,12 @@ export function createSignal(initialValue) {
   let value = isCallable(initialValue) ? initialValue() : initialValue
   let listeners = []
 
-  const signal = new class SignalClass {
+  const signal = {
+    constructor: Signal,
+
     get() {
       return value
-    }
+    },
 
     subscribe(callback) {
       listeners.push(callback)
@@ -35,7 +42,7 @@ export function createSignal(initialValue) {
         if (index < 0) return
         listeners.splice(index, 1)
       }
-    }
+    },
 
     derive(f) {
       return derived(signal, f)
@@ -69,11 +76,6 @@ export function derived(signal, deriveValue) {
   const [newSignal, setValue] = createSignal(deriveValue(signal.get()))
   signal.subscribe(newValue => setValue(oldValue => deriveValue(newValue, oldValue)))
   return newSignal
-}
-
-/** @type {(value: Object) => value is import('./signal.js').Signal<any>}*/
-export function isSignal(value) {
-  return value.get && value.subscribe
 }
 
 /**
