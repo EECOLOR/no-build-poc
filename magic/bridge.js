@@ -1,12 +1,12 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { MessageChannel } from 'node:worker_threads'
 
 const clientFilesChannel = new MessageChannel()
 const processedCssChannel = new MessageChannel()
 
-/** @type {Array<{ url: string }>} */
+/** @type {Array<{ url: string, specifier: string }>} */
 export const clientFiles = []
 
 /** @type {Array<{ url: string, modifiedSourcePath: string, classMapAsJsPath: string }>} */
@@ -20,8 +20,20 @@ export function cleanup() {
   fs.rmSync('./tmp', { recursive: true, force: true })
 }
 
-clientFilesChannel.port1.on('message', x => {
-  clientFiles.push(x)
+process.on('message', message => {
+  const content = message['custom-result:get-dependencies']
+  if (!content) return
+
+  const dependencies = content
+  dependencies.forEach(({ file, specifier }) => {
+    const url = pathToFileURL(path.resolve(file)).href
+    clientFiles.push({ url, specifier })
+  })
+})
+
+clientFilesChannel.port1.on('message', message => {
+  clientFiles.push(message)
+  process.send({ 'custom-resolve:get-dependencies': message })
 })
 
 processedCssChannel.port1.on('message', ({ url, modifiedSource, classMapAsJs }) => {
