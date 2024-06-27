@@ -16,8 +16,10 @@ const child = spawn(
 child.on('message', message => {
   const content = message['custom-resolve:get-dependencies']
   if (!content) return
-  getDependencies(content.url)
-    .then(dependencies => child.send({ 'custom-result:get-dependencies': dependencies }))
+
+  const { url, specifier } = content
+  getDependencies(url)
+    .then(dependencies => child.send({ 'custom-resolve:get-dependencies': { url, specifier, dependencies } }))
     .catch(e => console.error(e))
 })
 
