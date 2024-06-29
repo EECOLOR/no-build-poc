@@ -10,9 +10,9 @@
     "./types/**/*",
   ],
   "compilerOptions": {
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "resolveJsonModule": true,
+    "module": "es2022",
+    "moduleResolution": "node",
+    "target": "es2022",
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "lib": [

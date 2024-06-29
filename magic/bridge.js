@@ -20,24 +20,11 @@ export function cleanup() {
   fs.rmSync('./tmp', { recursive: true, force: true })
 }
 
-process.on('message', message => {
-  const content = message['custom-resolve:get-dependencies']
-  if (!content) return
-
-  const { url, specifier, dependencies } = content
-  registerDependencies(dependencies)
-
-  clientFilesChannel.port1.postMessage({ ['client-files:new-client-file']: { url, specifier } })
-})
-
 clientFilesChannel.port1.on('message', message => {
   const content = message['client-files:new-client-file']
   if (!content) return
 
-  const { url, specifier } = content
-  clientFiles.push({ url, specifier })
-
-  process.send({ 'custom-resolve:get-dependencies': { url, specifier } })
+  clientFiles.push(content)
 })
 
 processedCssChannel.port1.on('message', ({ url, modifiedSource, classMapAsJs }) => {
@@ -52,10 +39,3 @@ processedCssChannel.port1.on('message', ({ url, modifiedSource, classMapAsJs }) 
 
   processedCss.push({ url, modifiedSourcePath, classMapAsJsPath })
 })
-
-function registerDependencies(dependencies) {
-  dependencies.forEach(({ file, specifier }) => {
-    const url = pathToFileURL(path.resolve(file)).href
-    clientFiles.push({ url, specifier })
-  })
-}

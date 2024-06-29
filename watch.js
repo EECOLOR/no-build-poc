@@ -1,64 +1,65 @@
 import { spawn } from 'node:child_process'
 import * as esbuild from 'esbuild'
 import path from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import crypto from 'node:crypto'
 
 const builds = {}
 
 const child = spawn(
   'node',
-  ['--import', './register-hooks.js', '--watch', './server.js'],
+  ['--import', './register-hooks.js', '--watch', '--watch-preserve-output', './server.js'],
   {
     stdio: ['inherit', 'inherit', 'inherit', 'ipc']
   }
 )
 
-child.on('message', message => {
-  const content = message['custom-resolve:get-dependencies']
-  if (!content) return
-
-  const { url, specifier } = content
-  getDependencies(url)
-    .then(dependencies => child.send({ 'custom-resolve:get-dependencies': { url, specifier, dependencies } }))
-    .catch(e => console.error(e))
+handleMessage(child, 'custom-resolve:get-dependencies', async clientFiles => {
+  const dependencies = await extractAllImports(clientFiles)
+  return dependencies
 })
 
-async function getDependencies(url) {
-  const start = Date.now()
-  const build = builds[url] || (builds[url] = await esbuild.context(createBuildConfig(fileURLToPath(url))))
+async function extractAllImports(clientFiles) {
+  const key = getKey(clientFiles)
+  console.time('build')
+  const build = builds[key] || (builds[key] = await esbuild.context(createBuildConfig(clientFiles)))
   const result = await build.rebuild()
-  const end = Date.now()
-  console.log('build time:', end - start)
-  const input = path.relative('.', fileURLToPath(url))
-  const imports = collectImports(result.metafile.inputs, input)
-  return Object.entries(imports).flatMap(
-    ([file, specifiers]) => Array.from(specifiers).map(specifier => ({ specifier, file }))
-  )
+  console.timeEnd('build')
+  return collectImports(result.metafile.inputs)
 }
 
-function collectImports(inputs, input, result = {}) {
-  return inputs[input].imports.reduce(
-    (result, { path, original }) => {
-      const target = result[path] || (result[path] = new Set())
-      target.add(original)
-      return collectImports(inputs, path, result)
-    },
-    result
-  )
+function collectImports(inputs) {
+  const bookkeeping = {}
+  const imports = []
+  for (const metadata of Object.values(inputs)) {
+    for (const { path: file, original: specifier } of metadata.imports) {
+      if (!specifier) continue
+
+      const target = bookkeeping[path] || (bookkeeping[path] = new Set())
+      if (target.has(specifier)) continue
+
+      target.add(specifier)
+      imports.push(({ specifier, file }))
+    }
+  }
+  return imports
 }
 
-/** @param {string} entryPoint */
-function createBuildConfig(entryPoint) {
-  console.log('creating build config', entryPoint)
+/**
+ * @param {Array<string>} entryPoints
+ * @returns {import('esbuild').BuildOptions}
+ */
+function createBuildConfig(entryPoints) {
+  console.log('creating build config', entryPoints)
   return {
-    entryPoints: [entryPoint],
+    entryPoints,
     bundle: true,
     metafile: true,
     write: false,
     platform: /** @type {const} */ ('browser'),
     format: /** @type {const} */ ('esm'),
     plugins: [rootSlashImport],
-    outdir: 'not_used'
+    outdir: 'not_used',
+    tsconfigRaw: {},
   }
 }
 
@@ -72,3 +73,22 @@ const rootSlashImport = {
   },
 }
 
+/** @param {import('node:child_process').ChildProcess} target */
+function handleMessage(target, key, handler) {
+  target.on('message', message => {
+    const content = message[key]
+    if (!content) return
+
+    handler(content)
+      .then(result => target.send({ [key]: result }))
+      .catch(e => console.error(e))
+  })
+}
+
+function getKey(arrayOfStrings) {
+  const uniqueStrings = new Set(arrayOfStrings)
+  const sortedStrings = Array.from(uniqueStrings).sort()
+  const hash = crypto.createHash('md5')
+  for (const x of sortedStrings) hash.update(x)
+  return hash.digest('hex')
+}

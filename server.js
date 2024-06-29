@@ -2,14 +2,14 @@ import http from 'node:http'
 import fs from 'node:fs'
 import { cleanup, clientFiles, processedCss } from './magic/bridge.js'
 import { IndexHtml } from '/IndexHtml.js'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import path from 'node:path'
 import { render } from './src/machinery/serverRenderer.js'
 
 console.log('server starting up')
 
 const { css, importMap, staticFileMapping } =
-  await processLoaderInfo({ processedCss, clientFiles })
+  await processLoaderInfo({ processedCss, clientFiles: await resolveAllClientFiles(clientFiles) })
 
 const server = http.createServer((req, res) => {
   if (req.url.includes('.'))
@@ -130,3 +130,27 @@ function getPathInformation(url) {
     publicPath: `/${isLibrary ? 'static_library' : 'static'}/${relativePath}`,
   }
 }
+
+async function resolveAllClientFiles(clientFiles) {
+  let resolve = null
+  const promise = new Promise(r => { resolve = r })
+  let allClientFiles = clientFiles.slice()
+
+  process.on('message', handleMessage)
+  process.send({ 'custom-resolve:get-dependencies': clientFiles.map(x => fileURLToPath(x.url)) })
+
+  return promise
+
+  function handleMessage(message) {
+    const dependencies = message['custom-resolve:get-dependencies']
+    if (!dependencies) return
+    process.off('message', handleMessage)
+
+    dependencies.forEach(({ file, specifier }) => {
+      const url = pathToFileURL(path.resolve(file)).href
+      allClientFiles.push({ url, specifier })
+    })
+    resolve(allClientFiles)
+  }
+}
+
