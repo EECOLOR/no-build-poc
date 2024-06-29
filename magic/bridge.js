@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 import { MessageChannel } from 'node:worker_threads'
 
 const clientFilesChannel = new MessageChannel()
