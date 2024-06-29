@@ -5,11 +5,15 @@ import { IndexHtml } from '/IndexHtml.js'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import path from 'node:path'
 import { render } from './src/machinery/serverRenderer.js'
+import { setupParentProcessCommunication } from './magic/child-process.js'
 
 console.log('server starting up')
+const parent = setupParentProcessCommunication({
+  'getDependencies': 'custom-resolve:get-dependencies',
+})
 
 const { css, importMap, staticFileMapping } =
-  await processLoaderInfo({ processedCss, clientFiles: await resolveAllClientFiles(clientFiles) })
+  await processLoaderInfo({ processedCss, clientFiles })
 
 const server = http.createServer((req, res) => {
   if (req.url.includes('.'))
@@ -64,6 +68,8 @@ function determineMimeType(req) {
 }
 
 async function processLoaderInfo({ processedCss, clientFiles }) {
+  const allClientFiles = await resolveAllClientFiles(clientFiles)
+
   const cssLookup = processedCss.reduce(
     (result, x) => {
       result[x.url] = x
@@ -73,7 +79,7 @@ async function processLoaderInfo({ processedCss, clientFiles }) {
   )
 
   const parsedClientFiles = await Promise.all(
-    clientFiles.map(
+    allClientFiles.map(
       async ({ url, specifier }) => ({ url, specifier, parsed: getPathInformation(url) })
     )
   )
@@ -132,25 +138,14 @@ function getPathInformation(url) {
 }
 
 async function resolveAllClientFiles(clientFiles) {
-  let resolve = null
-  const promise = new Promise(r => { resolve = r })
   let allClientFiles = clientFiles.slice()
 
-  process.on('message', handleMessage)
-  process.send({ 'custom-resolve:get-dependencies': clientFiles.map(x => fileURLToPath(x.url)) })
+  const dependencies = await parent.getDependencies(clientFiles.map(x => fileURLToPath(x.url)))
 
-  return promise
+  dependencies.forEach(({ file, specifier }) => {
+    const url = pathToFileURL(path.resolve(file)).href
+    allClientFiles.push({ url, specifier })
+  })
 
-  function handleMessage(message) {
-    const dependencies = message['custom-resolve:get-dependencies']
-    if (!dependencies) return
-    process.off('message', handleMessage)
-
-    dependencies.forEach(({ file, specifier }) => {
-      const url = pathToFileURL(path.resolve(file)).href
-      allClientFiles.push({ url, specifier })
-    })
-    resolve(allClientFiles)
-  }
+  return allClientFiles
 }
-
