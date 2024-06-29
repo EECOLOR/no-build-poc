@@ -5,7 +5,6 @@ import { Raw, Tag } from './tags.js'
 export const emptyValues = [false, undefined, null]
 
 /** @typedef {import('./tags.js').TagNames} TagNames */
-/** @template T @typedef {import('./signal.js').Signal<T>} Signal */
 /** @typedef {Readonly<object>} Context */
 
 /**

@@ -3,6 +3,8 @@ import { render } from './clientRenderer.js'
 import { containerMarker } from '/machinery/containerMarker.js'
 import { raw } from './tags.js'
 
+export default 'for typescript'
+
 await Promise.all(
   findAllComponents().map(async ({ info, nodes }) => {
     const childrenPlaceholder = document.createComment('[childrenPlaceholder]')
