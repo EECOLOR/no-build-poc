@@ -1,13 +1,12 @@
 import http from 'node:http'
 import fs from 'node:fs'
-import { cleanup, clientFiles, processedCss } from './magic/bridge.js'
+import { cleanup, clientFiles, processedCss } from '../magic/bridge.js'
 import { IndexHtml } from '/IndexHtml.js'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import path from 'node:path'
-import { render } from './src/machinery/serverRenderer.js'
-import { setupParentProcessCommunication } from './magic/child-process.js'
+import { render } from '/machinery/serverRenderer.js'
+import { setupParentProcessCommunication } from '../magic/child-process.js'
 
-console.log('server starting up')
 const parent = setupParentProcessCommunication({
   'getDependencies': 'custom-resolve:get-dependencies',
 })
@@ -23,8 +22,12 @@ const server = http.createServer((req, res) => {
   return serve(res, 200, 'text/html', indexHtml)
 })
 
+console.log('server starting up')
 server.listen(8000, () => {
   console.log('server started at port 8000')
+})
+server.on('error', e => {
+  console.error(e)
 })
 
 process.on('SIGINT', shutdown)
