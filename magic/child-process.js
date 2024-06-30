@@ -13,7 +13,7 @@ export function spawnChildProcess({ command, parameter, messageHandlers }) {
       if (!content) return
 
       handler(content)
-        .then(result => child.send({ '_id': message['_id'], [key]: result }))
+        .then(result => child.send({ '__id': message['__id'], [key]: result }))
         .catch(e => console.error(e))
     }
   })
@@ -24,7 +24,7 @@ export function spawnChildProcess({ command, parameter, messageHandlers }) {
  * @param {T} methods
  */
 export function setupParentProcessCommunication(methods) {
-  let nextId = 0
+  let nextId = 1
   const resolvers = new Map()
 
   process.on('message', handleMessage)
