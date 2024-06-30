@@ -5,13 +5,11 @@
   "include": [
     "./*.js",
     "./src/**/*",
-    "./magic/**/*",
-    "./server/**/*",
     "./types/**/*",
   ],
   "compilerOptions": {
     "module": "es2022",
-    "moduleResolution": "node",
+    "moduleResolution": "nodenext",
     "target": "es2022",
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
@@ -28,6 +26,9 @@
     "paths": {
       "/*": [
         "src/*"
+      ],
+      "#*": [
+        "packages/*"
       ]
     }
   }

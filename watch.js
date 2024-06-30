@@ -1,5 +1,5 @@
-import { spawnChildProcess } from './magic/child-process.js'
-import { createBrowserAnalyser } from './magic/browser-analyser.js'
+import { spawnChildProcess } from '#utils/child-process.js'
+import { createBrowserAnalyser } from '#browser-code-analyser'
 
 const browserAnalyser = createBrowserAnalyser({
   plugins: [
@@ -16,7 +16,15 @@ const browserAnalyser = createBrowserAnalyser({
 
 spawnChildProcess({
   command: 'node',
-  parameter: ['--import', './register-hooks.js', '--watch', '--watch-preserve-output', './server/server.js'],
+  parameter: [
+    '--import', '#import-root-slash/register-hooks.js',
+    '--import', '#import-universal/register-hooks.js',
+    '--import', '#import-css/register-hooks.js',
+    '--import', '#import-client-only/register-hooks.js',
+    '--watch',
+    '--watch-preserve-output',
+    './index.js'
+  ],
   messageHandlers: {
     'custom-resolve:get-dependencies': async clientFiles => {
       const dependencies = await browserAnalyser.extractAllImports(clientFiles)

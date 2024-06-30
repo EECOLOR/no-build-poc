@@ -1,10 +1,10 @@
 import { Component } from './component.js'
-import { separatePropsAndChildren } from './separatePropsAndChildren.js'
+import { separatePropsAndChildren } from '#utils'
 
 export class Raw { constructor(value) { this.value = value } }
 export function raw(value) { return new Raw(value) }
 
-/** @template T @typedef {import('/machinery/signal.js').Signal<T>} Signal */
+/** @template T @typedef {import('./signal.js').Signal<T>} Signal */
 
 /**
  * @typedef {'children' | 'key' | 'ref' | 'dangerouslySetInnerHTML' |

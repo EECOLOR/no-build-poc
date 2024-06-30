@@ -1,13 +1,15 @@
-import { raw, tags } from '/machinery/tags.js'
-import { createSignal, derived } from '/machinery/signal.js'
-import { Runtime } from './Runtime.js'
+import { raw, tags } from '#ui/tags.js'
+import { createSignal, derived } from '#ui/signal.js'
+import { component, createContext } from '#ui/component.js'
+import { clientConfig } from '#ui/ClientConfig.js'
 
-import styles from './CustomComponent.css' // uiteindelijk misschien met import assertions
 import { initializeApp } from 'firebase/app'
 import { serverTimestamp } from 'firebase/database'
 import * as THREE from 'three'
-import { component, createContext } from '/machinery/component.js'
-import { clientConfig } from '/machinery/ClientConfig.js'
+
+import { Runtime } from './Runtime.js'
+
+import styles from './CustomComponent.css' // uiteindelijk misschien met import assertions
 
 const customContext = createContext()
 const CustomProvider = customContext.Provider

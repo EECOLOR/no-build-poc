@@ -1,4 +1,5 @@
-import { raw, tags } from '/machinery/tags.js'
+import { raw, tags } from './tags.js'
+
 const { script } = tags
 
 const clientConfigId = 'client-config'

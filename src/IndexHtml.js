@@ -1,10 +1,11 @@
-import { raw, tags } from '/machinery/tags.js'
+import { raw, tags } from '#ui/tags.js'
+import { ClientConfig } from '#ui/ClientConfig.js'
+import hydrateComponentsSrc from '#import-universal/hydrate-components.client.js'
+
 import CustomComponent from '/features/CustomComponent.universal.js'
 import UniversalContainer from './features/UniversalContainer.universal.js'
 import MemoryLeak from './features/MemoryLeak.universal.js'
-import hydrateComponentsSrc from '/machinery/hydrateComponents.client.js'
 import indexSrc from '/index.client.js'
-import { ClientConfig } from '/machinery/ClientConfig.js'
 
 const { html, head, body, script, link } = tags
 

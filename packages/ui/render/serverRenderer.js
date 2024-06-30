@@ -1,6 +1,6 @@
 import { createRenderer } from './renderer.js'
-import { Signal } from './signal.js'
-import { raw } from './tags.js'
+import { Signal } from '#ui/signal.js'
+import { raw } from '#ui/tags.js'
 
 const escapeHtml = createHtmlEscape()
 
@@ -31,6 +31,8 @@ function renderServerAttributes(attributes) {
 
   return Object.entries(attributes)
     .flatMap(([k, v]) => {
+      if (typeof k !== 'string') return []
+
       if (k.startsWith('on')) return []
       if (k === 'className') k = 'class'
       if (k === 'style') v = renderStyles(v)
@@ -40,12 +42,11 @@ function renderServerAttributes(attributes) {
     .join(' ')
 }
 
+/** @param {{ [k: string]: string }} styles */
 function renderStyles(styles) {
   // TODO: check an implemention like Preact to see if this needs to be more advanced
   return Object.entries(styles)
-    .map(([k, v]) =>
-      `${k}: ${v};`
-    )
+    .map(([k, v]) => `${k}: ${v};`)
     .join('')
 }
 

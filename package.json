@@ -4,7 +4,17 @@
     "start": "CONFIG_ENV=dev node ./watch.js"
   },
   "imports": {
-    "#config": "./config/lib/index.js"
+    "#config": "./packages/config/index.js",
+    "#server": "./packages/server/index.js",
+    "#server/*": "./packages/server/*",
+    "#import-universal/*": "./packages/import-universal/*",
+    "#import-root-slash/*": "./packages/import-root-slash/*",
+    "#import-css/*": "./packages/import-css/*",
+    "#import-client-only/*": "./packages/import-client-only/*",
+    "#browser-code-analyser": "./packages/browser-code-analyser/index.js",
+    "#utils": "./packages/utils/index.js",
+    "#utils/*": "./packages/utils/*",
+    "#ui/*": "./packages/ui/*"
   },
   "dependencies": {
     "firebase": "^10.12.2",

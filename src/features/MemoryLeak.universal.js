@@ -1,6 +1,5 @@
-import { createSignal } from '/machinery/signal.js';
-
-import { tags } from '/machinery/tags.js'
+import { createSignal } from '#ui/signal.js'
+import { tags } from '#ui/tags.js'
 
 const { div, h2, p } = tags
 

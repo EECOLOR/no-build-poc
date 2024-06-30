@@ -1,6 +1,6 @@
-import { separatePropsAndChildren } from './separatePropsAndChildren.js'
-import { containerMarker } from '/machinery/containerMarker.js'
-import { raw, tags } from '/machinery/tags.js'
+import { separatePropsAndChildren } from '#utils'
+import { containerMarker } from './containerMarker.js'
+import { raw, tags } from '#ui/tags.js'
 
 const { script } = tags
 

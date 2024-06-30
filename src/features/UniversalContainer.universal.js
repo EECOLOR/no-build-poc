@@ -1,4 +1,4 @@
-import { tags } from '/machinery/tags.js'
+import { tags } from '#ui/tags.js'
 
 const { div } = tags
 

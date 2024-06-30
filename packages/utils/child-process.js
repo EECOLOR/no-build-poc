@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { mapValues } from '#utils'
 
 export function spawnChildProcess({ command, parameter, messageHandlers }) {
   const handlerEntries = Object.entries(messageHandlers)
@@ -56,17 +57,4 @@ export function setupParentProcessCommunication(methods) {
 
     resolve(content)
   }
-}
-
-/**
- * @template {object} T
- * @template {(value: T[keyof T], key?: keyof T, o?: T) => any} F
- * @param {T} o
- * @param {F} f
- * @returns {{ [key in keyof T]: ReturnType<F> }}
- */
-function mapValues(o, f) {
-  return Object.fromEntries(
-    Object.entries(o).map(([k, v]) => [k, f(v, k, o)])
-  )
 }

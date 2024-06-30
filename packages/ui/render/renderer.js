@@ -1,10 +1,10 @@
-import { Component, _setNodeContext } from './component.js'
-import { Signal } from './signal.js'
-import { Raw, Tag } from './tags.js'
+import { Component, _setNodeContext } from '#ui/component.js'
+import { Signal } from '#ui/signal.js'
+import { Raw, Tag } from '#ui/tags.js'
 
 export const emptyValues = [false, undefined, null]
 
-/** @typedef {import('./tags.js').TagNames} TagNames */
+/** @typedef {import('#ui/tags.js').TagNames} TagNames */
 /** @typedef {Readonly<object>} Context */
 
 /**

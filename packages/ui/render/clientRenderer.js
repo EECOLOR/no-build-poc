@@ -1,9 +1,9 @@
-import { writeToDom } from './domInteraction.js'
+import { writeToDom } from '#ui/domInteraction.js'
 import { createRenderer } from './renderer.js'
-import { Signal } from './signal.js'
-import { raw } from './tags.js'
+import { Signal } from '#ui/signal.js'
+import { raw } from '#ui/tags.js'
 
-/** @typedef {import('./tags.js').TagNames} TagNames */
+/** @typedef {import('#ui/tags.js').TagNames} TagNames */
 
 /**
  * @template {TagNames} key

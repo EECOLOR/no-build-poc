@@ -1,7 +1,7 @@
-import { writeToDom } from './domInteraction.js'
-import { render } from './clientRenderer.js'
-import { containerMarker } from '/machinery/containerMarker.js'
-import { raw } from './tags.js'
+import { writeToDom } from '#ui/domInteraction.js'
+import { render } from '#ui/render/clientRenderer.js'
+import { raw } from '#ui/tags.js'
+import { containerMarker } from './internal/containerMarker.js'
 
 export default 'for typescript'
 
