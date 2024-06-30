@@ -7,6 +7,7 @@ import { initializeApp } from 'firebase/app'
 import { serverTimestamp } from 'firebase/database'
 import * as THREE from 'three'
 import { component, createContext } from '/machinery/component.js'
+import { clientConfig } from '/machinery/ClientConfig.js'
 
 const customContext = createContext()
 const CustomProvider = customContext.Provider
@@ -31,7 +32,7 @@ export function CustomComponent({ title, content }) {
 
   return div(
     h1({ className: styles.title },
-      title, ' ', $count
+      title, ' ', $count, ' ', clientConfig.testValue
     ),
     p(content),
     p('> ', FatCount({ $count }), ' <'),

@@ -1,7 +1,10 @@
 {
   "type": "module",
   "scripts": {
-    "start": "node --import ./register-hooks.js --watch ./server.js"
+    "start": "CONFIG_ENV=dev node ./watch.js"
+  },
+  "imports": {
+    "#config": "./config/lib/index.js"
   },
   "dependencies": {
     "firebase": "^10.12.2",
