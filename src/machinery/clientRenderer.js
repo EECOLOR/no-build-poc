@@ -21,17 +21,17 @@ import { raw } from './tags.js'
       },
       renderSignal(signal, context) {
         const marker = comment()
-        let nodes = renderValue([].concat(raw(marker), signal.get()), context)
+        let nodes = renderValue([].concat(raw(marker), signal.get(), raw(comment())), context)
 
         const unsubscribe = signal.subscribe(newValue => {
           if (!marker.isConnected) return unsubscribe()
 
           const newNodes = renderValue(newValue, context)
-          const oldNodes = nodes.slice(1)
+          const oldNodes = nodes.slice(1, -1)
 
           swapNodes(marker, newNodes, oldNodes)
 
-          nodes.splice(1, Infinity, ...newNodes)
+          nodes.splice(1, oldNodes.length, ...newNodes)
         })
 
         return nodes
@@ -41,6 +41,8 @@ import { raw } from './tags.js'
 
         if (attributes)
           Object.entries(attributes).forEach(([k, v]) => {
+            if (typeof k !== 'string') return
+
             if (k.startsWith('on')) element[k.toLowerCase()] = v
             else if (v instanceof Signal) bindSignalToAttribute(element, k, v)
             else if (k === 'style') Object.assign(element.style, v)
@@ -75,13 +77,14 @@ function bindSignalToAttribute(element, attribute, signal) {
 
 function swapNodes(marker, newNodes, oldNodes) {
   writeToDom.outsideAnimationFrame(() => {
-    const lastNode = newNodes[oldNodes.length - 1] || marker
     oldNodes.forEach((node, i) => { // A normal loop would probably be better
       const replacementNode = newNodes[i]
       if (replacementNode) node.replaceWith(replacementNode)
       else node.remove()
     })
     const leftOverNewNodes = newNodes.slice(oldNodes.length)
+
+    const lastNode = newNodes[oldNodes.length - 1] || marker
     lastNode.after(...leftOverNewNodes)
   })
 }
@@ -93,9 +96,13 @@ function comment() {
 const emptyArray = []
 function combineTextNodes(nodes) {
   return nodes.flatMap((node, i) => {
-    if (!i || node.nodeType !== 3) return [node]
+    if (!i || node.nodeType !== Node.TEXT_NODE)
+      return [node]
+
     const previous = nodes[i - 1]
-    if (previous.nodeType !== 3) return [node]
+    if (previous.nodeType !== Node.TEXT_NODE)
+      return [node]
+
     previous.nodeValue += node.nodeValue || ' '
     return emptyArray
   })

@@ -12,7 +12,7 @@ export const render = createRenderer(
         return value
       },
       renderSignal(signal, context) {
-        const result = [].concat(emptyComment(), signal.get())
+        const result = [].concat(emptyComment(), signal.get(), emptyComment())
         return renderValue(result, context)
       },
       renderTag({ tagName, attributes, children }, context) {
