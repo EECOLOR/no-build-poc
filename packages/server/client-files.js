@@ -6,12 +6,12 @@ import { createLookup } from '#utils'
  *
  * @param {{
  *   clientFiles: Array<{ url: string, specifier: string }>
- *   processedCss: Array<{ url: string, modifiedSourcePath: string, classMapAsJsPath: string }>
+ *   cssFiles: Array<{ url: string, modifiedSourcePath: string, classMapAsJsPath: string }>
  * }} props
  * @returns
  */
-export async function convertClientFiles({ clientFiles, processedCss }) {
-  const cssLookup = createLookup(processedCss, { key: x => x.url })
+export async function convertClientFiles({ clientFiles, cssFiles }) {
+  const cssLookup = createLookup(cssFiles, { key: x => x.url })
 
   const parsedClientFiles = clientFiles.map(({ url, specifier }) =>
     ({ specifier, parsed: getPathInformation(url), cssInfo: cssLookup[url] })

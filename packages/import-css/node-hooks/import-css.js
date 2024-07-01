@@ -4,15 +4,15 @@ import path from 'node:path'
 import * as esbuild from 'esbuild'
 
 /** @type {import('node:worker_threads').MessagePort} */
-let processedCssPort = null
+let cssFilesPort = null
 
 /**
  * @param {{
- *   processedCssPort: import('node:worker_threads').MessagePort
+ *   cssFilesPort: import('node:worker_threads').MessagePort
  * }} data
  */
 export function initialize(data) {
-  processedCssPort = data.processedCssPort
+  cssFilesPort = data.cssFilesPort
 }
 
 export async function load(url, context, nextLoad) {
@@ -26,7 +26,7 @@ export async function load(url, context, nextLoad) {
 
     const classMapAsJs = `export default ${JSON.stringify(classMap)}`
 
-    processedCssPort.postMessage({ url, modifiedSource, classMapAsJs })
+    cssFilesPort.postMessage({ 'import-css:new-css-file': { url, modifiedSource, classMapAsJs } })
 
     return { format: 'module', shortCircuit: true, source: classMapAsJs }
   }

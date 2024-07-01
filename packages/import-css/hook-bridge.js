@@ -3,19 +3,23 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { MessageChannel } from 'node:worker_threads'
 
-const processedCssChannel = new MessageChannel()
+const cssFilesChannel = new MessageChannel()
 
 /** @type {Array<{ url: string, modifiedSourcePath: string, classMapAsJsPath: string }>} */
-export const processedCss = []
+export const cssFiles = []
 
-export const processedCssPort = processedCssChannel.port2
+export const cssFilesPort = cssFilesChannel.port2
 
-export function cleanup() {
+export function cleanupGeneratedCssFiles() {
   console.log('Removing ./tmp dir')
   fs.rmSync('./tmp', { recursive: true, force: true })
 }
 
-processedCssChannel.port1.on('message', ({ url, modifiedSource, classMapAsJs }) => {
+cssFilesChannel.port1.on('message', message => {
+  const content = message['import-css:new-css-file']
+  if (!content) return
+
+  const { url, modifiedSource, classMapAsJs } = content
   const relativePath = path.relative(path.resolve('./src'), fileURLToPath(url))
 
   const modifiedSourcePath = `./tmp/${relativePath}`
@@ -25,5 +29,5 @@ processedCssChannel.port1.on('message', ({ url, modifiedSource, classMapAsJs }) 
   fs.writeFileSync(modifiedSourcePath, modifiedSource)
   fs.writeFileSync(classMapAsJsPath, classMapAsJs)
 
-  processedCss.push({ url, modifiedSourcePath, classMapAsJsPath })
+  cssFiles.push({ url, modifiedSourcePath, classMapAsJsPath })
 })

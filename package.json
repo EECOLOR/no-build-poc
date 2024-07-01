@@ -7,6 +7,7 @@
     "#config": "./packages/config/index.js",
     "#server": "./packages/server/index.js",
     "#server/*": "./packages/server/*",
+    "#dependency-analysis/*": "./packages/dependency-analysis/*",
     "#import-universal/*": "./packages/import-universal/*",
     "#import-root-slash/*": "./packages/import-root-slash/*",
     "#import-css/*": "./packages/import-css/*",

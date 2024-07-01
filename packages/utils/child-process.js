@@ -58,3 +58,16 @@ export function setupParentProcessCommunication(methods) {
     resolve(content)
   }
 }
+
+export function handleShutdown(handler) {
+  let shuttingDown = false
+
+  process.on('SIGINT', shutdown)
+  process.on('SIGTERM', shutdown)
+
+  function shutdown() {
+    if (shuttingDown) return
+    shuttingDown = true
+    handler()
+  }
+}

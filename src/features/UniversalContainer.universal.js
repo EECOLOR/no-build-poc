@@ -7,7 +7,7 @@ export default function UniversalContainer(...children) {
     div(
       div('Before children'),
       ...children,
-      div('After children')
+      div('After children'),
     )
   )
 }

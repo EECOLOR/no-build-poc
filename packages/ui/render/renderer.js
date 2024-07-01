@@ -36,7 +36,7 @@ export function createRenderer(constructor) {
     return (
       tagOrComponent instanceof Component ? renderComponent(tagOrComponent, context) :
       tagOrComponent instanceof Tag ? renderer.renderTag(tagOrComponent, context) :
-      throwError(`Can only render tags and components`)
+      renderValue(tagOrComponent, context)
     )
   }
 
