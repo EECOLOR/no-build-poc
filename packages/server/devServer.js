@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import { render } from '#ui/render/serverRenderer.js'
 import { convertClientFiles } from './client-files.js'
 import { app } from '#dependency-analysis/app.js'
-import { handleShutdown } from '#utils/child-process.js'
+import { handleShutdown } from '#utils/shutdown.js'
 
 export async function startServer({ IndexComponent }) {
   console.log('server starting up')
@@ -19,7 +19,8 @@ export async function startServer({ IndexComponent }) {
 
   handleShutdown(() => {
     console.log('Shutdown detected, closing server')
-    server.close(e => { if (e) console.error(e) })
+    server.close(e => { e ? console.error(e) : console.log('Server closed') })
+    server.closeAllConnections()
   })
 
   function requestHandler(req, res) {

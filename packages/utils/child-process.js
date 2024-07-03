@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process'
 import { mapValues } from '#utils'
+import { handleShutdown } from './shutdown.js'
 
 export function spawnChildProcess({ command, parameter, messageHandlers }) {
   const handlerEntries = Object.entries(messageHandlers)
@@ -30,6 +31,11 @@ export function setupParentProcessCommunication(methods) {
 
   process.on('message', handleMessage)
 
+  handleShutdown(() => {
+    console.log('Stop listening to parent')
+    process.off('message', handleMessage)
+  })
+
   return mapValues(methods, messageKey =>
     params => request(messageKey, params)
   )
@@ -56,18 +62,5 @@ export function setupParentProcessCommunication(methods) {
     if (!content) return
 
     resolve(content)
-  }
-}
-
-export function handleShutdown(handler) {
-  let shuttingDown = false
-
-  process.on('SIGINT', shutdown)
-  process.on('SIGTERM', shutdown)
-
-  function shutdown() {
-    if (shuttingDown) return
-    shuttingDown = true
-    handler()
   }
 }

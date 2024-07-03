@@ -1,6 +1,6 @@
-import { MessageChannel } from 'node:worker_threads'
+import { createMessageChannel } from '#utils/channels.js'
 
-const universalFilesChannel = new MessageChannel()
+const universalFilesChannel = createMessageChannel()
 
 /** @type {Array<{ url: string, specifier: string }>} */
 export const importedUniversalFiles = []

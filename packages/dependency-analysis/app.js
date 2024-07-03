@@ -4,7 +4,8 @@ import path from 'node:path'
 import { importedClientFiles } from '#import-client-only/hook-bridge.js'
 import { importedUniversalFiles } from '#import-universal/hook-bridge.js'
 import { cleanupGeneratedCssFiles, cssFiles } from '#import-css/hook-bridge.js'
-import { handleShutdown, setupParentProcessCommunication } from '#utils/child-process.js'
+import { setupParentProcessCommunication } from '#utils/child-process.js'
+import { handleShutdown } from '#utils/shutdown.js'
 
 const parent = setupParentProcessCommunication({
   'getDependencies': 'watch:get-dependencies',

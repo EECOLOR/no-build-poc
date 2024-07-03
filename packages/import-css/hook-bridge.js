@@ -1,9 +1,9 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { MessageChannel } from 'node:worker_threads'
+import { createMessageChannel } from '#utils/channels.js'
 
-const cssFilesChannel = new MessageChannel()
+const cssFilesChannel = createMessageChannel()
 
 /** @type {Array<{ url: string, modifiedSourcePath: string, classMapAsJsPath: string }>} */
 export const cssFiles = []
