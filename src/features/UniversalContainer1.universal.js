@@ -4,8 +4,8 @@ const { div } = tags
 
 export default function UniversalContainer1(...children) {
   return [
-    div('______________'),
+    div('>______________<'),
     ...children,
-    div('¯¯¯¯¯¯¯¯¯¯¯¯¯¯')
+    div('>¯¯¯¯¯¯¯¯¯¯¯¯¯¯<')
   ]
 }

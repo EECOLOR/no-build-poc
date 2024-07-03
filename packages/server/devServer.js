@@ -28,7 +28,7 @@ export async function startServer({ IndexComponent }) {
       return handleStaticFile(req, res)
 
     const indexHtml = render(IndexComponent({ css, importMap }))
-    return serve(res, 200, 'text/html', indexHtml)
+    return serve(res, 200, 'text/html;charset=UTF-8', indexHtml)
   }
 
   function handleStaticFile(req, res) {

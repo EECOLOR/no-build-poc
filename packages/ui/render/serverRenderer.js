@@ -9,7 +9,7 @@ export const render = createRenderer(
   ({ renderValue }) => {
     return {
       renderString(value) {
-        return value
+        return escapeHtml(value)
       },
       renderSignal(signal, context) {
         const result = [].concat(emptyComment(), signal.get(), emptyComment())
