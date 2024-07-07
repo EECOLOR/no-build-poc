@@ -3,12 +3,10 @@ import path from 'node:path'
 import { createLookup } from '#utils'
 
 /**
- *
  * @param {{
  *   clientFiles: Array<{ url: string, specifier: string }>
  *   cssFiles: Array<{ url: string, modifiedSourcePath: string, classMapAsJsPath: string }>
  * }} props
- * @returns
  */
 export async function convertClientFiles({ clientFiles, cssFiles }) {
   const cssLookup = createLookup(cssFiles, { key: x => x.url })
@@ -17,7 +15,6 @@ export async function convertClientFiles({ clientFiles, cssFiles }) {
     ({ specifier, parsed: getPathInformation(url), cssInfo: cssLookup[url] })
   )
 
-  // add /static or to support relative imports
   const { css, imports, staticFileMapping } = parsedClientFiles.reduce(
     ({ css, imports, staticFileMapping }, { specifier, parsed, cssInfo }) => {
       const { relativePath, publicPath, type, relativeToRootPath } = parsed
