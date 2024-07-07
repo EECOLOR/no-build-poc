@@ -2,14 +2,12 @@ import http from 'node:http'
 import fs from 'node:fs'
 import { render } from '#ui/render/serverRenderer.js'
 import { convertClientFiles } from './client-files.js'
-import { app } from '#dependency-analysis/app.js'
 import { handleShutdown } from '#utils/shutdown.js'
 
-export async function startServer({ IndexComponent }) {
+export async function startServer({ IndexComponent, clientFiles, cssFiles }) {
   console.log('server starting up')
 
   console.log('processing css and client files')
-  const { clientFiles, cssFiles } = app
   const { css, importMap, staticFileMapping } =
     await convertClientFiles({ cssFiles, clientFiles })
 

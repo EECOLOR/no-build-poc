@@ -8,5 +8,3 @@ register(
   './node-hooks/universal.js',
   { parentURL, data: { universalFilesPort }, transferList: [universalFilesPort] }
 )
-
-

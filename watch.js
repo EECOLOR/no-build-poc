@@ -1,10 +1,10 @@
 import { spawnChildProcess } from '#utils/child-process.js'
-import { watch } from '#dependency-analysis/watch.js'
+import { config } from '#dependency-analysis/watch-config.js'
 
 spawnChildProcess({
   command: 'node',
-  parameter: watch.importHooks
+  parameter: config.importHooks
     .flatMap(hook => ['--import', hook])
     .concat('--watch', '--watch-preserve-output', './index.js'),
-  messageHandlers: watch.messageHandlers,
+  messageHandlers: config.messageHandlers,
 })

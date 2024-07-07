@@ -1,6 +1,6 @@
 import { createBrowserAnalyser } from '#browser-code-analyser'
 
-export const watch = {
+export const config = {
   importHooks: [
     '#import-root-slash/register-hooks.js',
     '#import-universal/register-hooks.js',
