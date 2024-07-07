@@ -9,7 +9,7 @@ function shutdown() {
   process.off('SIGINT', shutdown)
   process.off('SIGTERM', shutdown)
   shuttingDown = true
-  shutdownHandlers.forEach(handler => handler())
+  for (const handler of shutdownHandlers) handler()
 }
 
 export function handleShutdown(handler) {

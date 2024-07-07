@@ -40,17 +40,17 @@ import { raw } from '#ui/tags.js'
         const element = document.createElement(tagName)
 
         if (attributes)
-          Object.entries(attributes).forEach(([k, v]) => {
+          for (const [k, v] of Object.entries(attributes)) {
             if (typeof k !== 'string') return
 
             if (k.startsWith('on')) element[k.toLowerCase()] = v
             else if (v instanceof Signal) bindSignalToAttribute(element, k, v)
             else if (k === 'style') Object.assign(element.style, v)
             else setAttributeOrProperty(element, k, v)
-          })
+          }
 
         const nodes = children.flatMap(x => renderValue(x, context))
-        nodes.forEach(node => { element.appendChild(node) })
+        for (const node of nodes) element.appendChild(node)
 
         return element
       }

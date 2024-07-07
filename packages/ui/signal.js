@@ -59,9 +59,9 @@ export function createSignal(initialValue) {
       if (newValue === value) return
       value = newValue
 
-      listeners.forEach((callback, i) => {
+      for (const callback of listeners) {
         setTimeout(() => { callback(value) }, 0)
-      })
+      }
     },
   ]
 }

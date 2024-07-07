@@ -28,12 +28,12 @@ await Promise.all(
       )
 
     writeToDom.outsideAnimationFrame(() => {
-      nodes.forEach((node, i) => {
+      for (const [i, node] of nodes.entries()) {
         const replacement = nodeReplacements[i]
         // listEquality(node, replacement)
         if (replacement !== node)
           node.replaceWith(replacement)
-      })
+      }
     })
   })
 )
