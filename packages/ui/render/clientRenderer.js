@@ -49,7 +49,7 @@ import { raw } from '#ui/tags.js'
             else setAttributeOrProperty(element, k, v)
           })
 
-        const nodes = combineTextNodes(children.flatMap(x => renderValue(x, context)))
+        const nodes = children.flatMap(x => renderValue(x, context))
         nodes.forEach(node => { element.appendChild(node) })
 
         return element
@@ -77,33 +77,15 @@ function bindSignalToAttribute(element, attribute, signal) {
 
 function swapNodes(marker, newNodes, oldNodes) {
   writeToDom.outsideAnimationFrame(() => {
-    oldNodes.forEach((node, i) => { // A normal loop would probably be better
-      const replacementNode = newNodes[i]
-      if (replacementNode) node.replaceWith(replacementNode)
-      else node.remove()
-    })
-    const leftOverNewNodes = newNodes.slice(oldNodes.length)
-
-    const lastNode = newNodes[oldNodes.length - 1] || marker
-    lastNode.after(...leftOverNewNodes)
+    let oldNodesLength = oldNodes.length
+    while (oldNodesLength--) {
+      const oldNode = oldNodes[oldNodesLength]
+      oldNode.remove()
+    }
+    marker.after(...newNodes)
   })
 }
 
 function comment() {
   return document.createComment('')
-}
-
-const emptyArray = []
-function combineTextNodes(nodes) {
-  return nodes.flatMap((node, i) => {
-    if (!i || node.nodeType !== Node.TEXT_NODE)
-      return [node]
-
-    const previous = nodes[i - 1]
-    if (previous.nodeType !== Node.TEXT_NODE)
-      return [node]
-
-    previous.nodeValue += node.nodeValue || ' '
-    return emptyArray
-  })
 }
