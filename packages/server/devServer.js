@@ -1,15 +1,22 @@
 import http from 'node:http'
 import fs from 'node:fs'
+import path from 'node:path'
 import { render } from '#ui/render/serverRenderer.js'
 import { convertClientFiles } from './client-files.js'
 import { handleShutdown } from '#utils/shutdown.js'
+import { mapAsync } from '#utils/index.js'
+import { importFile } from '#dependency-analysis/app.js'
 
-export async function startServer({ IndexComponent, clientFiles, cssFiles }) {
+export async function startServer({ indexFiles }) {
   console.log('server starting up')
 
-  console.log('processing css and client files')
-  const { css, importMap, staticFileMapping } =
-    await convertClientFiles({ cssFiles, clientFiles })
+  const indices = await collectIndices(indexFiles)
+  indices.sort((a, b) => b.indexPath.length - a.indexPath.length)
+
+  const staticFileMapping = indices.reduce(
+    (result, x) => Object.assign(result, x.staticFileMapping),
+    {}
+  )
 
   const server = http.createServer(requestHandler)
   server.listen(8000, () => { console.log('server started at port 8000') })
@@ -25,6 +32,11 @@ export async function startServer({ IndexComponent, clientFiles, cssFiles }) {
     if (req.url.includes('.'))
       return handleStaticFile(req, res)
 
+    const indexInfo = indices.find(x => req.url.startsWith(x.indexPath))
+    if (!indexInfo)
+      return notFound(res)
+
+    const { IndexComponent, css, importMap } = indexInfo
     const indexHtml = render(IndexComponent({ css, importMap }))
     return serve(res, 200, 'text/html;charset=UTF-8', indexHtml)
   }
@@ -62,4 +74,24 @@ export async function startServer({ IndexComponent, clientFiles, cssFiles }) {
       'application/octet-stream'
     )
   }
+}
+
+async function collectIndices(indexFiles) {
+  const indices = await mapAsync(
+    indexFiles,
+    async indexFile => {
+      console.log('importing index file', indexFile)
+      const { imported, cssFiles, clientFiles } = await importFile(indexFile)
+
+      console.log('processing css and client files for', indexFile)
+      const { css, importMap, staticFileMapping } =
+        await convertClientFiles({ cssFiles, clientFiles })
+
+      const indexPath = path.dirname(indexFile)
+      const componentName = path.basename(indexFile, '.js')
+      const IndexComponent = imported[componentName]
+      return { indexPath, IndexComponent, css, importMap, staticFileMapping }
+    }
+  )
+  return indices
 }

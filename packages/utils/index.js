@@ -15,9 +15,27 @@ export function createLookup(a, { key }) {
  * @param {F} f
  * @returns {{ [key in keyof T]: ReturnType<F> }}
  */
- export function mapValues(o, f) {
+export function mapValues(o, f) {
   return Object.fromEntries(
     Object.entries(o).map(([k, v]) => [k, f(v, k, o)])
+  )
+}
+
+/**
+ * @template T
+ * @template {(value: T, index?: number, a?: Array<T>) => Promise<any>} F
+ * @param {Array<T>} a
+ * @param {F} f
+ * @returns {Promise<Array<Awaited<ReturnType<F>>>>}
+ */
+export function mapAsync(a, f) {
+  return a.reduce(
+    async (resultPromise, x, i) => {
+      const result = await resultPromise
+      result.push(await f(x, i, a))
+      return result
+    },
+    Promise.resolve([])
   )
 }
 

@@ -1,16 +1,32 @@
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import path from 'node:path'
 
-import { importedClientFiles } from '#import-client-only/hook-bridge.js'
-import { importedUniversalFiles } from '#import-universal/hook-bridge.js'
-import { cssFiles } from '#import-css/dev/hook-bridge.js'
+import { importedClientFiles, clearClientFiles } from '#import-client-only/hook-bridge.js'
+import { importedUniversalFiles, clearUniversalFiles } from '#import-universal/hook-bridge.js'
+import { cssFiles, clearCssFiles } from '#import-css/dev/hook-bridge.js'
 import { setupParentProcessCommunication } from '#utils/child-process.js'
 
 const getDependencies = setupParentProcessCommunication('watch:get-dependencies')
 
-export const app = {
-  clientFiles: await resolveAllClientFiles([].concat(importedClientFiles, importedUniversalFiles)),
-  cssFiles,
+export async function importFile(file) {
+  resetFiles()
+  const imported = await import(file)
+  const { cssFiles, clientFiles } = await getFiles()
+
+  return { imported, cssFiles, clientFiles }
+}
+
+async function getFiles() {
+  return  {
+    clientFiles: await resolveAllClientFiles([].concat(importedClientFiles, importedUniversalFiles)),
+    cssFiles: cssFiles.slice(),
+  }
+}
+
+function resetFiles() {
+  clearClientFiles()
+  clearUniversalFiles()
+  clearCssFiles()
 }
 
 async function resolveAllClientFiles(clientFiles) {

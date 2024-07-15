@@ -7,6 +7,10 @@ export const cssFiles = []
 
 export const cssFilesPort = cssFilesChannel.port2
 
+export function clearCssFiles() {
+  cssFiles.length = 0
+}
+
 cssFilesChannel.port1.on('message', message => {
   const content = message['import-css:new-css-file']
   if (!content) return
