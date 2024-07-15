@@ -4,7 +4,7 @@ export const config = {
   importHooks: [
     '#import-root-slash/register-hooks.js',
     '#import-universal/register-hooks.js',
-    '#import-css/register-hooks.js',
+    '#import-css/dev/register-hooks.js',
     '#import-client-only/register-hooks.js',
   ],
   messageHandlers: {

@@ -1,18 +1,21 @@
-import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import * as esbuild from 'esbuild'
+import fs from 'node:fs'
 
 /** @type {import('node:worker_threads').MessagePort} */
 let cssFilesPort = null
+let cssTmpDir = null
 
 /**
  * @param {{
  *   cssFilesPort: import('node:worker_threads').MessagePort
+ *   cssTmpDir: string
  * }} data
  */
 export function initialize(data) {
   cssFilesPort = data.cssFilesPort
+  cssTmpDir = data.cssTmpDir
 }
 
 export async function load(url, context, nextLoad) {
@@ -26,7 +29,10 @@ export async function load(url, context, nextLoad) {
 
     const classMapAsJs = `export default ${JSON.stringify(classMap)}`
 
-    cssFilesPort.postMessage({ 'import-css:new-css-file': { url, modifiedSource, classMapAsJs } })
+    const { modifiedSourcePath, classMapAsJsPath } =
+      await writeCssFiles({ url, modifiedSource, classMapAsJs })
+
+    cssFilesPort.postMessage({ 'import-css:new-css-file': { url, modifiedSourcePath, classMapAsJsPath } })
 
     return { format: 'module', shortCircuit: true, source: classMapAsJs }
   }
@@ -53,4 +59,17 @@ function createClassMap(prefix, source) {
     classMap[className] = replacement
   }
   return classMap
+}
+
+async function writeCssFiles({ url, modifiedSource, classMapAsJs }) {
+  const relativePath = path.relative(path.resolve('./src'), fileURLToPath(url))
+
+  const modifiedSourcePath = `${cssTmpDir}${relativePath}`
+  const classMapAsJsPath = `${modifiedSourcePath}.js`
+
+  fs.mkdirSync(path.dirname(modifiedSourcePath), { recursive: true })
+  fs.writeFileSync(modifiedSourcePath, modifiedSource)
+  fs.writeFileSync(classMapAsJsPath, classMapAsJs)
+
+  return { modifiedSourcePath, classMapAsJsPath }
 }
