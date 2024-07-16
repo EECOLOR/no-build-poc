@@ -48,3 +48,9 @@ export function separatePropsAndChildren(params) {
     children: hasProps ? children : params
   }
 }
+
+export function callOrReturn(x, ...args) {
+  return typeof x === 'function' ? x(...args) : x
+}
+
+export function throwError(e) { throw new Error(e) }

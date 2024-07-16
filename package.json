@@ -1,7 +1,8 @@
 {
   "type": "module",
   "scripts": {
-    "start": "CONFIG_ENV=dev node ./watch.js"
+    "start": "CONFIG_ENV=dev node ./watch.js",
+    "test": "node --test"
   },
   "imports": {
     "#config": "./packages/config/index.js",
@@ -15,7 +16,8 @@
     "#browser-code-analyser": "./packages/browser-code-analyser/index.js",
     "#utils": "./packages/utils/index.js",
     "#utils/*": "./packages/utils/*",
-    "#ui/*": "./packages/ui/*"
+    "#ui/*": "./packages/ui/*",
+    "#routing/*": "./packages/routing/*"
   },
   "dependencies": {
     "firebase": "^10.12.2",
