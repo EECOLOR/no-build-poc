@@ -6,14 +6,14 @@ import { asRouteChain, asRouteMap, pick, routeMapSymbol, routeSymbol } from './r
 describe('asRouteMap', () => {
 
   test('routeMapSymbol', () => {
-    expect(asRouteMap({})[routeMapSymbol]).toStrictEqual({ children: {} })
+    expect(asRouteMap({})[routeMapSymbol]).toStrictEqual({ children: [] })
   })
 
   test('routeMapSymbol children', () => {
     const { children } = asRouteMap({ x: 'y' })[routeMapSymbol]
 
-    expect(children.x).toBeDefined()
-    expect(children.x.path).toBe('y')
+    expect(children[0]).toBeDefined()
+    expect(children[0].path).toBe('y')
   })
 
   describe('string route conversion', () => {
@@ -552,6 +552,7 @@ describe('pick', () => {
 
     })
     test('readable use case', () => {
+      console.time('a')
       const map = asRouteMap({
         home: '',
         articles: {
@@ -576,7 +577,8 @@ describe('pick', () => {
       const x = [map, asTuple]
       function empty(route) { return [{}, route]}
       function article(id, route) { return [{ articleId: id }, route] }
-
+      console.timeEnd('a')
+      console.time('b')
       expect(pick('/', x)).toEqual(empty(map.home))
       expect(pick('/none' , x)).toEqual([{ '*': 'none' }, map.notFound])
       expect(pick('/none/', x)).toEqual([{ '*': 'none' }, map.notFound])
@@ -598,6 +600,7 @@ describe('pick', () => {
       expect(pick('/articles/abc/none/' , x)).toEqual([{ articleId: 'abc', '*': 'none' }, map.articles.article.tabNotFound])
       expect(pick('/articles/abc/none/really' , x)).toEqual([{ articleId: 'abc', '*': 'none/really' }, map.articles.article.tabNotFound])
       expect(pick('/articles/abc/none/really/' , x)).toEqual([{ articleId: 'abc', '*': 'none/really' }, map.articles.article.tabNotFound])
+      console.timeEnd('b')
     })
     test('overrides', () => {
       const map = asRouteMap({ a: 'a', b: 'b' })

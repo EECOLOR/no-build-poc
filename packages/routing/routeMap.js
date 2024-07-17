@@ -15,12 +15,14 @@ import { callOrReturn, mapValues, throwError } from '#utils'
 export const routeSymbol = Symbol('routeSymbol')
 export const routeMapSymbol = Symbol('routeMapSymbol')
 
+const emptyObject = {}
+
 /** @type {import('./routeMap').asRouteMap} */
 export function asRouteMap(map, config = {}) {
   const children = normalizeChildren(config, map)
   return {
     ...children,
-    [routeMapSymbol]: { children }
+    [routeMapSymbol]: { children: Object.values(children) }
   }
 }
 
@@ -38,9 +40,7 @@ export function pickRoute(pathname, routeMap) {
   throw new Error('Please normalize your routeMap using the `asRouteMap` function')
 
   const pathSegments = pathname.split('/').filter(Boolean)
-  const children = Object.values(routeMap[routeMapSymbol].children)
-  const result = pickFromChildren(pathSegments, children)
-  return result ? result : null
+  return pickFromChildren(pathSegments, routeMap[routeMapSymbol].children)
 }
 
 export function asRouteChain(route) {
@@ -58,17 +58,17 @@ function interpolate(routePath, params) {
     .replace(/(\*)/, () => params['*'] || '')
 }
 
-function pickFromChildren(pathSegments, children, previousParams = {}) {
-  const preparedChildren = children
-    .map(route => {
-      const { languageParamName = 'language' } = route[routeSymbol].config
-      const path = normalizePath(route.path, previousParams[languageParamName])
-      if (path === null) return null
+function byScore(a, b) { return b.score - a.score }
 
-      return { route, routeSegments: path.split('/') }
-    })
-    .filter(Boolean)
-    .sort((a, b) => score(b.routeSegments) - score(a.routeSegments))
+function pickFromChildren(pathSegments, children, allParams = {}) {
+  const preparedChildren = []
+  for (const route of children) {
+    const pathInfo = route[routeSymbol].getPathInfo(allParams)
+    if (!pathInfo) continue
+    const { pathSegments, score } = pathInfo
+    preparedChildren.push({ route, routeSegments: pathSegments, score })
+  }
+  preparedChildren.sort(byScore)
 
   for (const { route, routeSegments } of preparedChildren) {
     const nonEmptyRouteSegments = routeSegments.filter(Boolean)
@@ -77,52 +77,52 @@ function pickFromChildren(pathSegments, children, previousParams = {}) {
     if (!info) continue
 
     const { params, remainingSegments } = info
-    const children = Object.values(route[routeSymbol].children)
+    const children = route[routeSymbol].children
     const hasChildren = Boolean(children.length)
     const hasRemainingSegments = Boolean(remainingSegments.length)
 
     const potentialMatch = hasChildren || !hasRemainingSegments
     if (!potentialMatch) continue
 
-    const resultFromChildren = pickFromChildren(remainingSegments, children, { ...previousParams, ...params }) // TODO add a test for adding 'previousParams' here
+    Object.assign(allParams, params)
+
+    const resultFromChildren = pickFromChildren(remainingSegments, children, allParams)
     if (resultFromChildren) return resultFromChildren
 
-    if (!hasRemainingSegments) return { params: { ...previousParams, ...params }, route }
+    if (!hasRemainingSegments) return { params: allParams, route }
   }
+
+  return null
 }
 
 function matchRouteSegments(routeSegments, pathSegments) {
-  return routeSegments.reduce(
-    (result, routeSegment) => {
-      if (!result) return
+  const params = {}
+  let remainingSegments = pathSegments
 
-      const { params: previousParams, remainingSegments: segments } = result
-      const match = matchRouteSegment(routeSegment, segments)
-      if (!match) return
+  for (const routeSegment of routeSegments) {
+    const matchParams = matchRouteSegment(routeSegment, remainingSegments)
+    if (!matchParams) return
 
-      const { params, remainingSegments } = match
-      return { params: { ...previousParams, ...params }, remainingSegments }
-    },
-    { params: {}, remainingSegments: pathSegments }
-  )
+    Object.assign(params, matchParams)
+    remainingSegments = '*' in matchParams ? [] : remainingSegments.slice(1)
+  }
+
+  return { params, remainingSegments }
 }
 
-function matchRouteSegment(routeSegment, remainingSegments) {
-  const [segment, ...newRemainingSegments] = remainingSegments
+function matchRouteSegment(routeSegment, segments) {
+  const [segment] = segments
+  if (!segment)
+    return
 
-  const paramMatch = routeSegment.startsWith(':') && segment
-  const wildcardMatch = routeSegment === '*' && segment
-  const staticMatch = segment === routeSegment
+  if (routeSegment.startsWith(':'))
+    return { [routeSegment.slice(1)]: segment }
 
-  return (wildcardMatch || paramMatch || staticMatch) && {
-    params:
-      paramMatch ? { [routeSegment.slice(1)]: segment } :
-      wildcardMatch ? { '*': remainingSegments.join('/') } :
-      staticMatch ? {} :
-      throwError('Unexpected condition')
-    ,
-    remainingSegments: wildcardMatch ? [] : newRemainingSegments,
-  }
+  if (routeSegment === '*')
+    return { '*': segments.join('/') }
+
+  if (segment === routeSegment)
+    return emptyObject
 }
 
 function score(routeSegments) {
@@ -155,7 +155,19 @@ function normalize(config, routeInput, getParent, name) {
   return route
 }
 
+function getObjectPathInfo(localizedPaths) {
+  return mapValues(localizedPaths, getStringPathInfo)
+}
+
+function getStringPathInfo(path) {
+  const pathSegments = path.split('/')
+  return { pathSegments, score: score(pathSegments) }
+}
+
 function createRoute(config, name, path, data, children, getParent) {
+  const { languageParamName = 'language' } = config
+  const pathIsString = typeof path === 'string'
+  const pathInfo = pathIsString ? getStringPathInfo(path) : getObjectPathInfo(path)
   return withReverseRoute(config, {
     ...children,
     toString() { return name },
@@ -163,9 +175,13 @@ function createRoute(config, name, path, data, children, getParent) {
     data,
     [routeSymbol]: {
       get parent() { return getParent() },
-      children,
+      children: Object.values(children),
       name,
-      config,
+      getPathInfo(params) {
+        if (pathIsString) return pathInfo
+        const language = params[languageParamName]
+        return pathInfo[language]
+      }
     },
   })
 }
