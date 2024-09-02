@@ -17,7 +17,8 @@
     "#utils": "./packages/utils/index.js",
     "#utils/*": "./packages/utils/*",
     "#ui/*": "./packages/ui/*",
-    "#routing/*": "./packages/routing/*"
+    "#routing/*": "./packages/routing/*",
+    "#cms/*": "./packages/cms/*"
   },
   "dependencies": {
     "firebase": "^10.12.2",
