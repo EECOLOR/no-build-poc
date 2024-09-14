@@ -6,7 +6,7 @@ export class Signal {
   /** @returns {T} */
   get() { return null }
 
-  /** @param {(value: T) => void} callback @returns {() => void} */
+  /** @param {(value: T, oldValue: T) => void} callback @returns {() => void} */
   subscribe(callback){ return null }
 
   /** @template X @param {(value: T, previous?: X) => X} f @returns {Signal<X>} */
@@ -25,14 +25,15 @@ Object.defineProperty(Signal, Symbol.hasInstance, { value: o => o.constructor ==
  * @returns {[Signal<T>, setSignalValue<T>]}
  */
 export function createSignal(initialValue) {
-  let value = isCallable(initialValue) ? initialValue() : initialValue
+  let isInitialized = false
+  let value = undefined
   let listeners = []
 
   const signal = {
     constructor: Signal,
 
     get() {
-      return value
+      return getValue()
     },
 
     subscribe(callback) {
@@ -52,18 +53,28 @@ export function createSignal(initialValue) {
   return [
     signal,
     function setValue(newValueOrFunction) {
+      const oldValue = getValue()
       const newValue = isCallable(newValueOrFunction)
-        ? newValueOrFunction(value)
+        ? newValueOrFunction(oldValue)
         : newValueOrFunction
 
-      if (newValue === value) return
+      if (newValue === oldValue) return
       value = newValue
 
       for (const callback of listeners) {
-        setTimeout(() => { callback(value) }, 0)
+        setTimeout(() => { callback(value, oldValue) }, 0)
       }
     },
   ]
+
+  function getValue() {
+    if (!isInitialized) {
+      isInitialized = true
+      value = isCallable(initialValue) ? initialValue() : initialValue
+    }
+
+    return value
+  }
 }
 
 /**
@@ -73,7 +84,7 @@ export function createSignal(initialValue) {
  * @returns {Signal<X>}
  */
 export function derived(signal, deriveValue) {
-  const [newSignal, setValue] = createSignal(deriveValue(signal.get()))
+  const [newSignal, setValue] = createSignal(() => deriveValue(signal.get()))
   signal.subscribe(newValue => setValue(oldValue => deriveValue(newValue, oldValue)))
   return newSignal
 }
