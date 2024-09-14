@@ -36,7 +36,11 @@ export async function startServer({ indexFiles }) {
     if (!indexInfo)
       return notFound(res)
 
-    const { IndexComponent, css, importMap } = indexInfo
+    const { IndexComponent, css, importMap, requestHandler } = indexInfo
+    const handled = requestHandler?.(req, res)
+    if (handled)
+      return
+
     const indexHtml = render(IndexComponent({ css, importMap }))
     return serve(res, 200, 'text/html;charset=UTF-8', indexHtml)
   }
@@ -90,7 +94,8 @@ async function collectIndices(indexFiles) {
       const indexPath = path.dirname(indexFile)
       const componentName = path.basename(indexFile, '.js')
       const IndexComponent = imported[componentName]
-      return { indexPath, IndexComponent, css, importMap, staticFileMapping }
+      const { requestHandler } = imported
+      return { indexPath, IndexComponent, css, importMap, requestHandler, staticFileMapping }
     }
   )
   return indices

@@ -1,1 +1,1 @@
-export { Cms as default } from '#cms/Cms.js'
+export { Cms as default } from '#cms/client/Cms.js'

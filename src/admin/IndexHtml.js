@@ -1,4 +1,5 @@
 import Cms from './Cms.universal.js'
+import { createCms } from '#cms/server/cms.js'
 import { raw, tags } from '#ui/tags.js'
 import hydrateComponentsSrc from '#import-universal/hydrate-components.client.js'
 import './reset.css'
@@ -6,6 +7,14 @@ import './reset.css'
 const { html, head, body, script, link, style } = tags
 
 const basePath = '/admin'
+const cms = createCms({ basePath })
+
+export function requestHandler(req, res) {
+  if (cms.canHandleRequest(req)) {
+    cms.handleRequest(req, res)
+    return true
+  }
+}
 
 export function IndexHtml({ css, importMap }) {
   return (
@@ -52,7 +61,8 @@ const deskStructure = {
               slug: 'general',
               child: {
                 type: 'document',
-                id: 'general'
+                id: 'general',
+                schemaType: 'generalSettings'
               }
             }
           ]
