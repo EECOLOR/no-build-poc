@@ -2,6 +2,7 @@ import { writeToDom } from '#ui/domInteraction.js'
 import { createRenderer } from './renderer.js'
 import { Signal } from '#ui/signal.js'
 import { raw } from '#ui/tags.js'
+import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
 
 /** @typedef {import('#ui/tags.js').TagNames} TagNames */
 
@@ -21,20 +22,67 @@ import { raw } from '#ui/tags.js'
       },
       renderSignal(signal, context) {
         const marker = comment()
-        let nodes = renderValue([].concat(raw(marker), signal.get(), raw(comment())), context)
+        const value = [].concat(raw(marker), signal.get(), raw(comment()))
+        const nodes = renderValue(value, context)
 
         const unsubscribe = signal.subscribe(newValue => {
-          if (!marker.isConnected) return unsubscribe()
-
           const newNodes = renderValue(newValue, context)
           const oldNodes = nodes.slice(1, -1)
 
-          swapNodes(marker, newNodes, oldNodes)
+          swapNodesInDom(marker, newNodes, oldNodes)
+
+          nodes.splice(1, oldNodes.length, ...newNodes)
+        })
+        useOnDestroy(unsubscribe)
+
+        return nodes
+      },
+      renderLoop(loop, context) {
+        const marker = comment()
+        const infoByKey = new Map()
+        const nodesFromLoop = loop.signal.get().flatMap(item => {
+          const key = loop.getKey(item)
+          return renderItem(key, item)
+        })
+        const nodes = [marker, ...nodesFromLoop, comment()]
+
+        const unsubscribe = loop.signal.subscribe(newItems => {
+          const unusedKeys = new Set(infoByKey.keys())
+          const oldNodes = nodes.slice(1, -1)
+          const newNodes = newItems.flatMap(item => {
+            const key = loop.getKey(item)
+            unusedKeys.delete(key)
+            return infoByKey.has(key) ? infoByKey.get(key).nodes : renderItem(key, item)
+          })
+
+          for (const key of unusedKeys) {
+            for (const callback of infoByKey.get(key).callbacks) callback()
+            infoByKey.delete(key)
+          }
+
+          swapNodesInDom(marker, newNodes, oldNodes)
 
           nodes.splice(1, oldNodes.length, ...newNodes)
         })
 
+        useOnDestroy(() => {
+          unsubscribe()
+          for (const info of infoByKey.values()) {
+            for (const callback of info.callbacks) callback()
+          }
+          infoByKey.clear()
+        })
+
         return nodes
+
+        function renderItem(key, item) {
+          const [nodes, callbacks] = withOnDestroyCapture(() => {
+            const rendered = loop.renderItem(item)
+            return renderValue(rendered, context)
+          })
+          infoByKey.set(key, { callbacks, nodes })
+          return nodes
+        }
       },
       renderTag({ tagName, attributes, children }, context) {
         const element = document.createElement(tagName)
@@ -75,7 +123,7 @@ function bindSignalToAttribute(element, attribute, signal) {
   })
 }
 
-function swapNodes(marker, newNodes, oldNodes) {
+function swapNodesInDom(marker, newNodes, oldNodes) {
   writeToDom.outsideAnimationFrame(() => {
     let oldNodesLength = oldNodes.length
     while (oldNodesLength--) {

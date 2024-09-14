@@ -12,7 +12,8 @@ export const render = createRenderer(
         return escapeHtml(value)
       },
       renderSignal(signal, context) {
-        const result = [].concat(emptyComment(), signal.get(), emptyComment())
+        const value = signal.get()
+        const result = [].concat(emptyComment(), value, emptyComment())
         return renderValue(result, context)
       },
       renderTag({ tagName, attributes, children }, context) {
@@ -21,6 +22,11 @@ export const render = createRenderer(
           renderValue(children, context).join('') +
           `</${tagName}>`
         )
+      },
+      renderLoop(loop, context) {
+        const value = loop.signal.get().map(loop.renderItem)
+        const result = [].concat(emptyComment(), value, emptyComment())
+        return renderValue(result, context)
       }
     }
   }
