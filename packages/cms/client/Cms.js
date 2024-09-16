@@ -1,10 +1,10 @@
 import { loop, useOnDestroy } from '#ui/dynamic.js'
 import { createSignal } from '#ui/signal.js'
 import { tags } from '#ui/tags.js'
-import { context, setContext } from './context.js'
+import { context, getSchema, setContext } from './context.js'
 import { $pathname, pushState } from './history.js'
 
-const { div, p, ul, li, a } = tags
+const { div, p, ul, li, a, button, h1, label, span, input } = tags
 
 const documentApiPath = '/api/2024-09-07/documents/'
 
@@ -69,28 +69,119 @@ function ListPane({ items, path }) {
 
 function DocumentListPane({ schemaType, path }) {
   const $documents = useDocuments({ schemaType })
+  const schema = getSchema(schemaType)
+  if (!schema) throw new Error(`Could not find schema '${schemaType}'`)
 
   return (
     div(
-      loop($documents, x => x._id, document =>
-        Link({ href: [context.basePath, ...path, document._id].join('/')}, document.title)
-      )
-    )
-  )
-}
-
-function Document({ id, schemaType }) {
-  const $document = getDocument({ id, schemaType })
-  return (
-    div(
-      `document ${id}`,
-      p(
-        $document.derive(document =>
-          document.title
+      button({ type: 'button', onClick: handleAddClick }, '+'),
+      ul(
+        loop($documents, x => x._id + hack(x), document => // TODO: document should probably be a signal, if the id does not change, nothing will be re-rendered
+          li(
+            Link({ href: [context.basePath, ...path, document._id].join('/')}, schema.preview(document).title)
+          )
         )
       )
     )
   )
+
+  function handleAddClick(e) {
+    const newPath = `${context.basePath}/${path.concat(window.crypto.randomUUID()).join('/')}`
+    console.log(newPath)
+    pushState(null, undefined, newPath)
+  }
+
+  function hack(document) {
+    return JSON.stringify(schema.preview(document))
+  }
+}
+
+function Document({ id, schemaType }) {
+  const $document = useDocument({ id, schemaType })
+  const schema = getSchema(schemaType)
+
+  return (
+    div(
+      DocumentTitle({ $document, schema }),
+      DocumentFields({ $document, id, schema })
+    )
+  )
+}
+
+function DocumentTitle({ $document, schema }) {
+  return h1($document.derive(document => schema.preview(document).title))
+}
+
+function DocumentFields({ $document, id, schema }) {
+  return (
+    div(
+      {
+        style: {
+          display: 'grid',
+          gridTemplateColumns: 'max-content 1fr',
+          gridColumnGap: '1em',
+        }
+      },
+      schema.fields.map(field => DocumentField({ $document, id, schema, field }))
+    )
+  )
+}
+
+const fieldRenderers = /** @type {const} */({
+  string: StringField,
+})
+
+function DocumentField({ $document, id, schema, field }) {
+  const renderer = fieldRenderers[field.type]
+  if (!renderer)
+    return `Unknown field type '${field.type}'`
+
+  return (
+    label(
+      {
+        style: {
+          gridColumn: 'span 2',
+
+          display: 'grid',
+          grid: 'inherit',
+          gridTemplateColumns: 'subgrid',
+          gridGap: 'inherit',
+        }
+      },
+      span(field.title),
+      renderer({ $document, id, schema, field })
+    )
+  )
+}
+
+function StringField({ $document, id, schema, field }) {
+  const $documentValue = $document.derive(document => document[field.name])
+  let localValue = $documentValue.get()
+
+  let dirty = false
+  const $valueToUse = $documentValue.derive((newDocumentValue, oldValue) => {
+    if (localValue === newDocumentValue) dirty = false
+    return dirty ? oldValue : newDocumentValue
+  })
+
+  return input({ type: 'text', value: $valueToUse, onInput: handleInput })
+
+  function handleInput(e) {
+    dirty = true
+    const newValue = e.currentTarget.value
+    localValue = newValue
+    console.log({ newValue })
+    fetch(`${context.basePath}${documentApiPath}${schema.type}/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        path: field.name,
+        value: newValue,
+      })
+    })
+  }
 }
 
 function useDocuments({ schemaType }) {
@@ -101,7 +192,7 @@ function useDocuments({ schemaType }) {
   })
 }
 
-function getDocument({ id, schemaType }) {
+function useDocument({ id, schemaType }) {
   return useEventSourceAsSignal({
     pathname: `${context.basePath}${documentApiPath}${schemaType}/${id}`,
     event: 'document',

@@ -13,3 +13,7 @@ export let context
 export function setContext(newContext) {
   context = newContext
 }
+
+export function getSchema(schemaType) {
+  return context.documentSchemas.find(x => x.type === schemaType)
+}

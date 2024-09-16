@@ -5,6 +5,6 @@ spawnChildProcess({
   command: 'node',
   parameter: config.importHooks
     .flatMap(hook => ['--import', hook])
-    .concat('--watch', '--watch-preserve-output', './index.js'),
+    .concat('--watch', '--watch-preserve-output', '--experimental-sqlite', './index.js'),
   messageHandlers: config.messageHandlers,
 })

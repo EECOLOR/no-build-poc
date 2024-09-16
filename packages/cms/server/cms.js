@@ -1,7 +1,9 @@
+import { DatabaseSync } from 'node:sqlite'
+
 export function createCms({ basePath }) {
   const apiPath = `${basePath}/api/`
   const documentListeners = {}
-  const pageDocuments = [{ _id: 'a', _type: 'page', title: 'banana' }]
+  const database = createDatabase('./cms.db')
 
   return {
     canHandleRequest,
@@ -16,8 +18,12 @@ export function createCms({ basePath }) {
     const [version, category, ...rest] = req.url.replace(apiPath, '').split('/')
     console.log('version', version)
 
+    let response = false
     if (category === 'documents')
-      return handleDocuments(req, res, rest)
+      response = handleDocuments(req, res, rest)
+
+    if (response)
+      return
 
     res.writeHead(404)
     res.end()
@@ -31,34 +37,101 @@ export function createCms({ basePath }) {
   function handleDocuments(req, res, pathSegments) {
     const [type, id] = pathSegments
 
-    if (id) handleDocument(req, res, { type, id })
-    else handleDocumentList(req, res, { type })
+    if (req.method === 'GET')
+      return id
+        ? handleGetDocument(req, res, { type, id })
+        : handleGetDocumentList(req, res, { type })
+
+    if (id && req.method === 'PATCH')
+      return handlePatchDocument(req, res, { type, id })
+
+    return false
   }
 
-  function handleDocumentList(req, res, { type }) {
+  function handleGetDocumentList(req, res, { type }) {
     const target = getSet(documentListeners, type, 'list')
     addListener(res, target)
     startEventStream(res)
 
-    const documents = [{ _id: 'a', _type: type, title: 'Document A' }]
+    const documents = listDocumentsByType({ type })
     sendEvent(res, 'documents', documents)
+    return true
   }
 
-  function handleDocument(req, res, { type, id }) {
+  function handleGetDocument(req, res, { type, id }) {
     const target = getSet(documentListeners, type, 'single', id)
     addListener(res, target)
     startEventStream(res)
 
-    const document = { _id: id, _type: type, title: 'Document A' }
+    const document = getById({ id })
     sendEvent(res, 'document', document)
+    return true
+  }
+
+  function handlePatchDocument(req, res, { type, id }) {
+    withRequestJsonBody(req, (body, error) => {
+      // TODO: error handling
+      console.log({ body, error })
+      const { path, value } = body
+      const document = getById({ id })
+      if (document) {
+        document[path] = value // TODO: does not work for deeper paths
+        updateById({ id, document })
+      } else {
+        const document = { _id: id, _type: type, [path]: value }
+        insert({ id, type, document})
+      }
+      sendUpdatedDocument(type, id, document)
+      sendUpdatedDocuments(type, listDocumentsByType({ type }))
+      res.writeHead(201)
+      res.end()
+    })
+
+    return true
   }
 
   function sendUpdatedDocuments(documentType, documents) {
-    const subscriptions = documentListeners[documentType]
+    const subscriptions = documentListeners[documentType]?.list
     if (!subscriptions) return
     for (const res of subscriptions) {
       sendEvent(res, 'documents', documents)
     }
+  }
+
+  function sendUpdatedDocument(documentType, id, document) {
+    const subscriptions = documentListeners[documentType]?.single?.[id]
+    if (!subscriptions) return
+    for (const res of subscriptions) {
+      sendEvent(res, 'document', document)
+    }
+  }
+
+  function getById({ id }) {
+    const result = database
+      .prepare(`SELECT * FROM documents WHERE id = :id`)
+      .get({ id })
+
+    if (!result)
+      return null
+
+    const { document } = result
+    return JSON.parse(document)
+  }
+  function updateById({ id, document }) {
+    return database
+      .prepare(`UPDATE documents SET document = :document WHERE id = :id`)
+      .run({ id, document: JSON.stringify(document) })
+  }
+  function insert({ id, type, document }) {
+    return database
+      .prepare(`INSERT INTO documents (id, type, document) VALUES (:id, :type, :document)`)
+      .run({ id, type, document: JSON.stringify(document)})
+  }
+  function listDocumentsByType({ type }) {
+    const result = database
+      .prepare(`SELECT * FROM documents WHERE type = :type`)
+      .all({ type })
+    return result.map(x => JSON.parse(x.document))
   }
 }
 
@@ -86,7 +159,37 @@ function sendEvent(res, event, data) {
 
 function getSet(o, ...keys) {
   return keys.reduce(
-    (result, key, i) => o[key] || (o[key] = i === keys.length - 1 ? new Set() : {}),
+    (result, key, i) => result[key] || (result[key] = i === keys.length - 1 ? new Set() : {}),
     o
   )
+}
+
+function createDatabase(file) {
+  const database = new DatabaseSync(file)
+  // database.exec(`DROP TABLE documents`)
+  database.exec(
+    `CREATE TABLE IF NOT EXISTS documents (
+      id BLOB PRIMARY KEY,
+      type BLOB NOT NULL,
+      document TEXT NOT NULL
+    )`
+  )
+  return database
+}
+
+/**
+ * @param {import('node:http').IncomingMessage} req
+ */
+async function withRequestJsonBody(req, callback) {
+  const data = []
+  req.on('data', chunk => { data.push(chunk) })
+  req.on('end', () => {
+    try {
+      const json = JSON.parse(Buffer.concat(data).toString('utf-8'))
+      callback(json)
+    } catch (e) {
+      callback(null, e)
+    }
+  })
+  req.on('error', e => { callback(null, e) })
 }

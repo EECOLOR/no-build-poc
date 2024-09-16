@@ -25,6 +25,7 @@
     "three": "^0.166.0"
   },
   "devDependencies": {
+    "@types/node": "^22.5.5",
     "esbuild": "^0.21.5"
   }
 }
