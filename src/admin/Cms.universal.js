@@ -56,8 +56,24 @@ const documentSchemas = [
         type: 'string',
         name: 'title',
         title: 'Title',
+      },
+      {
+        type: 'rich-text',
+        name: 'content',
+        title: 'Content',
       }
     ],
-    preview: doc => ({ title: doc.title || doc._id })
-  }
+    preview: doc => ({ title: doc?.title || '[no title yet]' })
+  },
+  {
+    type: 'generalSettings',
+    fields: [
+      {
+        type: 'string',
+        name: 'organization',
+        title: 'Organization',
+      },
+    ],
+    preview: doc => ({ title: 'General settings' })
+  },
 ]

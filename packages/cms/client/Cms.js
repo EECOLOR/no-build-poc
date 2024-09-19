@@ -3,6 +3,7 @@ import { createSignal } from '#ui/signal.js'
 import { tags } from '#ui/tags.js'
 import { context, getSchema, setContext } from './context.js'
 import { $pathname, pushState } from './history.js'
+import { RichTextEditor } from './richTextEditor/RichTextEditor.js'
 
 const { div, p, ul, li, a, button, h1, label, span, input } = tags
 
@@ -101,7 +102,7 @@ function Document({ id, schemaType }) {
   const schema = getSchema(schemaType)
 
   return (
-    div(
+    div( // TODO: use context.documentView
       DocumentTitle({ $document, schema }),
       DocumentFields({ $document, id, schema })
     )
@@ -128,7 +129,8 @@ function DocumentFields({ $document, id, schema }) {
 }
 
 const fieldRenderers = /** @type {const} */({
-  string: StringField,
+  'string': StringField,
+  'rich-text': RichTextField,
 })
 
 function DocumentField({ $document, id, schema, field }) {
@@ -155,22 +157,49 @@ function DocumentField({ $document, id, schema, field }) {
 }
 
 function StringField({ $document, id, schema, field }) {
-  const $documentValue = $document.derive(document => document[field.name])
-  let localValue = $documentValue.get()
+  const [$value, setValue] = useFieldValue({ $document, id, schema, field })
 
-  let dirty = false
-  const $valueToUse = $documentValue.derive((newDocumentValue, oldValue) => {
-    if (localValue === newDocumentValue) dirty = false
-    return dirty ? oldValue : newDocumentValue
-  })
-
-  return input({ type: 'text', value: $valueToUse, onInput: handleInput })
+  return input({ type: 'text', value: $value, onInput: handleInput })
 
   function handleInput(e) {
+    setValue(e.currentTarget.value)
+  }
+}
+
+function RichTextField({ $document, id, schema, field }) {
+  const [$value, setValue] = useFieldValue({
+    $document, id, schema, field,
+    isEqual: RichTextEditor.isEqual,
+    serialize: RichTextEditor.toJson,
+    deserialize: RichTextEditor.fromJson,
+  })
+  // This might be an interesting performance optimization if that is needed:
+  // https://discuss.prosemirror.net/t/current-state-of-the-art-on-syncing-data-to-backend/5175/4
+  return RichTextEditor({ $value, onChange: setValue })
+}
+
+function useFieldValue({
+  $document, id, schema, field,
+  isEqual = (localValue, valueFromDocument) => localValue === valueFromDocument,
+  serialize = x => x,
+  deserialize = x => x,
+}) {
+  const $valueFromDocument = $document.derive(document => deserialize(document[field.name]) || '')
+  let localValue = $valueFromDocument.get()
+  let dirty = false
+
+  // This signal only updates when it has seen the current local value
+  const $value = $valueFromDocument.derive((valueFromDocument, oldValueFromDocument) => {
+    if (isEqual(localValue, valueFromDocument)) dirty = false
+    return dirty ? oldValueFromDocument : valueFromDocument
+  })
+
+  return [$value, setValue]
+
+  function setValue(newValue) {
     dirty = true
-    const newValue = e.currentTarget.value
     localValue = newValue
-    console.log({ newValue })
+
     fetch(`${context.basePath}${documentApiPath}${schema.type}/${id}`, {
       method: 'PATCH',
       headers: {
@@ -178,9 +207,9 @@ function StringField({ $document, id, schema, field }) {
       },
       body: JSON.stringify({
         path: field.name,
-        value: newValue,
+        value: serialize(newValue),
       })
-    })
+    }) // TODO: error reporting
   }
 }
 
