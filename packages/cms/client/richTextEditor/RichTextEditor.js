@@ -3,12 +3,15 @@ import { Node, Schema } from 'prosemirror-model'
 import { EditorState } from 'prosemirror-state'
 import { undo, redo, history } from 'prosemirror-history'
 import { keymap } from 'prosemirror-keymap'
-import { baseKeymap, toggleMark, chainCommands, lift } from 'prosemirror-commands'
+import { baseKeymap, toggleMark, chainCommands, lift, setBlockType } from 'prosemirror-commands'
 import { wrapInList, liftListItem, sinkListItem, splitListItem } from 'prosemirror-schema-list'
 
-import { raw } from '#ui/tags.js'
+import { raw, tags } from '#ui/tags.js'
 import { Signal } from '#ui/signal.js'
 import { useOnDestroy } from '#ui/dynamic.js'
+import { render } from '#ui/render/clientRenderer.js'
+
+const { div, span } = tags
 
 const schema = createSchema()
 
@@ -60,9 +63,11 @@ RichTextEditor.fromJson = function fromJson(json) {
 }
 
 function createSchema() {
+  const content = '(paragraph | orderedList | unorderedList)+'
+  const docContent = `(paragraph | orderedList | unorderedList | heading | custom)+`
   return new Schema({
     nodes: {
-      doc: { content: '(paragraph | heading | orderedList | unorderedList)+' },
+      doc: { content: docContent },
       paragraph: {
         content: 'text*',
         parseDOM: [{ tag: 'p' }],
@@ -101,11 +106,25 @@ function createSchema() {
         toDOM() { return ['ul', 0] }
       },
       listItem: {
-        content: '(paragraph | heading | orderedList | unorderedList)+',
+        content,
         parseDOM: [{ tag: 'li' }],
         toDOM() { return ['li', 0] }
       },
       text: {},
+
+      custom: {
+        atom: true,
+        inline: false,
+        // TODO: parseDOM (only needed for a parser (and maybe also copy-paste))
+        toDOM() {
+          return render(
+            div(
+              span({ style: { backgroundColor: 'red' } }, 'ONE'),
+              span({ style: { backgroundColor: 'blue' } }, 'TWO')
+            )
+          )
+        }
+      }
     },
     marks: {
       link: {
@@ -148,6 +167,8 @@ function createKeymaps({ schema }) {
       'Tab': sinkListItem(schema.nodes.listItem),
       'Shift-Tab': liftListItem(schema.nodes.listItem),
       'Enter': splitListItem(schema.nodes.listItem),
+
+      'Shift-Mod-5': inject(schema.nodes.custom),
     }),
     keymap(baseKeymap),
   ]
@@ -160,5 +181,12 @@ function unwrapFromList(nodeType) {
     if (!range) return false
 
     return lift(state, dispatch, view)
+  }
+}
+
+function inject(nodeType) {
+  return (state, dispatch, view) => {
+    if (dispatch) dispatch(state.tr.replaceSelectionWith(nodeType.create()))
+    return true
   }
 }
