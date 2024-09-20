@@ -3,8 +3,8 @@ import { Node, Schema } from 'prosemirror-model'
 import { EditorState } from 'prosemirror-state'
 import { undo, redo, history } from 'prosemirror-history'
 import { keymap } from 'prosemirror-keymap'
-import { baseKeymap } from 'prosemirror-commands'
-import { toggleMark } from 'prosemirror-commands'
+import { baseKeymap, toggleMark, chainCommands, lift } from 'prosemirror-commands'
+import { wrapInList, liftListItem, sinkListItem, splitListItem } from 'prosemirror-schema-list'
 
 import { raw } from '#ui/tags.js'
 import { Signal } from '#ui/signal.js'
@@ -16,7 +16,7 @@ const schema = createSchema()
 export function RichTextEditor({ $value, onChange }) {
   const plugins = [
     history(),
-    createKeymap({ schema }),
+    ...createKeymaps({ schema }),
   ]
   const view = new EditorView(null, {
     state: EditorState.create({ doc: $value.get(), schema, plugins, }),
@@ -62,7 +62,7 @@ RichTextEditor.fromJson = function fromJson(json) {
 function createSchema() {
   return new Schema({
     nodes: {
-      doc: { content: '(paragraph | heading)+'},
+      doc: { content: '(paragraph | heading | orderedList | unorderedList)+' },
       paragraph: {
         content: 'text*',
         parseDOM: [{ tag: 'p' }],
@@ -81,6 +81,29 @@ function createSchema() {
           { tag: 'h6', attrs: { level: 6 } }
         ],
         toDOM(node) { return [`h${node.attrs.level}`, 0] }
+      },
+      orderedList: {
+        attrs: { order: { default: 1, validate: 'number' }},
+        content: 'listItem+',
+        parseDOM: [{
+          tag: 'ol',
+          getAttrs(dom) {
+            return {order: dom.hasAttribute('start') ? parseInt(dom.getAttribute('start'), 10) : 1}
+          }
+        }],
+        toDOM(node) {
+          return node.attrs.order === 1 ? ['ol', 0] : ['ol', { start: node.attrs.order }, 0]
+        }
+      },
+      unorderedList: {
+        parseDOM: [{ tag: 'ul' }],
+        content: 'listItem+',
+        toDOM() { return ['ul', 0] }
+      },
+      listItem: {
+        content: '(paragraph | heading | orderedList | unorderedList)+',
+        parseDOM: [{ tag: 'li' }],
+        toDOM() { return ['li', 0] }
       },
       text: {},
     },
@@ -107,12 +130,35 @@ function createSchema() {
 }
 
 /** @param {{ schema: ReturnType<typeof createSchema> }} props */
-function createKeymap({ schema }) {
-  return keymap({
-    ...baseKeymap,
-    'Mod-z': undo,
-    'Shift-Mod-z': redo,
-    'Mod-b': toggleMark(schema.marks.strong),
-    'Mod-i': toggleMark(schema.marks.em),
-  })
+function createKeymaps({ schema }) {
+  return [
+    keymap({
+      'Mod-z': undo,
+      'Shift-Mod-z': redo,
+      'Mod-b': toggleMark(schema.marks.strong),
+      'Mod-i': toggleMark(schema.marks.em),
+      'Shift-Mod-7': chainCommands(
+        unwrapFromList(schema.nodes.orderedList),
+        wrapInList(schema.nodes.orderedList)
+      ),
+      'Shift-Mod-8': chainCommands(
+        unwrapFromList(schema.nodes.unorderedList),
+        wrapInList(schema.nodes.unorderedList),
+      ),
+      'Tab': sinkListItem(schema.nodes.listItem),
+      'Shift-Tab': liftListItem(schema.nodes.listItem),
+      'Enter': splitListItem(schema.nodes.listItem),
+    }),
+    keymap(baseKeymap),
+  ]
+}
+
+function unwrapFromList(nodeType) {
+  return (state, dispatch, view) => {
+    const {$from, $to} = state.selection
+    const range = $from.blockRange($to, node => node.type === nodeType)
+    if (!range) return false
+
+    return lift(state, dispatch, view)
+  }
 }
