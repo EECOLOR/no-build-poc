@@ -17,6 +17,8 @@ const schema = createSchema()
 
 /** @param {{ $value: Signal<Node | undefined>, onChange(x: { value: Node, details: any }): void }} props */
 export function RichTextEditor({ $value, onChange }) {
+  // TODO: show the cursors of other people with an overlay using https://prosemirror.net/docs/ref/#view.EditorView.coordsAtPos
+
   const plugins = [
     history(),
     ...createKeymaps({ schema }),
@@ -128,19 +130,29 @@ function createSchema() {
       text: {},
 
       custom: {
-        atom: true,
+        // atom: true, // use this when you do not have a 'hole' (contentDOM)
+        content: 'text*', // use this when you have a 'hole' (contentDOM)
+
         inline: false,
         // TODO: parseDOM (only needed for a parser (and maybe also copy-paste))
         toDOM() {
-          return render(
-            div(
-              Item({ title: 'ONE',  backgroundColor: 'red' }),
-              Item({ title: 'TWO',  backgroundColor: 'blue' }),
-            )
-          )
+          const contentDOM = document.createElement('p')
+
+          // For atom like components (that can not be directly edited) simply return the result of render
+          // This is the more complex version where the content can be edited
+          return {
+            dom: render(
+              div({ style: { display: 'flex' }},
+                Item({ title: 'ONE',  backgroundColor: 'red' }),
+                Item({ title: 'TWO',  backgroundColor: 'blue' }),
+                Item({ title: raw(contentDOM),  backgroundColor: 'green' }),
+              )
+            ),
+            contentDOM
+          }
 
           function Item({ title, backgroundColor }) {
-            return span({ style: { color: 'white', padding: '0.2rem', backgroundColor } }, title)
+            return div({ style: { color: 'white', padding: '0.2rem', backgroundColor } }, title)
           }
         }
       }
@@ -205,7 +217,12 @@ function unwrapFromList(nodeType) {
 
 function inject(nodeType) {
   return (state, dispatch, view) => {
-    if (dispatch) dispatch(state.tr.replaceSelectionWith(nodeType.create()))
+    if (dispatch)
+      dispatch(
+        state.tr.replaceSelectionWith(
+          nodeType.create(null, [nodeType.schema.text('[this text can be edited]')])
+        )
+      )
     return true
   }
 }
