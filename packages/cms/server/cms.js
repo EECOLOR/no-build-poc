@@ -1,4 +1,6 @@
 import { DatabaseSync } from 'node:sqlite'
+import { diffChars } from 'diff'
+import { generateJSONPatch } from 'generate-json-patch'
 
 export function createCms({ basePath }) {
   const apiPath = `${basePath}/api/`
@@ -71,11 +73,16 @@ export function createCms({ basePath }) {
   function handlePatchDocument(req, res, { type, id }) {
     withRequestJsonBody(req, (body, error) => {
       // TODO: error handling
-      console.log({ body, error })
-      const { path, value } = body
+      console.dir({ body, error }, { depth: 8 })
+      const { path, value, details } = body
       const document = getById({ id })
       if (document) {
-        document[path] = value // TODO: does not work for deeper paths
+        // TODO: does not work for deeper paths
+        const oldValue = document[path]
+        document[path] = value
+
+        const patches = getPatches(oldValue, value)
+        console.dir(patches, { depth: null })
         updateById({ id, document })
       } else {
         const document = { _id: id, _type: type, [path]: value }
@@ -192,4 +199,18 @@ async function withRequestJsonBody(req, callback) {
     }
   })
   req.on('error', e => { callback(null, e) })
+}
+
+function getPatches(oldValue, newValue) {
+  const patches = generateJSONPatch(oldValue, newValue)
+  for (const patch of patches) {
+    if (patch.op !== 'replace')
+      continue
+
+    const segments = patch.path.slice(1).split('/').filter(Boolean)
+    const oldValueAtPath = segments.reduce((result, segment) => result[segment], oldValue)
+    const newValueAtPath = segments.reduce((result, segment) => result[segment], newValue)
+    patch['details'] = diffChars(oldValueAtPath, newValueAtPath)
+  }
+  return patches
 }

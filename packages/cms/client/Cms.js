@@ -198,7 +198,12 @@ function useFieldValue({
 
   function setValue(newValue) {
     dirty = true
-    localValue = newValue
+    let value = newValue
+    let details
+    if (newValue && typeof newValue === 'object' && 'value' in newValue && 'details' in newValue) {
+      ({ value, details } = newValue)
+    }
+    localValue = value
 
     fetch(`${context.basePath}${documentApiPath}${schema.type}/${id}`, {
       method: 'PATCH',
@@ -207,7 +212,8 @@ function useFieldValue({
       },
       body: JSON.stringify({
         path: field.name,
-        value: serialize(newValue),
+        value: serialize(value),
+        details,
       })
     }) // TODO: error reporting
   }

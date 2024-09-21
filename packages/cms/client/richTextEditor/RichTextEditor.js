@@ -1,6 +1,6 @@
 import { EditorView } from 'prosemirror-view'
 import { Node, Schema } from 'prosemirror-model'
-import { EditorState } from 'prosemirror-state'
+import { EditorState, TextSelection } from 'prosemirror-state'
 import { undo, redo, history } from 'prosemirror-history'
 import { keymap } from 'prosemirror-keymap'
 import { baseKeymap, toggleMark, chainCommands, lift, setBlockType } from 'prosemirror-commands'
@@ -15,7 +15,7 @@ const { div, span } = tags
 
 const schema = createSchema()
 
-/** @param {{ $value: Signal<Node | undefined>, onChange(node: Node): void }} props */
+/** @param {{ $value: Signal<Node | undefined>, onChange(x: { value: Node, details: any }): void }} props */
 export function RichTextEditor({ $value, onChange }) {
   const plugins = [
     history(),
@@ -24,9 +24,19 @@ export function RichTextEditor({ $value, onChange }) {
   const view = new EditorView(null, {
     state: EditorState.create({ doc: $value.get(), schema, plugins, }),
     dispatchTransaction(transaction) {
+      const docBeforeChange = view.state.doc
       const newState = view.state.apply(transaction)
       view.updateState(newState)
-      if (transaction.docChanged) onChange(newState.doc)
+      if (transaction.docChanged)
+        onChange({
+          value: newState.doc,
+          details: {
+            steps: transaction.steps.map(x => ({
+              step: x.toJSON(),
+              invert: x.invert(docBeforeChange).toJSON()
+            }))
+          }
+        })
     },
     attributes: {
       style: `border: inset 1px light-dark(rgb(118, 118, 118), rgb(133, 133, 133))`,
@@ -36,7 +46,12 @@ export function RichTextEditor({ $value, onChange }) {
     if (view.state.doc.eq(doc))
       return
 
-    const state = EditorState.create({ doc, schema, plugins })
+    let state = EditorState.create({ doc, schema, plugins })
+    // TODO: should probably be improved, I think instead of sending over documents, we should send over steps
+    if (view.state.selection) {
+      const currentPosition = state.doc.resolve(view.state.selection.head)
+      state = state.apply(state.tr.setSelection(TextSelection.near(currentPosition)))
+    }
     view.updateState(state)
   })
   useOnDestroy(() => {
@@ -119,10 +134,14 @@ function createSchema() {
         toDOM() {
           return render(
             div(
-              span({ style: { backgroundColor: 'red' } }, 'ONE'),
-              span({ style: { backgroundColor: 'blue' } }, 'TWO')
+              Item({ title: 'ONE',  backgroundColor: 'red' }),
+              Item({ title: 'TWO',  backgroundColor: 'blue' }),
             )
           )
+
+          function Item({ title, backgroundColor }) {
+            return span({ style: { color: 'white', padding: '0.2rem', backgroundColor } }, title)
+          }
         }
       }
     },

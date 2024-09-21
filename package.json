@@ -21,7 +21,9 @@
     "#cms/*": "./packages/cms/*"
   },
   "dependencies": {
+    "diff": "^7.0.0",
     "firebase": "^10.12.2",
+    "generate-json-patch": "^1.2.4",
     "prosemirror-commands": "^1.6.0",
     "prosemirror-history": "^1.4.1",
     "prosemirror-keymap": "^1.2.2",
@@ -32,6 +34,7 @@
     "three": "^0.166.0"
   },
   "devDependencies": {
+    "@types/diff": "^5.2.2",
     "@types/node": "^22.5.5",
     "esbuild": "^0.21.5"
   }

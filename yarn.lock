@@ -577,6 +577,11 @@
   resolved "https://registry.yarnpkg.com/@protobufjs/utf8/-/utf8-1.1.0.tgz#a777360b5b39a1a2e5106f8e858f2fd2d060c570"
   integrity sha512-Vvn3zZrhQZkkBE8LSuW3em98c0FwgO4nxzv6OdSxPKJIEKY2bGbHn+mhGIPerzI4twdxaP8/0+06HBpwf345Lw==
 
+"@types/diff@^5.2.2":
+  version "5.2.2"
+  resolved "https://registry.yarnpkg.com/@types/diff/-/diff-5.2.2.tgz#d430dbb1da6739f1e2565c2c80b54184d4c77658"
+  integrity sha512-qVqLpd49rmJA2nZzLVsmfS/aiiBpfVE95dHhPVwG0NmSBAt+riPxnj53wq2oBq5m4Q2RF1IWFEUpnZTgrQZfEQ==
+
 "@types/node@>=12.12.47", "@types/node@>=13.7.0":
   version "20.14.9"
   resolved "https://registry.yarnpkg.com/@types/node/-/node-20.14.9.tgz#12e8e765ab27f8c421a1820c99f5f313a933b420"
@@ -623,6 +628,11 @@ color-name@~1.1.4:
   version "1.1.4"
   resolved "https://registry.yarnpkg.com/color-name/-/color-name-1.1.4.tgz#c2a09a87acbde69543de6f63fa3995c826c536a2"
   integrity sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==
+
+diff@^7.0.0:
+  version "7.0.0"
+  resolved "https://registry.yarnpkg.com/diff/-/diff-7.0.0.tgz#3fb34d387cd76d803f6eebea67b921dab0182a9a"
+  integrity sha512-PJWHUb1RFevKCwaFA9RlG5tCd+FO5iRh9A8HEtkmBH2Li03iJriB6m6JIN4rGz3K3JLawI7/veA1xzRKP6ISBw==
 
 emoji-regex@^8.0.0:
   version "8.0.0"
@@ -702,6 +712,11 @@ firebase@^10.12.2:
     "@firebase/storage-compat" "0.3.8"
     "@firebase/util" "1.9.6"
     "@firebase/vertexai-preview" "0.0.2"
+
+generate-json-patch@^1.2.4:
+  version "1.2.4"
+  resolved "https://registry.yarnpkg.com/generate-json-patch/-/generate-json-patch-1.2.4.tgz#a91c9ec9b8ac2aaa4f710e897861fa32ddc666a3"
+  integrity sha512-9ME7ZJpfm29lz52QUK2OSHbMd1XGqGCREg7kQdg7ImcGLnOkSFNJnlPN5rN9wNDFBSTAqNzSyWhEG7icheDQLg==
 
 get-caller-file@^2.0.5:
   version "2.0.5"
