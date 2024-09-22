@@ -35,3 +35,21 @@ export class Loop {
 export function loop(signal, getKey, renderItem) {
   return new Loop(signal, getKey, renderItem)
 }
+
+/** @template T */
+export class Conditional {
+  /**
+   * @param {Signal<T>} signal
+   * @param {(value: T) => boolean} predicate
+   * @param {(value: T) => any} renderItem
+   */
+  constructor(signal, predicate, renderItem) {
+    this.signal = signal
+    this.predicate = predicate
+    this.renderItem = renderItem
+  }
+}
+
+export function conditional(signal, predicate, renderItem) {
+  return new Conditional(signal, predicate, renderItem)
+}

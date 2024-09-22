@@ -27,7 +27,13 @@ export const render = createRenderer(
         const value = loop.signal.get().map(loop.renderItem)
         const result = [].concat(emptyComment(), value, emptyComment())
         return renderValue(result, context)
-      }
+      },
+      renderConditional(conditional, context) {
+        const item = conditional.signal.get()
+        const value = conditional.predicate(item) ? conditional.renderItem(item) : []
+        const result = [].concat(emptyComment(), value, emptyComment())
+        return renderValue(result, context)
+      },
     }
   }
 )

@@ -1,10 +1,12 @@
 import { EditorView } from 'prosemirror-view'
 import { Node, Schema } from 'prosemirror-model'
-import { EditorState, TextSelection } from 'prosemirror-state'
+import { EditorState } from 'prosemirror-state'
 import { undo, redo, history } from 'prosemirror-history'
+import { Step } from 'prosemirror-transform'
 import { keymap } from 'prosemirror-keymap'
-import { baseKeymap, toggleMark, chainCommands, lift, setBlockType } from 'prosemirror-commands'
+import { baseKeymap, toggleMark, chainCommands, lift } from 'prosemirror-commands'
 import { wrapInList, liftListItem, sinkListItem, splitListItem } from 'prosemirror-schema-list'
+import * as collab from 'prosemirror-collab'
 
 import { raw, tags } from '#ui/tags.js'
 import { Signal } from '#ui/signal.js'
@@ -15,47 +17,58 @@ const { div, span } = tags
 
 const schema = createSchema()
 
-/** @param {{ $value: Signal<Node | undefined>, onChange(x: { value: Node, details: any }): void }} props */
-export function RichTextEditor({ $value, onChange }) {
+/**
+ * @typedef {(data: { clientId, steps: readonly Step[], version: number }) => {
+ *   result: Promise<{ success: boolean }>,
+ *   abort(reason?: string): void,
+ * }} Synchronize
+ */
+
+/**
+ * @param {{
+ *  initialValue: { document: Node, version: number },
+ *  $steps: Signal<{ steps: Step[], clientIds: Array<number | string> }>,
+ *  synchronize: Synchronize,
+ * }} props
+ */
+export function RichTextEditor({ initialValue, $steps, synchronize }) {
   // TODO: show the cursors of other people with an overlay using https://prosemirror.net/docs/ref/#view.EditorView.coordsAtPos
+
+  const { tryToSynchronize } = useSynchronization({ synchronize })
 
   const plugins = [
     history(),
     ...createKeymaps({ schema }),
+    collab.collab({ version: initialValue.version }),
   ]
   const view = new EditorView(null, {
-    state: EditorState.create({ doc: $value.get(), schema, plugins, }),
+    state: EditorState.create({ doc: initialValue.document, schema, plugins, }),
     dispatchTransaction(transaction) {
-      const docBeforeChange = view.state.doc
       const newState = view.state.apply(transaction)
       view.updateState(newState)
-      if (transaction.docChanged)
-        onChange({
-          value: newState.doc,
-          details: {
-            steps: transaction.steps.map(x => ({
-              step: x.toJSON(),
-              invert: x.invert(docBeforeChange).toJSON()
-            }))
-          }
-        })
+      tryToSynchronize(view)
     },
     attributes: {
       style: `border: inset 1px light-dark(rgb(118, 118, 118), rgb(133, 133, 133))`,
     },
   })
-  const unsubscribe = $value.subscribe(doc => {
-    if (view.state.doc.eq(doc))
-      return
-
-    let state = EditorState.create({ doc, schema, plugins })
-    // TODO: should probably be improved, I think instead of sending over documents, we should send over steps
-    if (view.state.selection) {
-      const currentPosition = state.doc.resolve(view.state.selection.head)
-      state = state.apply(state.tr.setSelection(TextSelection.near(currentPosition)))
-    }
-    view.updateState(state)
+  const unsubscribe = $steps.subscribe(({ steps, clientIds }) => {
+    view.dispatch(
+      collab.receiveTransaction(view.state, steps, clientIds, { mapSelectionBackward: true })
+    )
   })
+  // const unsubscribe = $value.subscribe(doc => {
+  //   if (view.state.doc.eq(doc))
+  //     return
+
+  //   let state = EditorState.create({ doc, schema, plugins })
+  //   // TODO: should probably be improved, I think instead of sending over documents, we should send over steps
+  //   if (view.state.selection) {
+  //     const currentPosition = state.doc.resolve(view.state.selection.head)
+  //     state = state.apply(state.tr.setSelection(TextSelection.near(currentPosition)))
+  //   }
+  //   view.updateState(state)
+  // })
   useOnDestroy(() => {
     unsubscribe()
     view.destroy()
@@ -63,6 +76,59 @@ export function RichTextEditor({ $value, onChange }) {
 
   return raw(view.dom)
 }
+
+// TODO: synchronize is probbaly a bad name
+/**
+ * @param {{
+ *   synchronize: Synchronize
+ * }} props
+ */
+function useSynchronization({ synchronize }) {
+  let synchronizationRequest = null
+
+  useOnDestroy(() => { if (synchronizationRequest) synchronizationRequest.abort() })
+
+  return { tryToSynchronize }
+
+  /** @param {EditorView} view */
+  async function tryToSynchronize(view, retries = 5) {
+    try {
+      const sendable = collab.sendableSteps(view.state)
+      if (!sendable) return
+
+      if (synchronizationRequest) {
+        synchronizationRequest.abort('New steps available')
+        synchronizationRequest = null
+      }
+
+      const { clientID, steps, version } = sendable
+      const { result, abort } = synchronize({ clientId: clientID, steps, version })
+      let aborted = false
+      synchronizationRequest = {
+        abort(reason) {
+          synchronizationRequest = null
+          abort(reason)
+          aborted = true
+        }
+      }
+
+      const { success } = await result
+      synchronizationRequest = null
+      if (aborted) return
+      if (success) return // no need to do anything else, steps will come in via the other channel
+
+      if (!retries)
+        throw new Error(`Failed to synchronize and no more retries left`)
+
+      console.log('Retrying synchronization')
+
+      tryToSynchronize(view, retries - 1)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+}
+
 /** @param {Node} a @param {Node} b */
 RichTextEditor.isEqual = function isEqual(a, b) {
   if (!a) return false
@@ -75,8 +141,16 @@ RichTextEditor.toJson = function toJson(doc) {
 /** @returns {Node} */
 RichTextEditor.fromJson = function fromJson(json) {
   if (!json) return json
-  console.log(json)
   return Node.fromJSON(schema, json)
+}
+/** @param {Step} step */
+RichTextEditor.stepToJson = function stepToJson(step) {
+  return step.toJSON()
+}
+/** @returns {Step} */
+RichTextEditor.stepFromJson = function stepFromJson(json) {
+  if (!json) return json
+  return Step.fromJSON(schema, json)
 }
 
 function createSchema() {
@@ -84,14 +158,16 @@ function createSchema() {
   const docContent = `(paragraph | orderedList | unorderedList | heading | custom)+`
   return new Schema({
     nodes: {
-      doc: { content: docContent },
+      doc: {
+        content: docContent,
+      },
       paragraph: {
         content: 'text*',
         parseDOM: [{ tag: 'p' }],
         toDOM() { return ['p', 0] },
       },
       heading: {
-        attrs: { level: { default: 1, validate: "number" } },
+        attrs: { level: { default: 1, validate: 'number' } },
         content: 'text*',
         defining: true,
         parseDOM: [

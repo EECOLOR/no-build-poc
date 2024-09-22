@@ -5,6 +5,7 @@ import { generateJSONPatch } from 'generate-json-patch'
 export function createCms({ basePath }) {
   const apiPath = `${basePath}/api/`
   const documentListeners = {}
+  const richTextListeners = {}
   const database = createDatabase('./cms.db')
 
   return {
@@ -17,12 +18,14 @@ export function createCms({ basePath }) {
   }
 
   function handleRequest(req, res) {
-    const [version, category, ...rest] = req.url.replace(apiPath, '').split('/')
+    const { searchParams, pathname } = new URL(`fake://fake.local${req.url}`)
+    const [version, category, ...rest] = pathname.replace(apiPath, '').split('/')
     console.log('version', version)
 
     let response = false
-    if (category === 'documents')
-      response = handleDocuments(req, res, rest)
+    if (category === 'documents') {
+      response = handleDocuments(req, res, rest, searchParams)
+    }
 
     if (response)
       return
@@ -36,8 +39,15 @@ export function createCms({ basePath }) {
    * @param {import('node:http').ServerResponse} res
    * @param {Array<string>} pathSegments
    */
-  function handleDocuments(req, res, pathSegments) {
-    const [type, id] = pathSegments
+  function handleDocuments(req, res, pathSegments, searchParams) {
+    const [type, id, feature] = pathSegments
+console.log(pathSegments)
+    if (feature === 'rich-text')
+      return (
+        req.method === 'GET' ? handleGetRichText(req, res, { type, id, searchParams }) :
+        req.method === 'POST' ? handlePostRichText(req, res, { type, id, searchParams }) :
+        false
+      )
 
     if (req.method === 'GET')
       return id
@@ -48,6 +58,37 @@ export function createCms({ basePath }) {
       return handlePatchDocument(req, res, { type, id })
 
     return false
+  }
+
+  /** @param {import('node:http').IncomingMessage} req */
+  function handleGetRichText(req, res, { type, id, searchParams }) {
+    const fieldPath = searchParams.get('fieldPath')
+    const target = getSet(richTextListeners, type, id, fieldPath)
+    addListener(res, target)
+    startEventStream(res)
+
+    const document = getById({ id })
+    // TODO: does not work for deeper paths
+    const value = document[fieldPath]
+    sendEvent(res, 'initialValue', { document: value, version: 0 })
+    return true
+  }
+
+  /** @param {import('node:http').ServerResponse} res */
+  function handlePostRichText(req, res, { type, id, searchParams }) {
+    const fieldPath = searchParams.get('fieldPath')
+    withRequestJsonBody(req, (body, error) => {
+      // TODO: error handling
+      console.dir({ body, error }, { depth: 8 })
+      const { clientId, steps, version } = body
+      // TODO: actually do something
+      sendSteps(type, id, fieldPath, { steps, clientIds: steps.map(_ => clientId) })
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.write(JSON.stringify({ success: true }))
+      res.end()
+    })
+
+    return true
   }
 
   function handleGetDocumentList(req, res, { type }) {
@@ -95,6 +136,14 @@ export function createCms({ basePath }) {
     })
 
     return true
+  }
+
+  function sendSteps(documentType, id, fieldPath, steps) {
+    const subscriptions = richTextListeners[documentType]?.[id]?.[fieldPath]
+    if (!subscriptions) return
+    for (const res of subscriptions) {
+      sendEvent(res, 'steps', steps)
+    }
   }
 
   function sendUpdatedDocuments(documentType, documents) {

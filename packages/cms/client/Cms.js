@@ -1,5 +1,5 @@
-import { loop, useOnDestroy } from '#ui/dynamic.js'
-import { createSignal } from '#ui/signal.js'
+import { conditional, loop, useOnDestroy } from '#ui/dynamic.js'
+import { createSignal, Signal } from '#ui/signal.js'
 import { tags } from '#ui/tags.js'
 import { context, getSchema, setContext } from './context.js'
 import { $pathname, pushState } from './history.js'
@@ -167,15 +167,73 @@ function StringField({ $document, id, schema, field }) {
 }
 
 function RichTextField({ $document, id, schema, field }) {
-  const [$value, setValue] = useFieldValue({
-    $document, id, schema, field,
-    isEqual: RichTextEditor.isEqual,
-    serialize: RichTextEditor.toJson,
-    deserialize: RichTextEditor.fromJson,
+  // const [$value, setValue] = useFieldValue({
+  //   $document, id, schema, field,
+  //   isEqual: RichTextEditor.isEqual,
+  //   serialize: RichTextEditor.toJson,
+  //   deserialize: RichTextEditor.fromJson,
+  // })
+  // $value.subscribe(_ => {
+  //   throw new Error(`Unexpected document change`)
+  // })
+  // const fieldValue = undefined
+
+  const richTextPathname = getRichTextPathname({ documentId: id, schemaType: schema.type, fieldPath: field.name })
+
+  const $events = useEventSourceAsSignal({
+    pathname: richTextPathname,
+    events: ['initialValue', 'steps'],
   })
+  const $initialValue = $events.derive((value, previous) =>
+    value?.event === 'initialValue'
+      ? { document: RichTextEditor.fromJson(value.data.document), version: value.data.version }
+      : previous
+  )
+  const $steps = $events.derive((value, previous) =>
+    value?.event === 'steps' ? { steps: value.data.steps.map(RichTextEditor.stepFromJson), clientIds: value.data.clientIds } :
+    previous ? previous :
+    { steps: [], clientIds: [] }
+  )
+
   // This might be an interesting performance optimization if that is needed:
   // https://discuss.prosemirror.net/t/current-state-of-the-art-on-syncing-data-to-backend/5175/4
-  return RichTextEditor({ $value, onChange: setValue })
+  return conditional(
+    $initialValue,
+    initialValue => Boolean(initialValue),
+    initialValue => RichTextEditor({ initialValue, $steps, synchronize }),
+  )
+
+  function synchronize({ clientId, steps, version }) {
+    const controller = new AbortController()
+    const result = fetch(
+      richTextPathname,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          clientId,
+          steps: steps.map(RichTextEditor.stepToJson),
+          version,
+        })
+      }
+    ).then(x => x.json())
+
+    return {
+      result,
+      abort(reason) {
+        controller.abort(reason)
+      }
+    }
+  }
+}
+
+function getRichTextPathname({ schemaType, documentId, fieldPath }) {
+  // instead of using path as an id for prosemirror document handing, we should probably use a unique id for each document, that would prevent problems handling stuff nested in arrays
+  return `${context.basePath}${documentApiPath}${schemaType}/${documentId}/rich-text?fieldPath=${fieldPath}`
 }
 
 function useFieldValue({
@@ -222,25 +280,25 @@ function useFieldValue({
 function useDocuments({ schemaType }) {
   return useEventSourceAsSignal({
     pathname: `${context.basePath}${documentApiPath}${schemaType}`,
-    event: 'documents',
-    initialValue: []
-  })
+    events: ['documents'],
+  }).derive(x => x?.data || [])
 }
 
 function useDocument({ id, schemaType }) {
   return useEventSourceAsSignal({
     pathname: `${context.basePath}${documentApiPath}${schemaType}/${id}`,
-    event: 'document',
-    initialValue: { _id: id, _type: schemaType }
-  })
+    events: ['document'],
+  }).derive(x => x?.data || { _id: id, _type: schemaType })
 }
 
-function useEventSourceAsSignal({ pathname, event, initialValue }) {
-  const [$signal, setValue] = createSignal(initialValue)
+function useEventSourceAsSignal({ pathname, events }) {
+  const [$signal, setValue] = createSignal(null)
   const eventSource = new EventSource(pathname)
-  eventSource.addEventListener(event, e => {
-    setValue(JSON.parse(e.data))
-  })
+  for (const event of events) {
+    eventSource.addEventListener(event, e => {
+      setValue({ event, data: JSON.parse(e.data) })
+    })
+  }
   useOnDestroy(eventSource.close.bind(eventSource))
 
   return $signal

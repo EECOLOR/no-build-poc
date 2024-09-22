@@ -84,6 +84,41 @@ import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
           return nodes
         }
       },
+      renderConditional(conditional, context) {
+        const marker = comment()
+        let onDestroyCallbacks = []
+        const nodesFromLoop = conditional.predicate(conditional.signal.get())
+          ? renderItem(conditional.signal.get())
+          : []
+        const nodes = [marker, ...nodesFromLoop, comment()]
+
+        const unsubscribe = conditional.signal.subscribe(newValue => {
+          for (const callback of onDestroyCallbacks) callback()
+
+          const oldNodes = nodes.slice(1, -1)
+          const newNodes = conditional.predicate(newValue) ? renderItem(newValue) : []
+
+          swapNodesInDom(marker, newNodes, oldNodes)
+
+          nodes.splice(1, oldNodes.length, ...newNodes)
+        })
+
+        useOnDestroy(() => {
+          unsubscribe()
+          for (const callback of onDestroyCallbacks) callback()
+        })
+
+        return nodes
+
+        function renderItem(item) {
+          const [nodes, callbacks] = withOnDestroyCapture(() => {
+            const rendered = conditional.renderItem(item)
+            return renderValue(rendered, context)
+          })
+          onDestroyCallbacks = callbacks
+          return nodes
+        }
+      },
       renderTag({ tagName, attributes, children }, context) {
         const element = document.createElement(tagName)
 
