@@ -167,17 +167,6 @@ function StringField({ $document, id, schema, field }) {
 }
 
 function RichTextField({ $document, id, schema, field }) {
-  // const [$value, setValue] = useFieldValue({
-  //   $document, id, schema, field,
-  //   isEqual: RichTextEditor.isEqual,
-  //   serialize: RichTextEditor.toJson,
-  //   deserialize: RichTextEditor.fromJson,
-  // })
-  // $value.subscribe(_ => {
-  //   throw new Error(`Unexpected document change`)
-  // })
-  // const fieldValue = undefined
-
   const richTextPathname = getRichTextPathname({ documentId: id, schemaType: schema.type, fieldPath: field.name })
 
   const $events = useEventSourceAsSignal({
@@ -186,7 +175,7 @@ function RichTextField({ $document, id, schema, field }) {
   })
   const $initialValue = $events.derive((value, previous) =>
     value?.event === 'initialValue'
-      ? { document: RichTextEditor.fromJson(value.data.document), version: value.data.version }
+      ? { value: RichTextEditor.fromJson(value.data.value), version: value.data.version }
       : previous
   )
   const $steps = $events.derive((value, previous) =>
@@ -203,7 +192,7 @@ function RichTextField({ $document, id, schema, field }) {
     initialValue => RichTextEditor({ initialValue, $steps, synchronize }),
   )
 
-  function synchronize({ clientId, steps, version }) {
+  function synchronize({ clientId, steps, version, value }) {
     const controller = new AbortController()
     const result = fetch(
       richTextPathname,
@@ -218,6 +207,7 @@ function RichTextField({ $document, id, schema, field }) {
           clientId,
           steps: steps.map(RichTextEditor.stepToJson),
           version,
+          value: RichTextEditor.toJson(value),
         })
       }
     ).then(x => x.json())
@@ -256,12 +246,7 @@ function useFieldValue({
 
   function setValue(newValue) {
     dirty = true
-    let value = newValue
-    let details
-    if (newValue && typeof newValue === 'object' && 'value' in newValue && 'details' in newValue) {
-      ({ value, details } = newValue)
-    }
-    localValue = value
+    localValue = newValue
 
     fetch(`${context.basePath}${documentApiPath}${schema.type}/${id}`, {
       method: 'PATCH',
@@ -270,8 +255,7 @@ function useFieldValue({
       },
       body: JSON.stringify({
         path: field.name,
-        value: serialize(value),
-        details,
+        value: serialize(newValue),
       })
     }) // TODO: error reporting
   }

@@ -1,11 +1,14 @@
 import { DatabaseSync } from 'node:sqlite'
 import { diffChars } from 'diff'
 import { generateJSONPatch } from 'generate-json-patch'
+import { Step } from 'prosemirror-transform'
+import { Node } from 'prosemirror-model'
+import { EditorState } from 'prosemirror-state'
 
 export function createCms({ basePath }) {
   const apiPath = `${basePath}/api/`
   const documentListeners = {}
-  const richTextListeners = {}
+  const richTextInfo = {}
   const database = createDatabase('./cms.db')
 
   return {
@@ -41,7 +44,7 @@ export function createCms({ basePath }) {
    */
   function handleDocuments(req, res, pathSegments, searchParams) {
     const [type, id, feature] = pathSegments
-console.log(pathSegments)
+
     if (feature === 'rich-text')
       return (
         req.method === 'GET' ? handleGetRichText(req, res, { type, id, searchParams }) :
@@ -63,14 +66,26 @@ console.log(pathSegments)
   /** @param {import('node:http').IncomingMessage} req */
   function handleGetRichText(req, res, { type, id, searchParams }) {
     const fieldPath = searchParams.get('fieldPath')
-    const target = getSet(richTextListeners, type, id, fieldPath)
-    addListener(res, target)
+    const { listeners, info } = getOrCreate(
+      () => ({
+        listeners: new Set(),
+        info: {
+          initialValue: {
+            // TODO: does not work for deeper paths
+            value: getById({ id })[fieldPath],
+            version: 0,
+          },
+        }
+      }),
+      richTextInfo, type, id, fieldPath
+    )
+
+    addListener(res, listeners, function cleanup() {
+      delete richTextInfo[type][id][fieldPath]
+    })
     startEventStream(res)
 
-    const document = getById({ id })
-    // TODO: does not work for deeper paths
-    const value = document[fieldPath]
-    sendEvent(res, 'initialValue', { document: value, version: 0 })
+    sendEvent(res, 'initialValue', info.initialValue)
     return true
   }
 
@@ -79,20 +94,27 @@ console.log(pathSegments)
     const fieldPath = searchParams.get('fieldPath')
     withRequestJsonBody(req, (body, error) => {
       // TODO: error handling
+      // TODO: the name document is confusing, documents is already used
       console.dir({ body, error }, { depth: 8 })
-      const { clientId, steps, version } = body
-      // TODO: actually do something
+      const { clientId, steps, version, value } = body
+      const { initialValue } = richTextInfo[type][id][fieldPath].info
+      if (initialValue.version !== version) {
+        return respondJson(res, 400, { success: false, reason: 'Version mismatch' })
+      }
+
+      initialValue.value = value
+      initialValue.version += steps.length
+
       sendSteps(type, id, fieldPath, { steps, clientIds: steps.map(_ => clientId) })
-      res.writeHead(200, { 'Content-Type': 'application/json' })
-      res.write(JSON.stringify({ success: true }))
-      res.end()
+      patchDocument(type, id, fieldPath, value)
+      respondJson(res, 200, { success: true })
     })
 
     return true
   }
 
   function handleGetDocumentList(req, res, { type }) {
-    const target = getSet(documentListeners, type, 'list')
+    const target = getOrCreate(newSet, documentListeners, type, 'list')
     addListener(res, target)
     startEventStream(res)
 
@@ -102,7 +124,7 @@ console.log(pathSegments)
   }
 
   function handleGetDocument(req, res, { type, id }) {
-    const target = getSet(documentListeners, type, 'single', id)
+    const target = getOrCreate(newSet, documentListeners, type, 'single', id)
     addListener(res, target)
     startEventStream(res)
 
@@ -116,21 +138,9 @@ console.log(pathSegments)
       // TODO: error handling
       console.dir({ body, error }, { depth: 8 })
       const { path, value, details } = body
-      const document = getById({ id })
-      if (document) {
-        // TODO: does not work for deeper paths
-        const oldValue = document[path]
-        document[path] = value
 
-        const patches = getPatches(oldValue, value)
-        console.dir(patches, { depth: null })
-        updateById({ id, document })
-      } else {
-        const document = { _id: id, _type: type, [path]: value }
-        insert({ id, type, document})
-      }
-      sendUpdatedDocument(type, id, document)
-      sendUpdatedDocuments(type, listDocumentsByType({ type }))
+      patchDocument(type, id, path, value)
+
       res.writeHead(201)
       res.end()
     })
@@ -138,8 +148,26 @@ console.log(pathSegments)
     return true
   }
 
+  function patchDocument(type, id, path, value) {
+    const document = getById({ id })
+    if (document) {
+      // TODO: does not work for deeper paths
+      const oldValue = document[path]
+      document[path] = value
+
+      const patches = getPatches(oldValue, value)
+      console.dir(patches, { depth: null })
+      updateById({ id, document })
+    } else {
+      const document = { _id: id, _type: type, [path]: value }
+      insert({ id, type, document})
+    }
+    sendUpdatedDocument(type, id, document)
+    sendUpdatedDocuments(type, listDocumentsByType({ type }))
+  }
+
   function sendSteps(documentType, id, fieldPath, steps) {
-    const subscriptions = richTextListeners[documentType]?.[id]?.[fieldPath]
+    const subscriptions = richTextInfo[documentType]?.[id]?.[fieldPath]?.listeners
     if (!subscriptions) return
     for (const res of subscriptions) {
       sendEvent(res, 'steps', steps)
@@ -199,10 +227,15 @@ function startEventStream(res) {
   })
 }
 
-function addListener(res, target) {
+function addListener(res, target, cleanup = undefined) {
   target.add(res)
-  res.addListener('close', _ => { target.delete(res) })
-  res.addListener('error', _ => { target.delete(res) })
+  res.addListener('close', remove)
+  res.addListener('error', remove)
+
+  function remove() {
+    target.delete(res)
+    if (cleanup && !target.size) cleanup()
+  }
 }
 
 function sendEvent(res, event, data) {
@@ -213,9 +246,13 @@ function sendEvent(res, event, data) {
   )
 }
 
-function getSet(o, ...keys) {
+function newSet() {
+  return new Set()
+}
+
+function getOrCreate(createValue, o, ...keys) {
   return keys.reduce(
-    (result, key, i) => result[key] || (result[key] = i === keys.length - 1 ? new Set() : {}),
+    (result, key, i) => result[key] || (result[key] = i === keys.length - 1 ? createValue() : {}),
     o
   )
 }
@@ -262,4 +299,10 @@ function getPatches(oldValue, newValue) {
     patch['details'] = diffChars(oldValueAtPath, newValueAtPath)
   }
   return patches
+}
+
+function respondJson(res, status, body) {
+  res.writeHead(status, { 'Content-Type': 'application/json' })
+  res.write(JSON.stringify(body))
+  res.end()
 }

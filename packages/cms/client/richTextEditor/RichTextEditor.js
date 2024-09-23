@@ -18,7 +18,7 @@ const { div, span } = tags
 const schema = createSchema()
 
 /**
- * @typedef {(data: { clientId, steps: readonly Step[], version: number }) => {
+ * @typedef {(data: { clientId, steps: readonly Step[], version: number, value: Node }) => {
  *   result: Promise<{ success: boolean }>,
  *   abort(reason?: string): void,
  * }} Synchronize
@@ -26,7 +26,7 @@ const schema = createSchema()
 
 /**
  * @param {{
- *  initialValue: { document: Node, version: number },
+ *  initialValue: { value: Node, version: number },
  *  $steps: Signal<{ steps: Step[], clientIds: Array<number | string> }>,
  *  synchronize: Synchronize,
  * }} props
@@ -42,10 +42,21 @@ export function RichTextEditor({ initialValue, $steps, synchronize }) {
     collab.collab({ version: initialValue.version }),
   ]
   const view = new EditorView(null, {
-    state: EditorState.create({ doc: initialValue.document, schema, plugins, }),
+    state: EditorState.create({ doc: initialValue.value, schema, plugins, }),
     dispatchTransaction(transaction) {
       const newState = view.state.apply(transaction)
       view.updateState(newState)
+      // you can probably use this bit of code for version history
+      // if (transaction.docChanged)
+      //   onChange({
+      //     value: newState.doc,
+      //     details: {
+      //       steps: transaction.steps.map(x => ({
+      //         step: x.toJSON(),
+      //         invert: x.invert(docBeforeChange).toJSON()
+      //       }))
+      //     }
+      //   })
       tryToSynchronize(view)
     },
     attributes: {
@@ -57,18 +68,7 @@ export function RichTextEditor({ initialValue, $steps, synchronize }) {
       collab.receiveTransaction(view.state, steps, clientIds, { mapSelectionBackward: true })
     )
   })
-  // const unsubscribe = $value.subscribe(doc => {
-  //   if (view.state.doc.eq(doc))
-  //     return
 
-  //   let state = EditorState.create({ doc, schema, plugins })
-  //   // TODO: should probably be improved, I think instead of sending over documents, we should send over steps
-  //   if (view.state.selection) {
-  //     const currentPosition = state.doc.resolve(view.state.selection.head)
-  //     state = state.apply(state.tr.setSelection(TextSelection.near(currentPosition)))
-  //   }
-  //   view.updateState(state)
-  // })
   useOnDestroy(() => {
     unsubscribe()
     view.destroy()
@@ -102,7 +102,7 @@ function useSynchronization({ synchronize }) {
       }
 
       const { clientID, steps, version } = sendable
-      const { result, abort } = synchronize({ clientId: clientID, steps, version })
+      const { result, abort } = synchronize({ clientId: clientID, steps, version, value: view.state.doc })
       let aborted = false
       synchronizationRequest = {
         abort(reason) {
