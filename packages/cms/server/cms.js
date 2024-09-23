@@ -84,7 +84,7 @@ export function createCms({ basePath }) {
         info: {
           initialValue: {
             // TODO: does not work for deeper paths
-            value: getById({ id })[fieldPath],
+            value: getById({ id })?.[fieldPath],
             version: 0,
           },
         }
@@ -217,7 +217,7 @@ export function createCms({ basePath }) {
       }
 
     if (details.type === 'string')
-      details.difference = diffChars(details.oldValue, details.newValue)
+      details.difference = diffChars(details.oldValue || '', details.newValue)
 
     if (details.type === 'object')
       details.patches = getPatches(details.oldValue, details.newValue)
@@ -429,7 +429,7 @@ function getPatches(oldValue, newValue) {
     }
 
     const keys = patch.path.slice(1).split('/').filter(Boolean)
-    patch['difference'] = diffChars(get(oldValue, keys), get(newValue, keys))
+    patch['difference'] = diffChars(get(oldValue, keys) || '', get(newValue, keys))
   }
   return patches
 }
