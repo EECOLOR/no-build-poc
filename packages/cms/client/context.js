@@ -3,6 +3,7 @@
  *   documentSchemas: any
  *   documentView: any
  *   basePath: any
+ *   clientId: string
  * }} Context
  */
 

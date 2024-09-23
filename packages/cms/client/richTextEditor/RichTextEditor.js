@@ -12,6 +12,7 @@ import { raw, tags } from '#ui/tags.js'
 import { Signal } from '#ui/signal.js'
 import { useOnDestroy } from '#ui/dynamic.js'
 import { render } from '#ui/render/clientRenderer.js'
+import { context } from '../context.js'
 
 const { div, span } = tags
 
@@ -39,7 +40,7 @@ export function RichTextEditor({ initialValue, $steps, synchronize }) {
   const plugins = [
     history(),
     ...createKeymaps({ schema }),
-    collab.collab({ version: initialValue.version }),
+    collab.collab({ version: initialValue.version, clientID: context.clientId }),
   ]
   const view = new EditorView(null, {
     state: EditorState.create({ doc: initialValue.value, schema, plugins, }),

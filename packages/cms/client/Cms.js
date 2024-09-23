@@ -5,7 +5,7 @@ import { context, getSchema, setContext } from './context.js'
 import { $pathname, pushState } from './history.js'
 import { RichTextEditor } from './richTextEditor/RichTextEditor.js'
 
-const { div, p, ul, li, a, button, h1, label, span, input } = tags
+const { div, p, ul, li, a, button, h1, label, span, input, pre, code, ol, del, ins } = tags
 
 const documentApiPath = '/api/2024-09-07/documents/'
 
@@ -14,7 +14,8 @@ export function Cms({ basePath, deskStructure, documentSchemas, documentView }) 
   if (typeof window === 'undefined')
     return div('Loading...')
 
-  setContext({ documentSchemas, documentView, basePath })
+  const clientId = window.crypto.randomUUID()
+  setContext({ documentSchemas, documentView, basePath, clientId })
 
   return DeskStructure({ deskStructure })
 }
@@ -98,13 +99,74 @@ function DocumentListPane({ schemaType, path }) {
 }
 
 function Document({ id, schemaType }) {
+  return (
+    div({ style: { display: 'flex' } },
+      DocumentForm({ id, schemaType }),
+      DocumentHistory({ id, schemaType }),
+    )
+  )
+}
+
+function DocumentForm({ id, schemaType }) {
   const $document = useDocument({ id, schemaType })
   const schema = getSchema(schemaType)
 
   return (
-    div( // TODO: use context.documentView
+    div(// TODO: use context.documentView
       DocumentTitle({ $document, schema }),
-      DocumentFields({ $document, id, schema })
+      DocumentFields({ $document, id, schema }),
+    )
+  )
+}
+
+function DocumentHistory({ id, schemaType }) {
+  const $history = useDocumentHistory({ id, schemaType })
+  return (
+    ol({ reversed: true, style: { maxHeight: '100vh', overflow: 'scroll' } },
+      loop(
+        $history,
+        history => `${history.clientId} ${history.fieldPath} ${history.timestampEnd}`,
+        history => HistoryItem({ history })
+      )
+    )
+  )
+}
+
+function HistoryItem({ history }) {
+  const dateTime = new Date(history.timestampStart).toISOString()
+  return (
+    li(
+      div(`${dateTime} ${history.clientId}`),
+      history.details.type === 'string'
+        ? HistoryString({ difference: history.details.difference })
+        : pre(
+            code(
+              JSON.stringify({
+                oldValue: '...',
+                newValue: '...',
+                patches: history.details.patches,
+                steps: history.details.steps?.map(x => ({
+                  stepType: x.stepType,
+                  slice: JSON.stringify(x.slice)?.replaceAll('\\', '').replaceAll('"', ''),
+                  '...': '...',
+                }))
+              }, null, 2)
+            )
+          )
+    )
+  )
+}
+
+function HistoryString({ difference }) {
+  const merged = mergeChanges(difference)
+
+  return (
+    span(
+      merged.map(x =>
+        x.added ? ins({ style: { backgroundColor: 'lightgreen' } },x.value) :
+        x.removed? del({ style: { backgroundColor: 'lightcoral' } }, x.value) :
+        x.value
+      )
     )
   )
 }
@@ -256,6 +318,7 @@ function useFieldValue({
       body: JSON.stringify({
         path: field.name,
         value: serialize(newValue),
+        clientId: context.clientId,
       })
     }) // TODO: error reporting
   }
@@ -273,6 +336,13 @@ function useDocument({ id, schemaType }) {
     pathname: `${context.basePath}${documentApiPath}${schemaType}/${id}`,
     events: ['document'],
   }).derive(x => x?.data || { _id: id, _type: schemaType })
+}
+
+function useDocumentHistory({ id, schemaType }) {
+  return useEventSourceAsSignal({
+    pathname: `${context.basePath}${documentApiPath}${schemaType}/${id}/history`,
+    events: ['history'],
+  }).derive(x => x?.data || [])
 }
 
 function useEventSourceAsSignal({ pathname, events }) {
@@ -339,4 +409,48 @@ function shouldNavigate(e) {
     e.button === 0 &&
     !(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
   )
+}
+
+// https://github.com/kpdecker/jsdiff/issues/528
+function mergeChanges(changes) {
+  // create accumulators for the added and removed text. Once a neutral part is encountered, merge the diffs and reset the accumulators
+  let addedText = ""
+  let addedCount = 0
+  let removedText = ""
+  let removedCount = 0
+  let mergedChanges = []
+
+  for (const part of changes) {
+    if (part?.added) {
+      addedText += part.value
+      addedCount += part.count ?? 0
+    } else if (part?.removed) {
+      removedText += part.value
+      removedCount += part.count ?? 0
+    } else if (part.value.length <= 2) {
+      // we ignore small unchanged segments (<= 4 characters), which catches most whitespace too
+      addedText += part.value
+      removedText += part.value
+    } else {
+      // if the part is not added or removed, merge the added and removed text and append to the diff alongside neutral text
+      mergedChanges.push({ value: removedText, removed: true, count: removedCount })
+      mergedChanges.push({ value: addedText, added: true, count: addedCount })
+      mergedChanges.push(part)
+
+      addedText = ""
+      addedCount = 0
+      removedText = ""
+      removedCount = 0
+    }
+  }
+
+  // after exiting the loop we might have ended with some added or removed text that needs to be appended
+  if (addedText) {
+    mergedChanges.push({ value: addedText, added: true, count: addedCount })
+  }
+  if (removedText) {
+    mergedChanges.push({ value: removedText, removed: true, count: removedCount })
+  }
+
+  return mergedChanges
 }

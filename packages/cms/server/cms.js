@@ -1,9 +1,6 @@
 import { DatabaseSync } from 'node:sqlite'
 import { diffChars } from 'diff'
 import { generateJSONPatch } from 'generate-json-patch'
-import { Step } from 'prosemirror-transform'
-import { Node } from 'prosemirror-model'
-import { EditorState } from 'prosemirror-state'
 
 export function createCms({ basePath }) {
   const apiPath = `${basePath}/api/`
@@ -45,6 +42,12 @@ export function createCms({ basePath }) {
   function handleDocuments(req, res, pathSegments, searchParams) {
     const [type, id, feature] = pathSegments
 
+    if (feature === 'history')
+      return (
+        req.method === 'GET' ? handleGetHistory(req, res, { type, id }) :
+        false
+      )
+
     if (feature === 'rich-text')
       return (
         req.method === 'GET' ? handleGetRichText(req, res, { type, id, searchParams }) :
@@ -63,7 +66,16 @@ export function createCms({ basePath }) {
     return false
   }
 
-  /** @param {import('node:http').IncomingMessage} req */
+  function handleGetHistory(req, res, { type, id }) {
+    const target = getOrCreate(newSet, documentListeners, type, 'history', id)
+    addListener(res, target)
+    startEventStream(res)
+
+    const history = listHistoryById({ id })
+    sendEvent(res, 'history', history)
+    return true
+  }
+
   function handleGetRichText(req, res, { type, id, searchParams }) {
     const fieldPath = searchParams.get('fieldPath')
     const { listeners, info } = getOrCreate(
@@ -106,7 +118,7 @@ export function createCms({ basePath }) {
       initialValue.version += steps.length
 
       sendSteps(type, id, fieldPath, { steps, clientIds: steps.map(_ => clientId) })
-      patchDocument(type, id, fieldPath, value)
+      patchDocument(type, id, fieldPath, value, clientId, steps)
       respondJson(res, 200, { success: true })
     })
 
@@ -137,9 +149,9 @@ export function createCms({ basePath }) {
     withRequestJsonBody(req, (body, error) => {
       // TODO: error handling
       console.dir({ body, error }, { depth: 8 })
-      const { path, value, details } = body
+      const { path, value, clientId } = body
 
-      patchDocument(type, id, path, value)
+      patchDocument(type, id, path, value, clientId)
 
       res.writeHead(201)
       res.end()
@@ -148,22 +160,104 @@ export function createCms({ basePath }) {
     return true
   }
 
-  function patchDocument(type, id, path, value) {
+  function patchDocument(type, id, fieldPath, newValue, clientId, steps = undefined) {
     const document = getById({ id })
+    const oldValue = document?.[fieldPath]
     if (document) {
-      // TODO: does not work for deeper paths
-      const oldValue = document[path]
-      document[path] = value
-
-      const patches = getPatches(oldValue, value)
-      console.dir(patches, { depth: null })
+      // TODO: does not work for deeper fieldPaths
+      document[fieldPath] = newValue
       updateById({ id, document })
     } else {
-      const document = { _id: id, _type: type, [path]: value }
+      const document = { _id: id, _type: type, [fieldPath]: newValue }
       insert({ id, type, document})
     }
+
+    const details = getChangeDetails(oldValue, newValue, steps)
+
     sendUpdatedDocument(type, id, document)
     sendUpdatedDocuments(type, listDocumentsByType({ type }))
+    updateHistory(clientId, id, fieldPath, details)
+    sendUpdatedHistory(type, id, listHistoryById({ id }))
+  }
+
+  function updateHistory(clientId, documentId, fieldPath, newDetails) {
+    const timestamp = Date.now()
+    /** @type {any} */
+    let result = database
+      .prepare(`
+        SELECT timestampStart, details, fieldPath
+        FROM history
+        WHERE documentId = :documentId
+        AND clientId = :clientId
+        AND timestampEnd > :timestamp - 60000
+        ORDER BY timestampEnd DESC
+        LIMIT 1
+      `)
+      .get({ documentId, clientId, timestamp })
+
+    if (result && result.fieldPath !== fieldPath)
+      result = null
+
+    const previous = result && JSON.parse(result.details)
+    const { timestampStart, timestampEnd, details } = result
+      ? {
+        timestampStart: result.timestampStart,
+        timestampEnd: timestamp,
+        details: {
+          type: newDetails.type,
+          oldValue: previous.oldValue,
+          newValue: newDetails.newValue,
+          steps: newDetails.steps && previous.steps.concat(newDetails.steps),
+        }
+      }
+      : {
+        timestampStart: timestamp,
+        timestampEnd: timestamp,
+        details: newDetails,
+      }
+
+    if (details.type === 'string')
+      details.difference = diffChars(details.oldValue, details.newValue)
+
+    if (details.type === 'object')
+      details.patches = getPatches(details.oldValue, details.newValue)
+
+    if (result) {
+      //TODO: if the old and new value end up to be the same (or in case of an object, when there are no patches) remove the history item
+      return database
+        .prepare(`
+          UPDATE history
+          SET
+            timestampEnd = :timestampEnd,
+            details = :details
+          WHERE documentId = :documentId
+          AND fieldPath = :fieldPath
+          AND clientId = :clientId
+          AND timestampStart = :timestampStart
+        `)
+        .run({ documentId, fieldPath, clientId, timestampStart, timestampEnd, details: JSON.stringify(details) })
+    } else {
+      return database
+        .prepare(`
+          INSERT INTO history (documentId, fieldPath, clientId, timestampStart, timestampEnd, details)
+          VALUES (:documentId, :fieldPath, :clientId, :timestampStart, :timestampEnd, :details)
+        `)
+        .run({ documentId, fieldPath, clientId, timestampStart, timestampEnd, details: JSON.stringify(details) })
+    }
+  }
+
+  function getChangeDetails(oldValue, newValue, steps = undefined) {
+    const baseDetails = { oldValue, newValue, steps }
+    if (typeof oldValue === 'string')
+      return Object.assign(baseDetails, { type: 'string' })
+
+    if (!oldValue)
+      return Object.assign(baseDetails, { type: 'empty' })
+
+    if (!Array.isArray(oldValue) && typeof oldValue !== 'object')
+      return Object.assign(baseDetails, { type: 'primitive' })
+
+    return Object.assign(baseDetails, { type: 'object' })
   }
 
   function sendSteps(documentType, id, fieldPath, steps) {
@@ -171,6 +265,14 @@ export function createCms({ basePath }) {
     if (!subscriptions) return
     for (const res of subscriptions) {
       sendEvent(res, 'steps', steps)
+    }
+  }
+
+  function sendUpdatedHistory(documentType, id, history) {
+    const subscriptions = documentListeners[documentType]?.history?.[id]
+    if (!subscriptions) return
+    for (const res of subscriptions) {
+      sendEvent(res, 'history', history)
     }
   }
 
@@ -212,10 +314,29 @@ export function createCms({ basePath }) {
       .run({ id, type, document: JSON.stringify(document)})
   }
   function listDocumentsByType({ type }) {
+    /** @type {any} */
     const result = database
       .prepare(`SELECT * FROM documents WHERE type = :type`)
       .all({ type })
     return result.map(x => JSON.parse(x.document))
+  }
+  function listHistoryById({ id }) {
+    /** @type {any} */
+    const result = database
+      .prepare(`
+        SELECT fieldPath, clientId, timestampStart, timestampEnd, details
+        FROM history
+        WHERE documentId = :documentId
+        ORDER BY timestampStart DESC
+      `)
+      .all({ documentId: id })
+    return result.map(x => ({
+      fieldPath: x.fieldPath,
+      clientId: x.clientId,
+      timestampStart: x.timestampStart,
+      timestampEnd: x.timestampEnd,
+      details: JSON.parse(x.details),
+    }))
   }
 }
 
@@ -267,6 +388,18 @@ function createDatabase(file) {
       document TEXT NOT NULL
     )`
   )
+  // database.exec(`DROP TABLE history`)
+  database.exec( // TODO: foreign key to documents
+    `CREATE TABLE IF NOT EXISTS history (
+      documentId BLOB NOT NULL,
+      fieldPath TEXT NOT NULL,
+      clientId TEXT NOT NULL,
+      timestampStart NUMERIC NOT NULL,
+      timestampEnd NUMERIC NOT NULL,
+      details TEXT NOT NULL,
+      PRIMARY KEY (documentId, clientId, fieldPath, timestampStart)
+    )`
+  )
   return database
 }
 
@@ -290,13 +423,13 @@ async function withRequestJsonBody(req, callback) {
 function getPatches(oldValue, newValue) {
   const patches = generateJSONPatch(oldValue, newValue)
   for (const patch of patches) {
-    if (patch.op !== 'replace')
+    if (patch.op !== 'replace') {
+      console.log(`Unknown operation: ${patch.op}`)
       continue
+    }
 
-    const segments = patch.path.slice(1).split('/').filter(Boolean)
-    const oldValueAtPath = segments.reduce((result, segment) => result[segment], oldValue)
-    const newValueAtPath = segments.reduce((result, segment) => result[segment], newValue)
-    patch['details'] = diffChars(oldValueAtPath, newValueAtPath)
+    const keys = patch.path.slice(1).split('/').filter(Boolean)
+    patch['difference'] = diffChars(get(oldValue, keys), get(newValue, keys))
   }
   return patches
 }
@@ -305,4 +438,8 @@ function respondJson(res, status, body) {
   res.writeHead(status, { 'Content-Type': 'application/json' })
   res.write(JSON.stringify(body))
   res.end()
+}
+
+function get(o, keys) {
+  return keys.reduce((result, key) => result[key], o)
 }
