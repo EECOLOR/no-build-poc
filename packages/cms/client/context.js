@@ -4,6 +4,7 @@
  *   documentView: any
  *   basePath: any
  *   clientId: string
+ *   apiPath: string
  * }} Context
  */
 

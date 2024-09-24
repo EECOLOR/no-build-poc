@@ -12,9 +12,9 @@ import { raw, tags } from '#ui/tags.js'
 import { Signal } from '#ui/signal.js'
 import { useOnDestroy } from '#ui/dynamic.js'
 import { render } from '#ui/render/clientRenderer.js'
-import { context } from '../context.js'
+import { context } from '../../context.js'
 
-const { div, span } = tags
+const { div } = tags
 
 const schema = createSchema()
 
@@ -50,13 +50,10 @@ export function RichTextEditor({ initialValue, $steps, synchronize }) {
       // you can probably use this bit of code for version history
       // if (transaction.docChanged)
       //   onChange({
-      //     value: newState.doc,
-      //     details: {
-      //       steps: transaction.steps.map(x => ({
-      //         step: x.toJSON(),
-      //         invert: x.invert(docBeforeChange).toJSON()
-      //       }))
-      //     }
+      //     steps: transaction.steps.map(x => ({
+      //       step: x.toJSON(),
+      //       invert: x.invert(docBeforeChange).toJSON()
+      //     }))
       //   })
       tryToSynchronize(view)
     },

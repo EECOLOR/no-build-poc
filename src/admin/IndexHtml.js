@@ -7,6 +7,7 @@ import './reset.css'
 const { html, head, body, script, link, style } = tags
 
 const basePath = '/admin'
+const apiPath = `${basePath}/api`
 const cms = createCms({ basePath })
 
 export function requestHandler(req, res) {
@@ -32,7 +33,7 @@ export function IndexHtml({ css, importMap }) {
         `)
       ),
       body(
-        Cms({ basePath })
+        Cms({ basePath, apiPath })
       ),
     )
   )

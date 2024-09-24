@@ -1,7 +1,7 @@
 import { Cms } from '#cms/client/Cms.js'
 
-export default function ConfiguredCms({ basePath }) {
-  return Cms({ basePath, deskStructure, documentSchemas, documentView })
+export default function ConfiguredCms({ basePath, apiPath }) {
+  return Cms({ basePath, deskStructure, documentSchemas, documentView, apiPath })
 }
 
 const deskStructure = {
