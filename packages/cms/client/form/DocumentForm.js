@@ -139,7 +139,7 @@ function useFieldValue({
   serialize = x => x,
   deserialize = x => x,
 }) {
-  const $valueFromDocument = $document.derive(document => deserialize(document[field.name]) || '')
+  const $valueFromDocument = $document.derive(document => deserialize(document?.[field.name]) || '')
   let localValue = $valueFromDocument.get()
   let dirty = false
 

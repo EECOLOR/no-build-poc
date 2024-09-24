@@ -1,4 +1,4 @@
-import { loop } from '#ui/dynamic.js'
+import { conditional, loop } from '#ui/dynamic.js'
 import { tags } from '#ui/tags.js'
 import { context, getSchema } from '../context.js'
 import { DocumentForm } from '../form/DocumentForm.js'
@@ -92,7 +92,10 @@ function DocumentPane({ id, schemaType }) {
 
   return (
     div({ style: { display: 'flex' } },
-      renderOnValue($document, () => [
+      conditional(
+        $document,
+        x => x !== undefined,
+        _ => [
         DocumentForm({ id, $document, schemaType }),
         DocumentHistory({ id, schemaType }),
       ])

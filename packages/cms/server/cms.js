@@ -161,6 +161,7 @@ export function createCms({ basePath }) {
   }
 
   function patchDocument(type, id, fieldPath, newValue, clientId, steps = undefined) {
+    // TODO: add document version, this allows us to reject changes, this is useful when one person moves something in an array while another edits the contents
     const document = getById({ id })
     const oldValue = document?.[fieldPath]
     if (document) {
