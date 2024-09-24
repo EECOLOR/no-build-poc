@@ -93,10 +93,15 @@ import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
         const nodes = [marker, ...nodesFromLoop, comment()]
 
         const unsubscribe = conditional.signal.subscribe(newValue => {
+          const show = conditional.predicate(newValue)
+          const oldNodes = nodes.slice(1, -1)
+
+          if (show && oldNodes.length)
+            return
+
           for (const callback of onDestroyCallbacks) callback()
 
-          const oldNodes = nodes.slice(1, -1)
-          const newNodes = conditional.predicate(newValue) ? renderItem(newValue) : []
+          const newNodes = show ? renderItem(newValue) : []
 
           swapNodesInDom(marker, newNodes, oldNodes)
 
