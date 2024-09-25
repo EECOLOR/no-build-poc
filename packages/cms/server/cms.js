@@ -83,8 +83,7 @@ export function createCms({ basePath }) {
         listeners: new Set(),
         info: {
           initialValue: {
-            // TODO: does not work for deeper paths
-            value: getById({ id })?.[fieldPath],
+            value: get(getById({ id }), fieldPath),
             version: 0,
           },
         }
@@ -163,13 +162,13 @@ export function createCms({ basePath }) {
   function patchDocument(type, id, fieldPath, newValue, clientId, steps = undefined) {
     // TODO: add document version, this allows us to reject changes, this is useful when one person moves something in an array while another edits the contents
     const document = getById({ id })
-    const oldValue = document?.[fieldPath]
+    const oldValue = get(document, fieldPath)
     if (document) {
-      // TODO: does not work for deeper fieldPaths
-      document[fieldPath] = newValue
+      setAt(document, fieldPath, newValue)
       updateById({ id, document })
     } else {
-      const document = { _id: id, _type: type, [fieldPath]: newValue }
+      const document = { _id: id, _type: type }
+      setAt(document, fieldPath, newValue)
       insert({ id, type, document})
     }
 
@@ -249,13 +248,15 @@ export function createCms({ basePath }) {
 
   function getChangeDetails(oldValue, newValue, steps = undefined) {
     const baseDetails = { oldValue, newValue, steps }
-    if (typeof oldValue === 'string')
+    const valueForType = oldValue || newValue
+
+    if (typeof valueForType === 'string')
       return Object.assign(baseDetails, { type: 'string' })
 
-    if (!oldValue)
+    if (!valueForType)
       return Object.assign(baseDetails, { type: 'empty' })
 
-    if (!Array.isArray(oldValue) && typeof oldValue !== 'object')
+    if (!Array.isArray(valueForType) && typeof valueForType !== 'object')
       return Object.assign(baseDetails, { type: 'primitive' })
 
     return Object.assign(baseDetails, { type: 'object' })
@@ -429,8 +430,7 @@ function getPatches(oldValue, newValue) {
       continue
     }
 
-    const keys = patch.path.slice(1).split('/').filter(Boolean)
-    patch['difference'] = diffChars(get(oldValue, keys) || '', get(newValue, keys))
+    patch['difference'] = diffChars(get(oldValue, patch.path) || '', get(newValue, patch.path))
   }
   return patches
 }
@@ -441,6 +441,27 @@ function respondJson(res, status, body) {
   res.end()
 }
 
-function get(o, keys) {
-  return keys.reduce((result, key) => result[key], o)
+function get(o, path) {
+  const keys = path.slice(1).split('/').filter(Boolean)
+  return keys.reduce((result, key) => result && result[key], o)
+}
+
+function setAt(o, path, value) {
+  const keys = path.split('/').filter(Boolean)
+  let target = o
+  for (const [i, key] of keys.entries()) {
+    const isLast = i === keys.length - 1
+    if (isLast) {
+      target[key] = value
+      return
+    }
+
+    if (target[key]) {
+      target = target[key]
+      continue
+    }
+
+    const nextKey = keys[i + 1]
+    target[key] = Number.isNaN(Number(nextKey)) ? {} : []
+  }
 }

@@ -65,7 +65,7 @@ function DocumentListPane({ schemaType, path }) {
 
   return (
     div(
-      button({ type: 'button', onClick: handleAddClick }, '+'),
+      button({ type: 'button', onClick: handleAddClick, title: `Add ${schema.title}` }, '+'),
       ul(
         loop($documents, x => x._id + hack(x), document => // TODO: document should probably be a signal, if the id does not change, nothing will be re-rendered
           li(

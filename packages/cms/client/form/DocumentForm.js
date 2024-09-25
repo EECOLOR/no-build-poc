@@ -1,27 +1,33 @@
+import { createSignal } from '#ui/signal.js'
 import { tags } from '#ui/tags.js'
 import { context, getSchema } from '../context.js'
 import { renderOnValue } from '../machinery/renderOnValue.js'
 import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
 import { RichTextEditor } from './richTextEditor/RichTextEditor.js'
 
-const { div, h1, label, span, input } = tags
+const { div, h1, h2, label, span, input, button } = tags
 
 export function DocumentForm({ id, $document, schemaType }) {
-  const schema = getSchema(schemaType)
+  const document = { id, schema: getSchema(schemaType), $value: $document }
 
   return (
     div(// TODO: use context.documentView
-      DocumentTitle({ $document, schema }),
-      DocumentFields({ $document, id, schema }),
+      DocumentTitle({ document }),
+      DocumentFields({ document }),
     )
   )
 }
 
-function DocumentTitle({ $document, schema }) {
-  return h1($document.derive(document => schema.preview(document).title))
+function DocumentTitle({ document }) {
+  return h1(document.$value.derive(doc => document.schema.preview(doc).title))
 }
 
-function DocumentFields({ $document, id, schema }) {
+function DocumentFields({ document }) {
+  const path = ''
+  return ObjectFields({ document, fields: document.schema.fields, path })
+}
+
+function ObjectFields({ document, fields, path }) {
   return (
     div(
       {
@@ -31,7 +37,7 @@ function DocumentFields({ $document, id, schema }) {
           gridColumnGap: '1em',
         }
       },
-      schema.fields.map(field => DocumentField({ $document, id, schema, field }))
+      fields.map(field => Field({ document, field, path: `${path}/${field.name}` }))
     )
   )
 }
@@ -39,10 +45,13 @@ function DocumentFields({ $document, id, schema }) {
 const fieldRenderers = /** @type {const} */({
   'string': StringField,
   'rich-text': RichTextField,
+  default: ObjectField,
 })
 
-function DocumentField({ $document, id, schema, field }) {
-  const renderer = fieldRenderers[field.type]
+function Field({ document, field, path }) {
+  let renderer = fieldRenderers[field.type]
+  if (!renderer && 'fields' in field)
+    renderer = fieldRenderers.default
   if (!renderer)
     return `Unknown field type '${field.type}'`
 
@@ -59,13 +68,13 @@ function DocumentField({ $document, id, schema, field }) {
         }
       },
       span(field.title),
-      renderer({ $document, id, schema, field })
+      renderer({ document, field, path })
     )
   )
 }
 
-function StringField({ $document, id, schema, field }) {
-  const [$value, setValue] = useFieldValue({ $document, id, schema, field })
+function StringField({ document, field, path }) {
+  const [$value, setValue] = useFieldValue({ document, path })
 
   return input({ type: 'text', value: $value, onInput: handleInput })
 
@@ -74,8 +83,8 @@ function StringField({ $document, id, schema, field }) {
   }
 }
 
-function RichTextField({ $document, id, schema, field }) {
-  const richTextPathname = getRichTextPathname({ documentId: id, schemaType: schema.type, fieldPath: field.name })
+function RichTextField({ document, field, path }) {
+  const richTextPathname = getRichTextPathname({ document, fieldPath: path })
 
   const $events = useEventSourceAsSignal({
     pathname: richTextPathname,
@@ -127,19 +136,31 @@ function RichTextField({ $document, id, schema, field }) {
   }
 }
 
+function ObjectField({ document, field, path }) {
+  const [$expanded, setExpanded] = createSignal(true)
+  return (
+    div(
+      h2(field.title),
+      button({ type: 'button', onClick: _ => setExpanded(x => !x) }, $expanded.derive(x => x ? '🡅' : '🡇')),
+      renderOnValue($expanded,
+        _ => ObjectFields({ document, fields: field.fields, path })
+      )
+    )
+  )
+}
 
-function getRichTextPathname({ schemaType, documentId, fieldPath }) {
+function getRichTextPathname({ document, fieldPath }) {
   // instead of using path as an id for prosemirror document handing, we should probably use a unique id for each document, that would prevent problems handling stuff nested in arrays
-  return `${context.apiPath}/documents/${schemaType}/${documentId}/rich-text?fieldPath=${fieldPath}`
+  return `${context.apiPath}/documents/${document.schema.type}/${document.id}/rich-text?fieldPath=${fieldPath}`
 }
 
 function useFieldValue({
-  $document, id, schema, field,
+  document, path,
   isEqual = (localValue, valueFromDocument) => localValue === valueFromDocument,
   serialize = x => x,
   deserialize = x => x,
 }) {
-  const $valueFromDocument = $document.derive(document => deserialize(document?.[field.name]) || '')
+  const $valueFromDocument = document.$value.derive(doc => deserialize(get(doc, path)) || '')
   let localValue = $valueFromDocument.get()
   let dirty = false
 
@@ -155,16 +176,21 @@ function useFieldValue({
     dirty = true
     localValue = newValue
 
-    fetch(`${context.apiPath}/documents/${schema.type}/${id}`, {
+    fetch(`${context.apiPath}/documents/${document.schema.type}/${document.id}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        path: field.name,
+        path,
         value: serialize(newValue),
         clientId: context.clientId,
       })
     }) // TODO: error reporting
   }
+}
+
+function get(o, path) {
+  const keys = path.split('/').filter(Boolean)
+  return keys.reduce((result, key) => result && result[key], o)
 }
