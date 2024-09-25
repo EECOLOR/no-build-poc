@@ -154,40 +154,39 @@ function getRichTextPathname({ document, fieldPath }) {
   return `${context.apiPath}/documents/${document.schema.type}/${document.id}/rich-text?fieldPath=${fieldPath}`
 }
 
-function useFieldValue({
-  document, path,
-  isEqual = (localValue, valueFromDocument) => localValue === valueFromDocument,
-  serialize = x => x,
-  deserialize = x => x,
-}) {
-  const $valueFromDocument = document.$value.derive(doc => deserialize(get(doc, path)) || '')
+function useFieldValue({ document, path }) {
+  const $valueFromDocument = document.$value.derive(doc => get(doc, path) || '')
   let localValue = $valueFromDocument.get()
   let dirty = false
 
   // This signal only updates when it has seen the current local value
   const $value = $valueFromDocument.derive((valueFromDocument, oldValueFromDocument) => {
-    if (isEqual(localValue, valueFromDocument)) dirty = false
+    if (localValue === valueFromDocument) dirty = false
     return dirty ? oldValueFromDocument : valueFromDocument
   })
 
   return [$value, setValue]
 
-  function setValue(newValue) {
+  function setValue(value) {
     dirty = true
-    localValue = newValue
+    localValue = value
 
-    fetch(`${context.apiPath}/documents/${document.schema.type}/${document.id}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        path,
-        value: serialize(newValue),
-        clientId: context.clientId,
-      })
-    }) // TODO: error reporting
+    patch({ document, path, value })
   }
+}
+
+function patch({ document, path, value }) {
+  fetch(`${context.apiPath}/documents/${document.schema.type}/${document.id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      path,
+      value,
+      clientId: context.clientId,
+    })
+  }) // TODO: error reporting
 }
 
 function get(o, path) {
