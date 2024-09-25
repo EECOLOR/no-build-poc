@@ -164,13 +164,17 @@ function bindSignalToAttribute(element, attribute, signal) {
 }
 
 function swapNodesInDom(marker, newNodes, oldNodes) {
+  const { activeElement } = document
   writeToDom.outsideAnimationFrame(() => {
     let oldNodesLength = oldNodes.length
     while (oldNodesLength--) {
       const oldNode = oldNodes[oldNodesLength]
-      oldNode.remove()
+      if (!newNodes.includes(oldNode))
+        oldNode.remove()
     }
     marker.after(...newNodes)
+    if (activeElement?.isConnected && activeElement instanceof HTMLElement)
+      activeElement.focus()
   })
 }
 
