@@ -248,7 +248,7 @@ export function createCms({ basePath }) {
 
   function getChangeDetails(oldValue, newValue, steps = undefined) {
     const baseDetails = { oldValue, newValue, steps }
-    const valueForType = oldValue || newValue
+    const valueForType = oldValue ?? newValue
 
     if (typeof valueForType === 'string')
       return Object.assign(baseDetails, { type: 'string' })
@@ -462,6 +462,6 @@ function setAt(o, path, value) {
     }
 
     const nextKey = keys[i + 1]
-    target[key] = Number.isNaN(Number(nextKey)) ? {} : []
+    target = target[key] = Number.isNaN(Number(nextKey)) ? {} : []
   }
 }

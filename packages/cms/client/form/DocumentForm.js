@@ -1,3 +1,4 @@
+import { loop } from '#ui/dynamic.js'
 import { createSignal } from '#ui/signal.js'
 import { tags } from '#ui/tags.js'
 import { context, getSchema } from '../context.js'
@@ -45,6 +46,7 @@ function ObjectFields({ document, fields, path }) {
 const fieldRenderers = /** @type {const} */({
   'string': StringField,
   'rich-text': RichTextField,
+  'array': ArrayField,
   default: ObjectField,
 })
 
@@ -53,7 +55,7 @@ function Field({ document, field, path }) {
   if (!renderer && 'fields' in field)
     renderer = fieldRenderers.default
   if (!renderer)
-    return `Unknown field type '${field.type}'`
+    return div({ style: { backgroundColor: 'lightcoral' } }, `Unknown field type '${field.type}'`)
 
   return (
     label(
@@ -147,6 +149,31 @@ function ObjectField({ document, field, path }) {
       )
     )
   )
+}
+
+function ArrayField({ document, field, path }) {
+  const $valueFromDocument = document.$value.derive(doc => get(doc, path) || [])
+
+  return (
+    div(
+      loop(
+        $valueFromDocument,
+        (_, i) => i, // TODO: introduce _key to array so we do not rerender on a move
+        (item , i) => ObjectField({ document, field: field.of.find(x => x.type === item._type), path: `${path}/${i}` })
+      ),
+      field.of.map(objectType =>
+        button({ type: 'button', onClick: _ => handleAdd(objectType.type) }, `Add ${objectType.title}`)
+      )
+    )
+  )
+
+  function handleAdd(type) {
+    patch({
+      document,
+      path: `${path}/${$valueFromDocument.get().length}`,
+      value: { _type: type }
+    })
+  }
 }
 
 function getRichTextPathname({ document, fieldPath }) {
