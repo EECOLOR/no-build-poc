@@ -16,8 +16,8 @@ export function withOnDestroyCapture(f) {
 export class Loop {
   /**
    * @param {Signal<Array<T>>} signal
-   * @param {(value: T) => any} getKey
-   * @param {(value: T) => any} renderItem
+   * @param {(value: T, index: number) => any} getKey
+   * @param {(value: T, index: number) => any} renderItem
    */
   constructor(signal, getKey, renderItem) {
     this.signal = signal
