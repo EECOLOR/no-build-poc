@@ -44,6 +44,16 @@ const documentSchemas = [
         ]
       }),
       field('content', 'rich-text'),
+      field('items', 'array', {
+        of: [
+          type('item', {
+            fields: [
+              field('label', 'string'),
+              field('value', 'string'),
+            ]
+          })
+        ]
+      })
     ],
     preview: doc => ({ title: doc?.title || '[no title yet]' })
   }),
