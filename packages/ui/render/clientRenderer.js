@@ -40,19 +40,19 @@ import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
       renderLoop(loop, context) {
         const marker = comment()
         const infoByKey = new Map()
-        const nodesFromLoop = loop.signal.get().flatMap((item, i) => {
+        const nodesFromLoop = loop.signal.get().flatMap((item, i, items) => {
           const key = loop.getKey(item, i)
-          return renderItem(key, item, i)
+          return renderItem(key, item, i, items)
         })
         const nodes = [marker, ...nodesFromLoop, comment()]
 
         const unsubscribe = loop.signal.subscribe(newItems => {
           const unusedKeys = new Set(infoByKey.keys())
           const oldNodes = nodes.slice(1, -1)
-          const newNodes = newItems.flatMap((item, i) => {
+          const newNodes = newItems.flatMap((item, i, items) => {
             const key = loop.getKey(item, i)
             unusedKeys.delete(key)
-            return infoByKey.has(key) ? infoByKey.get(key).nodes : renderItem(key, item, i)
+            return infoByKey.has(key) ? infoByKey.get(key).nodes : renderItem(key, item, i, items)
           })
 
           for (const key of unusedKeys) {
@@ -75,9 +75,9 @@ import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
 
         return nodes
 
-        function renderItem(key, item, i) {
+        function renderItem(key, item, i, items) {
           const [nodes, callbacks] = withOnDestroyCapture(() => {
-            const rendered = loop.renderItem(item, i)
+            const rendered = loop.renderItem(item, i, items)
             return renderValue(rendered, context)
           })
           infoByKey.set(key, { callbacks, nodes })

@@ -102,23 +102,26 @@ export function createCms({ basePath }) {
 
   /** @param {import('node:http').ServerResponse} res */
   function handlePostRichText(req, res, { type, id, searchParams }) {
-    const fieldPath = searchParams.get('fieldPath')
+    const path = searchParams.get('fieldPath')
     withRequestJsonBody(req, (body, error) => {
       // TODO: error handling
-      // TODO: the name document is confusing, documents is already used
-      console.dir({ body, error }, { depth: 8 })
-      const { clientId, steps, version, value } = body
-      const { initialValue } = richTextInfo[type][id][fieldPath].info
-      if (initialValue.version !== version) {
+      // console.dir({ body, error }, { depth: 8 })
+      const { clientId, steps, documentVersion, valueVersion, value } = body
+      const { initialValue } = richTextInfo[type][id][path].info
+      if (initialValue.version !== valueVersion)
         return respondJson(res, 400, { success: false, reason: 'Version mismatch' })
-      }
 
       initialValue.value = value
       initialValue.version += steps.length
 
-      sendSteps(type, id, fieldPath, { steps, clientIds: steps.map(_ => clientId) })
-      patchDocument(type, id, fieldPath, value, clientId, steps)
-      respondJson(res, 200, { success: true })
+      const patch = { op: 'replace', path, value }
+      const result = patchDocument(type, id, documentVersion, patch, clientId, steps)
+
+      if (!result.success)
+        return respondJson(res, 400, result)
+
+      sendSteps(type, id, path, { steps, clientIds: steps.map(_ => clientId) })
+      respondJson(res, 200, result)
     })
 
     return true
@@ -148,40 +151,80 @@ export function createCms({ basePath }) {
     withRequestJsonBody(req, (body, error) => {
       // TODO: error handling
       console.dir({ body, error }, { depth: 8 })
-      const { path, value, clientId } = body
+      const { version, patch, clientId } = body
 
-      patchDocument(type, id, path, value, clientId)
+      const result = patchDocument(type, id, version, patch, clientId)
 
-      res.writeHead(201)
-      res.end()
+      respondJson(res, result.success ? 200 : 400, result)
     })
 
     return true
   }
 
-  function patchDocument(type, id, fieldPath, newValue, clientId, steps = undefined) {
+  function patchDocument(type, id, version, patch, clientId, steps = undefined) {
     // TODO: add document version, this allows us to reject changes, this is useful when one person moves something in an array while another edits the contents
-    const document = getById({ id })
-    const oldValue = get(document, fieldPath)
-    if (document) {
-      setAt(document, fieldPath, newValue)
-      updateById({ id, document })
-    } else {
-      const document = { _id: id, _type: type }
-      setAt(document, fieldPath, newValue)
-      insert({ id, type, document})
-    }
+    const documentFromDatabase = getById({ id })
+    const isUpdate = Boolean(documentFromDatabase)
+    const document = documentFromDatabase || { _id: id, _type: type, version: 0 }
 
-    const details = getChangeDetails(oldValue, newValue, steps)
+    const expectedVersion = document.version ?? 0
+    if (version !== expectedVersion)
+      return {
+        success: false,
+        message: `Incompatible document version, expeced version ${expectedVersion}`
+      }
+
+    if (patch.path === '') {
+      if (patch.op !== 'remove')
+        return { success: false, message: `Only valid patch operation on document is 'remove', got '${patch.op}'` }
+
+      deleteById({ id })
+      updateHistory(clientId, id, '', { oldValue: document, newValue: null })
+      sendUpdatedDocument(type, id, null)
+      sendUpdatedDocuments(type, listDocumentsByType({ type }))
+      return { success: true }
+    }
+    // if path === '', we are talking about the document, in which case we need to handle it differently
+
+    const operations = {
+      // Not rfc6902 (JSON patch) compliant, doesn't do any checking
+      replace({ path, value }) {
+        setAt(document, path, value)
+      },
+      move({ from, path }) {
+        const removed = operations.remove({ path: from })
+        setAt(document, path, removed, { insertIfArray: true })
+      },
+      remove({ path }) {
+        return deleteAt(document, path)
+      },
+    }
+    const applyPatch = operations[patch.op]
+    if (!applyPatch)
+      throw new Error(`Operation '${patch.op}' not implmented`)
+
+    const oldValue = get(document, patch.from || patch.path)
+    applyPatch(patch)
+    document.version = (document.version ?? 0) + 1
+
+    if (isUpdate) updateById({ id, document })
+    else insert({ id, type, document})
+
+    const newValue = get(document, patch.path)
 
     sendUpdatedDocument(type, id, document)
     sendUpdatedDocuments(type, listDocumentsByType({ type }))
-    updateHistory(clientId, id, fieldPath, details)
+
+    const details = getChangeDetails(oldValue, newValue, steps)
+    updateHistory(clientId, id, patch.path, details)
     sendUpdatedHistory(type, id, listHistoryById({ id }))
+
+    return { success: true }
   }
 
   function updateHistory(clientId, documentId, fieldPath, newDetails) {
     const timestamp = Date.now()
+    console.log({ documentId, clientId, timestamp })
     /** @type {any} */
     let result = database
       .prepare(`
@@ -309,6 +352,11 @@ export function createCms({ basePath }) {
     return database
       .prepare(`UPDATE documents SET document = :document WHERE id = :id`)
       .run({ id, document: JSON.stringify(document) })
+  }
+  function deleteById({ id }) {
+    return database
+      .prepare(`DELETE FROM documents WHERE id = :id`)
+      .run({ id })
   }
   function insert({ id, type, document }) {
     return database
@@ -442,17 +490,17 @@ function respondJson(res, status, body) {
 }
 
 function get(o, path) {
-  const keys = path.slice(1).split('/').filter(Boolean)
-  return keys.reduce((result, key) => result && result[key], o)
+  return getKeys(path).reduce((result, key) => result && result[key], o)
 }
 
-function setAt(o, path, value) {
-  const keys = path.split('/').filter(Boolean)
+function setAt(o, path, value, { insertIfArray = false } = {}) {
+  const keys = getKeys(path)
   let target = o
   for (const [i, key] of keys.entries()) {
     const isLast = i === keys.length - 1
     if (isLast) {
-      target[key] = value
+      if (insertIfArray && isNumber(key)) target.splice(key, 0, value)
+      else target[key] = value
       return
     }
 
@@ -462,6 +510,33 @@ function setAt(o, path, value) {
     }
 
     const nextKey = keys[i + 1]
-    target = target[key] = Number.isNaN(Number(nextKey)) ? {} : []
+    target = target[key] = isNumber(nextKey) ? [] : {}
   }
+}
+
+function isNumber(x) {
+  return !Number.isNaN(Number(x))
+}
+
+function deleteAt(o, path) {
+  const keys = getKeys(path)
+  return keys.reduce(
+    (result, key, i) => {
+      const isLast = i === keys.length - 1
+
+      if (isLast && result) {
+        const value = result[key]
+        if (Array.isArray(result)) result.splice(key, 1)
+        else delete result[key]
+        return value
+      }
+
+      return result && result[key]
+    },
+    o
+  )
+}
+
+function getKeys(path) {
+  return path.split('/').filter(Boolean)
 }

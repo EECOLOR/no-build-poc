@@ -20,7 +20,12 @@ export function DocumentForm({ id, $document, schemaType }) {
 }
 
 function DocumentTitle({ document }) {
-  return h1(document.$value.derive(doc => document.schema.preview(doc).title))
+  const $title = document.$value.derive(doc => document.schema.preview(doc).title)
+  return h1($title, button({ type: 'button', onClick: handleClick }, '🗑'))
+
+  function handleClick() {
+    patch({ document, path: '', op: 'remove', value: undefined,  })
+  }
 }
 
 function DocumentFields({ document }) {
@@ -123,7 +128,8 @@ function RichTextField({ document, field, path }) {
         body: JSON.stringify({
           clientId,
           steps: steps.map(RichTextEditor.stepToJson),
-          version,
+          documentVersion: document.$value.get().version,
+          valueVersion: version,
           value: RichTextEditor.toJson(value),
         })
       }
@@ -158,8 +164,20 @@ function ArrayField({ document, field, path }) {
     div(
       loop(
         $valueFromDocument,
-        (_, i) => i, // TODO: introduce _key to array so we do not rerender on a move
-        (item , i) => ObjectField({ document, field: field.of.find(x => x.type === item._type), path: `${path}/${i}` })
+        (item, i) => item._key || i, // TODO: introduce _key to array so we do not rerender on a move
+        (item , i, items) => {
+          const $lengthAndIndex = $valueFromDocument.derive(
+            items => [items.length, items.findIndex(x => x._key === item._key)]
+          )
+          return ArrayItem({
+            $isFirst: $lengthAndIndex.derive(([length, i]) => !i),
+            $isLast: $lengthAndIndex.derive(([length, i]) => i === length - 1),
+            $index: $lengthAndIndex.derive(([length, i]) => i),
+            document,
+            field: field.of.find(x => x.type === item?._type || true),
+            arrayPath: path,
+          })
+        }
       ),
       field.of.map(objectType =>
         button({ type: 'button', onClick: _ => handleAdd(objectType.type) }, `Add ${objectType.title}`)
@@ -171,8 +189,30 @@ function ArrayField({ document, field, path }) {
     patch({
       document,
       path: `${path}/${$valueFromDocument.get().length}`,
-      value: { _type: type }
+      value: { _type: type, _key: crypto.randomUUID() }
     })
+  }
+}
+
+function ArrayItem({ $isFirst, $isLast, document, arrayPath, $index, field }) {
+  return (
+    div(
+      ObjectField({ document, field, path: `${arrayPath}/${$index.get()}` }), // TODO: path should be a signal
+      button({ type: 'button', disabled: $isFirst, onClick: handleUpClick }, '🡅'),
+      button({ type: 'button', disabled: $isLast, onClick: handleDownClick }, '🡇'),
+    )
+  )
+
+  function handleUpClick() {
+    const from = `${arrayPath}/${$index.get()}`
+    const to = `${arrayPath}/${$index.get() - 1}`
+    patch({ document, from, path: to, op: 'move', value: undefined })
+  }
+
+  function handleDownClick() {
+    const from = `${arrayPath}/${$index.get()}`
+    const to = `${arrayPath}/${$index.get() + 1}`
+    patch({ document, from, path: to, op: 'move', value: undefined })
   }
 }
 
@@ -202,15 +242,16 @@ function useFieldValue({ document, path }) {
   }
 }
 
-function patch({ document, path, value }) {
+function patch({ document, path, value, op = 'replace', from = undefined }) {
+  // TODO: add retries if the versions do not match
   fetch(`${context.apiPath}/documents/${document.schema.type}/${document.id}`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      path,
-      value,
+      version: document.$value.get()?.version ?? 0,
+      patch: { op, path, value, from },
       clientId: context.clientId,
     })
   }) // TODO: error reporting

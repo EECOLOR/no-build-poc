@@ -17,7 +17,7 @@ export class Loop {
   /**
    * @param {Signal<Array<T>>} signal
    * @param {(value: T, index: number) => any} getKey
-   * @param {(value: T, index: number) => any} renderItem
+   * @param {(value: T, index: number, items: Array<T>) => any} renderItem
    */
   constructor(signal, getKey, renderItem) {
     this.signal = signal

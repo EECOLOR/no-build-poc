@@ -1,8 +1,8 @@
 import { useOnDestroy } from '#ui/dynamic.js'
 import { createSignal } from '#ui/signal.js'
 
-export function useEventSourceAsSignal({ pathname, events }) {
-  const [$signal, setValue] = createSignal(null)
+export function useEventSourceAsSignal({ pathname, events, initialValue = null }) {
+  const [$signal, setValue] = createSignal(initialValue)
   const eventSource = new EventSource(pathname)
   for (const event of events) {
     eventSource.addEventListener(event, e => {

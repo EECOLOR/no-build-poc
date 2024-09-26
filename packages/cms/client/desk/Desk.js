@@ -4,10 +4,11 @@ import { context, getSchema } from '../context.js'
 import { DocumentForm } from '../form/DocumentForm.js'
 import { DocumentHistory } from '../history/DocumentHistory.js'
 import { $pathname, pushState } from '../machinery/history.js'
-import { renderOnValue } from '../machinery/renderOnValue.js'
 import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
 
 const { div, p, ul, li, a, button } = tags
+
+const connecting = Symbol('connecting')
 
 export function Desk({ deskStructure }) {
   return (
@@ -78,7 +79,6 @@ function DocumentListPane({ schemaType, path }) {
 
   function handleAddClick(e) {
     const newPath = `${context.basePath}/${path.concat(window.crypto.randomUUID()).join('/')}`
-    console.log(newPath)
     pushState(null, undefined, newPath)
   }
 
@@ -92,10 +92,7 @@ function DocumentPane({ id, schemaType }) {
 
   return (
     div({ style: { display: 'flex' } },
-      conditional(
-        $document,
-        x => x !== undefined,
-        _ => [
+      conditional($document, doc => doc !== connecting, _ => [
         DocumentForm({ id, $document, schemaType }),
         DocumentHistory({ id, schemaType }),
       ])
@@ -107,7 +104,8 @@ function useDocument({ id, schemaType }) {
   return useEventSourceAsSignal({
     pathname: `${context.apiPath}/documents/${schemaType}/${id}`,
     events: ['document'],
-  }).derive(x => x?.data)
+    initialValue: connecting,
+  }).derive(x => typeof x === 'symbol' ? x : x && x.data)
 }
 
 function useDocuments({ schemaType }) {
