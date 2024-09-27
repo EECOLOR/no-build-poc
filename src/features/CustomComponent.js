@@ -8,6 +8,7 @@ import { serverTimestamp } from 'firebase/database'
 import * as THREE from 'three'
 
 import { Runtime } from './Runtime.js'
+import { css, styled } from '/machinery/styled.js'
 
 import styles from './CustomComponent.css' // uiteindelijk misschien met import assertions
 
@@ -15,7 +16,7 @@ const customContext = createContext()
 const CustomProvider = customContext.Provider
 const useCustom = customContext.consume
 
-const { div, p, h1, button, strong, span, input, ul, li } = tags
+const { div, p, h1, button, strong, span, input, ul, li, template, style } = tags
 
 export function CustomComponent({ title, content }) {
   const runtime = typeof window === 'undefined' ? 'server' : 'client'
@@ -39,6 +40,8 @@ export function CustomComponent({ title, content }) {
     p(content),
     p('> ', FatCount({ $count }), ' <'),
     Runtime({ runtime }),
+    StyledComponent1({ $count }),
+    StyledComponent2({ $count }),
     ArrayBasedLastFiveCounts({ $count }),
     SlotBasedLastFiveCounts({ $count }),
     button({ type: 'button', onPointerDown: handlePointerDown }, 'Add 10'),
@@ -53,6 +56,57 @@ export function CustomComponent({ title, content }) {
   function handlePointerDown(e) {
     setCount(x => x + 10)
   }
+}
+
+function StyledComponent1({ $count }) {
+  return (
+    div(
+      template({ shadowRootMode: 'open' },
+        style(`
+          :host {
+            display: flex;
+            gap: 1rem;
+
+            & > :last-child {
+              background-color: lightblue;
+              color: unset;
+            }
+          }
+
+          div {
+            background-color: lightgreen;
+          }
+        `),
+        div('Locally styled 1'),
+        div('Locally styled ', $count),
+      )
+    )
+  )
+}
+
+function StyledComponent2({ $count }) {
+  const { div } = styled
+  return (
+    div(
+      css`
+        :host {
+          display: flex;
+          gap: 1rem;
+
+          & > :last-child {
+            background-color: lightblue;
+            color: unset;
+          }
+        }
+
+        div {
+          background-color: lightgreen;
+        }
+      `,
+      div('Locally styled 1'),
+      div('Locally styled ', $count),
+    )
+  )
 }
 
 function TestRealComponent({ start, title }) {

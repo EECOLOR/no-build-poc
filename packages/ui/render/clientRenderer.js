@@ -138,13 +138,33 @@ import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
           }
 
         const nodes = children.flatMap(x => renderValue(x, context))
-        for (const node of nodes) element.appendChild(node)
+
+        for (const node of nodes) {
+          if (isTemplateTag(tagName)) handleTemplateTagChild(element, node)
+          else if (isTemplateNode(node)) handleTemplateAsChild(element, node)
+          else element.appendChild(node)
+        }
 
         return element
       }
     }
   }
 )
+
+function isTemplateTag(tagName) {
+  return tagName === 'template'
+}
+function handleTemplateTagChild(template, child) {
+  template.content.appendChild(child)
+}
+
+function isTemplateNode(node) {
+  return node.nodeName === 'TEMPLATE'
+}
+function handleTemplateAsChild(element, template) {
+  const shadowRoot = element.attachShadow({ mode: template.getAttribute('shadowrootmode') })
+  shadowRoot.appendChild(template.content)
+}
 
 function setAttributeOrProperty(element, k, v) {
   if (k in element) element[k] = v
