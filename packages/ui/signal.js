@@ -11,6 +11,8 @@ export class Signal {
 
   /** @template X @param {(value: T, previous?: X) => X} f @returns {Signal<X>} */
   derive(f) { return null }
+
+  init() {}
 }
 Object.defineProperty(Signal, Symbol.hasInstance, { value: o => o.constructor === Signal })
 
@@ -47,7 +49,11 @@ export function createSignal(initialValue) {
 
     derive(f) {
       return derived(signal, f)
-    }
+    },
+
+    init() {
+      getValue()
+    },
   }
 
   return [
@@ -85,6 +91,7 @@ export function createSignal(initialValue) {
  */
 export function derived(signal, deriveValue) {
   const [newSignal, setValue] = createSignal(() => deriveValue(signal.get()))
+  // TODO: do we need to unsubscribe?
   signal.subscribe(newValue => setValue(oldValue => deriveValue(newValue, oldValue)))
   return newSignal
 }

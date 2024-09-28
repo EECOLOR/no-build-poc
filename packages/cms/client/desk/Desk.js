@@ -115,6 +115,7 @@ function useDocuments({ schemaType }) {
   }).derive(x => x?.data || [])
 }
 
+/** @returns {Array<{ pane: any, path: Array<string> }>} */
 function resolvePanes(pane, pathSegments, path = []) {
   if (!pathSegments.length) return [{ pane, path }]
 

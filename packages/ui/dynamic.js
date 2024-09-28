@@ -12,12 +12,17 @@ export function withOnDestroyCapture(f) {
   return [result, onDestroyCallbacks.pop()]
 }
 
-/** @template T */
+/**
+ * @template T
+ * @typedef {T extends Signal<infer X> ? Extract<X> : T extends Array<infer X> ? X : never} Extract
+ */
+
+/** @template {Signal<Array<any>>} T */
 export class Loop {
   /**
-   * @param {Signal<Array<T>>} signal
-   * @param {(value: T, index: number) => any} getKey
-   * @param {(value: T, index: number, items: Array<T>) => any} renderItem
+   * @param {T} signal
+   * @param {(value: Extract<T>, index: number) => any} getKey
+   * @param {(value: Extract<T>, index: number, items: Array<Extract<T>>) => any} renderItem
    */
   constructor(signal, getKey, renderItem) {
     this.signal = signal
@@ -27,10 +32,10 @@ export class Loop {
 }
 
 /**
- * @template T
- * @param {Signal<Array<T>>} signal
- * @param {(value: T) => any} getKey
- * @param {(value: T) => any} renderItem
+ * @template {Signal<Array<any>>} T
+ * @param {T} signal
+ * @param {(value: Extract<T>) => any} getKey
+ * @param {(value: Extract<T>) => any} renderItem
  */
 export function loop(signal, getKey, renderItem) {
   return new Loop(signal, getKey, renderItem)

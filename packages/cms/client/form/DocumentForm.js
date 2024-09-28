@@ -3,6 +3,7 @@ import { createSignal } from '#ui/signal.js'
 import { tags } from '#ui/tags.js'
 import { context, getSchema } from '../context.js'
 import { renderOnValue } from '../machinery/renderOnValue.js'
+import { useCombined } from '../machinery/useCombined.js'
 import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
 import { RichTextEditor } from './richTextEditor/RichTextEditor.js'
 
@@ -24,16 +25,17 @@ function DocumentTitle({ document }) {
   return h1($title, button({ type: 'button', onClick: handleClick }, '🗑'))
 
   function handleClick() {
-    patch({ document, path: '', op: 'remove', value: undefined,  })
+    patch({ document, path: '', op: 'remove',  })
   }
 }
 
 function DocumentFields({ document }) {
-  const path = ''
-  return ObjectFields({ document, fields: document.schema.fields, path })
+  const [$path] = createSignal('')
+  return ObjectFields({ document, fields: document.schema.fields, $path })
 }
 
-function ObjectFields({ document, fields, path }) {
+function ObjectFields({ document, fields, $path }) {
+
   return (
     div(
       {
@@ -43,7 +45,9 @@ function ObjectFields({ document, fields, path }) {
           gridColumnGap: '1em',
         }
       },
-      fields.map(field => Field({ document, field, path: `${path}/${field.name}` }))
+      fields.map(field =>
+        Field({ document, field, $path: $path.derive(path => `${path}/${field.name}`) })
+      )
     )
   )
 }
@@ -55,7 +59,7 @@ const fieldRenderers = /** @type {const} */({
   default: ObjectField,
 })
 
-function Field({ document, field, path }) {
+function Field({ document, field, $path }) {
   let renderer = fieldRenderers[field.type]
   if (!renderer && 'fields' in field)
     renderer = fieldRenderers.default
@@ -75,13 +79,13 @@ function Field({ document, field, path }) {
         }
       },
       span(field.title),
-      renderer({ document, field, path })
+      renderer({ document, field, $path })
     )
   )
 }
 
-function StringField({ document, field, path }) {
-  const [$value, setValue] = useFieldValue({ document, path })
+function StringField({ document, field, $path }) {
+  const [$value, setValue] = useFieldValue({ document, $path })
 
   return input({ type: 'text', value: $value, onInput: handleInput })
 
@@ -90,11 +94,11 @@ function StringField({ document, field, path }) {
   }
 }
 
-function RichTextField({ document, field, path }) {
-  const richTextPathname = getRichTextPathname({ document, fieldPath: path })
+function RichTextField({ document, field, $path }) {
+  const $richTextPathname = $path.derive(path => getRichTextPathname({ document, fieldPath: path }))
 
   const $events = useEventSourceAsSignal({
-    pathname: richTextPathname,
+    pathnameSignal: $richTextPathname,
     events: ['initialValue', 'steps'],
   })
   const $initialValue = $events.derive((value, previous) =>
@@ -117,7 +121,7 @@ function RichTextField({ document, field, path }) {
   function synchronize({ clientId, steps, version, value }) {
     const controller = new AbortController()
     const result = fetch(
-      richTextPathname,
+      $richTextPathname.get(),
       {
         method: 'POST',
         headers: {
@@ -144,21 +148,21 @@ function RichTextField({ document, field, path }) {
   }
 }
 
-function ObjectField({ document, field, path }) {
+function ObjectField({ document, field, $path }) {
   const [$expanded, setExpanded] = createSignal(true)
   return (
     div(
-      h2(field.title),
-      button({ type: 'button', onClick: _ => setExpanded(x => !x) }, $expanded.derive(x => x ? '🡅' : '🡇')),
+      h2(field.title, button({ type: 'button', onClick: _ => setExpanded(x => !x) }, $expanded.derive(x => x ? '🡅' : '🡇'))),
       renderOnValue($expanded,
-        _ => ObjectFields({ document, fields: field.fields, path })
+        _ => ObjectFields({ document, fields: field.fields, $path })
       )
     )
   )
 }
 
-function ArrayField({ document, field, path }) {
-  const $valueFromDocument = document.$value.derive(doc => get(doc, path) || [])
+function ArrayField({ document, field, $path }) {
+  const $documentAndPath = useCombined(document.$value, $path)
+  const $valueFromDocument = $documentAndPath.derive(([doc, path]) => get(doc, path) || [])
 
   return (
     div(
@@ -175,7 +179,7 @@ function ArrayField({ document, field, path }) {
             $index: $lengthAndIndex.derive(([length, i]) => i),
             document,
             field: field.of.find(x => x.type === item?._type || true),
-            arrayPath: path,
+            $arrayPath: $path,
           })
         }
       ),
@@ -188,31 +192,40 @@ function ArrayField({ document, field, path }) {
   function handleAdd(type) {
     patch({
       document,
-      path: `${path}/${$valueFromDocument.get().length}`,
+      path: `${$path.get()}/${$valueFromDocument.get().length}`,
       value: { _type: type, _key: crypto.randomUUID() }
     })
   }
 }
 
-function ArrayItem({ $isFirst, $isLast, document, arrayPath, $index, field }) {
+function ArrayItem({ $isFirst, $isLast, document, $arrayPath, $index, field }) {
+  const $arrayPathAndIndex = useCombined($arrayPath, $index)
+  const $path = $arrayPathAndIndex.derive(([arrayPath, index]) => `${arrayPath}/${index}`)
   return (
     div(
-      ObjectField({ document, field, path: `${arrayPath}/${$index.get()}` }), // TODO: path should be a signal
+      ObjectField({ document, field, $path }),
       button({ type: 'button', disabled: $isFirst, onClick: handleUpClick }, '🡅'),
       button({ type: 'button', disabled: $isLast, onClick: handleDownClick }, '🡇'),
+      button({ type: 'button', onClick: handleDeleteClick }, '🗑'),
     )
   )
 
   function handleUpClick() {
-    const from = `${arrayPath}/${$index.get()}`
-    const to = `${arrayPath}/${$index.get() - 1}`
-    patch({ document, from, path: to, op: 'move', value: undefined })
+    move($index.get() - 1)
   }
 
   function handleDownClick() {
-    const from = `${arrayPath}/${$index.get()}`
-    const to = `${arrayPath}/${$index.get() + 1}`
-    patch({ document, from, path: to, op: 'move', value: undefined })
+    move($index.get() + 1)
+  }
+
+  function handleDeleteClick() {
+    patch({ document, path: $path.get(), op: 'remove' })
+  }
+
+  function move(toIndex) {
+    const from = $path.get()
+    const to = `${$arrayPath.get()}/${toIndex}`
+    patch({ document, from, path: to, op: 'move' })
   }
 }
 
@@ -221,8 +234,9 @@ function getRichTextPathname({ document, fieldPath }) {
   return `${context.apiPath}/documents/${document.schema.type}/${document.id}/rich-text?fieldPath=${fieldPath}`
 }
 
-function useFieldValue({ document, path }) {
-  const $valueFromDocument = document.$value.derive(doc => get(doc, path) || '')
+function useFieldValue({ document, $path }) {
+  const $documentAndPath = useCombined(document.$value, $path)
+  const $valueFromDocument = $documentAndPath.derive(([doc, path]) => get(doc, path) || '')
   let localValue = $valueFromDocument.get()
   let dirty = false
 
@@ -232,17 +246,26 @@ function useFieldValue({ document, path }) {
     return dirty ? oldValueFromDocument : valueFromDocument
   })
 
-  return [$value, setValue]
+  return /** @type const */ ([$value, setValue])
 
   function setValue(value) {
     dirty = true
     localValue = value
 
-    patch({ document, path, value })
+    patch({ document, path: $path.get(), value })
   }
 }
 
-function patch({ document, path, value, op = 'replace', from = undefined }) {
+/**
+ * @param {{ document } & (
+ *   { op?: 'replace', path: string, value: any } |
+ *   { op: 'move', from: string, path: string } |
+ *   { op: 'remove', path: string }
+ * )} params
+ */
+function patch(params) {
+  const { document } = params
+  const { op = 'replace', path, value, from } = /** @type {typeof params & { value?: any, from?: any }} */ (params)
   // TODO: add retries if the versions do not match
   fetch(`${context.apiPath}/documents/${document.schema.type}/${document.id}`, {
     method: 'PATCH',
