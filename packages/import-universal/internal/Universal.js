@@ -1,4 +1,4 @@
-import { separatePropsAndChildren } from '#utils'
+import { separatePropsAndChildren } from '#ui/utils.js'
 import { containerMarker } from './containerMarker.js'
 import { raw, tags } from '#ui/tags.js'
 

@@ -1,5 +1,5 @@
 import { Component } from './component.js'
-import { separatePropsAndChildren } from '#utils'
+import { separatePropsAndChildren } from './utils.js'
 import { Loop } from './dynamic.js'
 
 export class Raw { constructor(value) { this.value = value } }

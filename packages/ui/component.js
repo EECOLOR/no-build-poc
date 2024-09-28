@@ -1,4 +1,4 @@
-import { separatePropsAndChildren } from '#utils'
+import { separatePropsAndChildren } from './utils.js'
 
 /** @typedef {{ parent?: NodeContext }} NodeContext */
 

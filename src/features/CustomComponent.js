@@ -2,13 +2,13 @@ import { raw, tags } from '#ui/tags.js'
 import { createSignal, derived } from '#ui/signal.js'
 import { component, createContext } from '#ui/component.js'
 import { clientConfig } from '#ui/ClientConfig.js'
+import { css, styled } from '#ui/styled.js'
 
 import { initializeApp } from 'firebase/app'
 import { serverTimestamp } from 'firebase/database'
 import * as THREE from 'three'
 
 import { Runtime } from './Runtime.js'
-import { css, styled } from '/machinery/styled.js'
 
 import styles from './CustomComponent.css' // uiteindelijk misschien met import assertions
 
@@ -86,6 +86,7 @@ function StyledComponent1({ $count }) {
 
 function StyledComponent2({ $count }) {
   const { div } = styled
+
   return (
     div(
       css`
