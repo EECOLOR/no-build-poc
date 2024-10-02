@@ -1,24 +1,59 @@
 import { conditional, loop } from '#ui/dynamic.js'
-import { tags } from '#ui/tags.js'
+import { css, tags } from '#ui/tags.js'
+import { ButtonAdd, ButtonChevronRight, Link, List } from '../buildingBlocks.js'
 import { context, getSchema } from '../context.js'
 import { DocumentForm } from '../form/DocumentForm.js'
 import { DocumentHistory } from '../history/DocumentHistory.js'
 import { $pathname, pushState } from '../machinery/history.js'
 import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
 
-const { div, p, ul, li, a, button } = tags
+const { div, a, button } = tags
 
 const connecting = Symbol('connecting')
 
+Desk.style = css`& {
+  display: flex;
+  flex-direction: column;
+
+  & > * {
+    padding: 0.5rem;
+  }
+
+  & > :not(:first-child, :last-child) {
+    border-bottom: 1px solid lightgray;
+  }
+}`
 export function Desk({ deskStructure }) {
   return (
     div(
-      p('CMS'),
+      Desk.style,
+      DeskHeader(),
       Panes({ firstPane: deskStructure.pane }),
     )
   )
 }
 
+function DeskHeader() {
+  return div('CMS')
+}
+
+Panes.style = css`& {
+  display: flex;
+
+  & > :not(:nth-child(2)) {
+    padding-left: 0.5rem;
+  }
+
+  & > :not(:last-child) {
+    padding-right: 0.5rem;
+    max-width: 20rem;
+    flex-shrink: 0;
+  }
+
+  & > :not(:first-child, :last-child) {
+    border-right: 1px solid lightgray;
+  }
+}`
 function Panes({ firstPane }) {
   const $panesWithPath = $pathname.derive(pathname => {
     const pathSegments = pathname.replace(context.basePath, '').slice(1).split('/')
@@ -27,7 +62,7 @@ function Panes({ firstPane }) {
 
   return (
     div(
-      { style: { display: 'flex', gap: '20px' }},
+      Panes.style,
       loop(
         $panesWithPath,
         x => x.path.join('/'),
@@ -49,12 +84,17 @@ function Pane({ pane, path }) {
 
 function ListPane({ items, path }) {
   return (
-    ul(
-      items.map(item =>
-        li(
-          Link({ href: [context.basePath, ...path, item.slug].join('/') }, item.label)
+    div(
+      List({ renderItems: renderItem =>
+        items.map(item =>
+          renderItem(
+            ListItem({
+              href: [context.basePath, ...path, item.slug].join('/'),
+              title: item.label,
+            })
+          )
         )
-      )
+      })
     )
   )
 }
@@ -66,14 +106,17 @@ function DocumentListPane({ schemaType, path }) {
 
   return (
     div(
-      button({ type: 'button', onClick: handleAddClick, title: `Add ${schema.title}` }, '+'),
-      ul(
+      ButtonAdd({ title: `Add ${schema.title}`, onClick: handleAddClick }),
+      List({ renderItems: renderItem =>
         loop($documents, x => x._id + hack(x), document => // TODO: document should probably be a signal, if the id does not change, nothing will be re-rendered
-          li(
-            Link({ href: [context.basePath, ...path, document._id].join('/')}, schema.preview(document).title)
+          renderItem(
+            ListItem({
+              href: [context.basePath, ...path, document._id].join('/'),
+              title: schema.preview(document).title ,
+            })
           )
         )
-      )
+      })
     )
   )
 
@@ -87,16 +130,39 @@ function DocumentListPane({ schemaType, path }) {
   }
 }
 
+DocumentPane.style = css`& {
+  display: flex;
+}`
 function DocumentPane({ id, schemaType }) {
   const $document = useDocument({ id, schemaType })
 
   return (
-    div({ style: { display: 'flex' } },
+    div(
+      DocumentPane.style,
       conditional($document, doc => doc !== connecting, _ => [
         DocumentForm({ id, $document, schemaType }),
         DocumentHistory({ id, schemaType }),
       ])
     )
+  )
+}
+
+ListItem.style = css`& {
+  display: flex;
+  text-decoration: none;
+  color: inherit;
+  justify-content: space-between;
+  gap: 1rem;
+
+  &:hover {
+    background-color: lightblue;
+  }
+}`
+function ListItem({ href, title }) {
+  return Link({ href },
+    ListItem.style,
+    title,
+    ButtonChevronRight({ disabled: true })
   )
 }
 
@@ -141,30 +207,4 @@ function resolvePanes(pane, pathSegments, path = []) {
   }
 
   return [{ pane, path }]
-}
-
-function Link({ href }, children) {
-  return a({ href, onClick: linkClick(href) }, children)
-}
-
-function linkClick(to) {
-  return e => {
-    if (!shouldNavigate(e))
-      return
-
-    e.preventDefault()
-
-    if (window.location.pathname === to)
-      return
-
-    pushState(null, undefined, to)
-  }
-}
-
-function shouldNavigate(e) {
-  return (
-    !e.defaultPrevented &&
-    e.button === 0 &&
-    !(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
-  )
 }

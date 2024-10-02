@@ -50,7 +50,11 @@ export async function convertClientFiles({ clientFiles, cssFiles }) {
       staticFileMapping: {},
     }
   )
-
+  for (const cssFile of cssFiles) {
+    const { publicPath } = getPathInformation(cssFile.url)
+    css.push(publicPath)
+    staticFileMapping[publicPath] = cssFile.modifiedSourcePath
+  }
   return { css, importMap: { imports }, staticFileMapping }
 }
 
@@ -75,7 +79,6 @@ const info = /** @type {const} */({
 export function getPathInformation(url) {
   const [bareUrl] = url.split(/[?#]/)
   const relativeToRootPath = path.relative('./', fileURLToPath(bareUrl))
-
 
   const [dirInRoot] = /** @type {[keyof info, ...any]} */ (relativeToRootPath.split('/'))
   const { type, basePath, publicPath } = info[dirInRoot]

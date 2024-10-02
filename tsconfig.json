@@ -6,6 +6,7 @@
     "./*.js",
     "./src/**/*",
     "./types/**/*",
+    "./packages/**/*",
   ],
   "compilerOptions": {
     "module": "es2022",

@@ -1,8 +1,7 @@
-import { raw, tags } from '#ui/tags.js'
+import { raw, tags, css } from '#ui/tags.js'
 import { createSignal, derived } from '#ui/signal.js'
 import { component, createContext } from '#ui/component.js'
 import { clientConfig } from '#ui/ClientConfig.js'
-import { css, styled } from '#ui/styled.js'
 
 import { initializeApp } from 'firebase/app'
 import { serverTimestamp } from 'firebase/database'
@@ -61,9 +60,9 @@ export function CustomComponent({ title, content }) {
 function StyledComponent1({ $count }) {
   return (
     div(
-      template({ shadowRootMode: 'open' },
-        style(`
-          :host {
+      style(`
+        @scope {
+          :scope {
             display: flex;
             gap: 1rem;
 
@@ -76,35 +75,33 @@ function StyledComponent1({ $count }) {
           div {
             background-color: lightgreen;
           }
-        `),
-        div('Locally styled 1'),
-        div('Locally styled ', $count),
-      )
+        }
+      `),
+      div('Locally styled 1'),
+      div('Locally styled ', $count),
     )
   )
 }
 
-function StyledComponent2({ $count }) {
-  const { div } = styled
+StyledComponent2.style = css`& {
+  display: flex;
+  gap: 1rem;
 
+  & > :last-child {
+    background-color: lightcoral;
+    color: unset;
+  }
+}
+
+div {
+  background-color: lightseagreen;
+}`
+function StyledComponent2({ $count , nested = false }) {
   return (
     div(
-      css`
-        :host {
-          display: flex;
-          gap: 1rem;
-
-          & > :last-child {
-            background-color: lightblue;
-            color: unset;
-          }
-        }
-
-        div {
-          background-color: lightgreen;
-        }
-      `,
+      StyledComponent2.style,
       div('Locally styled 1'),
+      StyledComponent1({ $count }),
       div('Locally styled ', $count),
     )
   )

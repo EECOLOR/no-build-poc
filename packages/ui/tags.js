@@ -83,3 +83,11 @@ export class Tag {
     this.children = children
   }
 }
+
+/**
+ * @param {Parameters<typeof String.raw>} args
+ * @returns {Tag<'style'>}
+ */
+export function css(...args) {
+  return tags.style(`@scope to (*:has(> style) > *) { ${String.raw(...args)} }`)
+}

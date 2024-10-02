@@ -26,11 +26,6 @@ export function IndexHtml({ css, importMap }) {
         css.map(href =>
           link({ rel: 'stylesheet', type: 'text/css', href })
         ),
-        style(`
-          * {
-            margin: 0;
-          }
-        `)
       ),
       body(
         Cms({ basePath, apiPath })

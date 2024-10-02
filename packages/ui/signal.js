@@ -91,7 +91,7 @@ export function createSignal(initialValue) {
  */
 export function derived(signal, deriveValue) {
   const [newSignal, setValue] = createSignal(() => deriveValue(signal.get()))
-  // TODO: do we need to unsubscribe?
+  // TODO: do we need to unsubscribe? yes, only be subscribed when we have listeners
   signal.subscribe(newValue => setValue(oldValue => deriveValue(newValue, oldValue)))
   return newSignal
 }

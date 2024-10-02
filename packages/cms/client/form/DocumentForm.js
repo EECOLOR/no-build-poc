@@ -1,6 +1,7 @@
 import { loop } from '#ui/dynamic.js'
 import { createSignal } from '#ui/signal.js'
-import { tags } from '#ui/tags.js'
+import { tags, css } from '#ui/tags.js'
+import { ButtonChevronDown, ButtonChevronUp, ButtonDelete, ButtonDown, ButtonUp } from '../buildingBlocks.js'
 import { context, getSchema } from '../context.js'
 import { renderOnValue } from '../machinery/renderOnValue.js'
 import { useCombined } from '../machinery/useCombined.js'
@@ -20,9 +21,14 @@ export function DocumentForm({ id, $document, schemaType }) {
   )
 }
 
+DocumentTitle.style = css`& {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}`
 function DocumentTitle({ document }) {
   const $title = document.$value.derive(doc => document.schema.preview(doc).title)
-  return h1($title, button({ type: 'button', onClick: handleClick }, '🗑'))
+  return h1(DocumentTitle.style, $title, ButtonDelete({ onClick: handleClick }))
 
   function handleClick() {
     patch({ document, path: '', op: 'remove',  })
@@ -34,17 +40,20 @@ function DocumentFields({ document }) {
   return ObjectFields({ document, fields: document.schema.fields, $path })
 }
 
+ObjectFields.style = css`& {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  grid-column-gap: 1em;
+
+  & > * {
+    grid-column: span 2;
+  }
+}`
 function ObjectFields({ document, fields, $path }) {
 
   return (
     div(
-      {
-        style: {
-          display: 'grid',
-          gridTemplateColumns: 'max-content 1fr',
-          gridColumnGap: '1em',
-        }
-      },
+      ObjectFields.style,
       fields.map(field =>
         Field({ document, field, $path: $path.derive(path => `${path}/${field.name}`) })
       )
@@ -59,6 +68,12 @@ const fieldRenderers = /** @type {const} */({
   default: ObjectField,
 })
 
+Field.style = css`& {
+  display: grid;
+  grid: inherit;
+  grid-template-columns: subgrid;
+  grid-gap: inherit;
+}`
 function Field({ document, field, $path }) {
   let renderer = fieldRenderers[field.type]
   if (!renderer && 'fields' in field)
@@ -68,16 +83,7 @@ function Field({ document, field, $path }) {
 
   return (
     label(
-      {
-        style: {
-          gridColumn: 'span 2',
-
-          display: 'grid',
-          grid: 'inherit',
-          gridTemplateColumns: 'subgrid',
-          gridGap: 'inherit',
-        }
-      },
+      Field.style,
       span(field.title),
       renderer({ document, field, $path })
     )
@@ -94,6 +100,12 @@ function StringField({ document, field, $path }) {
   }
 }
 
+RichTextField.style = css`& {
+  ol, ul, li {
+    margin: revert;
+    padding: revert;
+  }
+}`
 function RichTextField({ document, field, $path }) {
   const $richTextPathname = $path.derive(path => getRichTextPathname({ document, fieldPath: path }))
 
@@ -114,8 +126,11 @@ function RichTextField({ document, field, $path }) {
 
   // This might be an interesting performance optimization if that is needed:
   // https://discuss.prosemirror.net/t/current-state-of-the-art-on-syncing-data-to-backend/5175/4
-  return renderOnValue($initialValue,
-    initialValue => RichTextEditor({ initialValue, $steps, synchronize }),
+  return renderOnValue($initialValue, initialValue =>
+    div(
+      RichTextField.style,
+      RichTextEditor({ initialValue, $steps, synchronize }),
+    )
   )
 
   function synchronize({ clientId, steps, version, value }) {
@@ -150,14 +165,28 @@ function RichTextField({ document, field, $path }) {
 
 function ObjectField({ document, field, $path }) {
   const [$expanded, setExpanded] = createSignal(true)
+
   return (
     div(
-      h2(field.title, button({ type: 'button', onClick: _ => setExpanded(x => !x) }, $expanded.derive(x => x ? '🡅' : '🡇'))),
+      ObjectTitle({ title: field.title, $expanded, onExpandClick: _ => setExpanded(x => !x) }),
       renderOnValue($expanded,
         _ => ObjectFields({ document, fields: field.fields, $path })
       )
     )
   )
+}
+
+ObjectTitle.style = css`& {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}`
+function ObjectTitle({ title, $expanded, onExpandClick }) {
+  const $expandButton = $expanded
+    .derive(x => x ? ButtonChevronUp : ButtonChevronDown)
+    .derive(Button => Button({ onClick: onExpandClick }))
+
+  return h2(ObjectTitle.style, title, $expandButton)
 }
 
 function ArrayField({ document, field, $path }) {
@@ -204,9 +233,9 @@ function ArrayItem({ $isFirst, $isLast, document, $arrayPath, $index, field }) {
   return (
     div(
       ObjectField({ document, field, $path }),
-      button({ type: 'button', disabled: $isFirst, onClick: handleUpClick }, '🡅'),
-      button({ type: 'button', disabled: $isLast, onClick: handleDownClick }, '🡇'),
-      button({ type: 'button', onClick: handleDeleteClick }, '🗑'),
+      ButtonUp({ disabled: $isFirst, onClick: handleUpClick }),
+      ButtonDown({ disabled: $isLast, onClick: handleDownClick }),
+      ButtonDelete({ onClick: handleDeleteClick }),
     )
   )
 

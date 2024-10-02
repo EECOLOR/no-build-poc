@@ -1,3 +1,24 @@
-div {
+*, *::after, *::before {
+  box-sizing: border-box;
+  margin: 0;
   padding: 0;
+}
+
+img, picture, video, canvas, svg {
+  display: block;
+  max-width: 100%;
+}
+
+p, h1, h2, h3, h4, h5, h6 {
+  overflow-wrap: break-word;
+}
+
+body {
+  min-height: 100vh;
+  line-height: 1.5;
+}
+
+:where(button) {
+  background-color: unset;
+  border: none;
 }
