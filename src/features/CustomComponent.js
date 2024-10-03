@@ -1,7 +1,8 @@
 import { raw, tags, css } from '#ui/tags.js'
-import { createSignal, derived } from '#ui/signal.js'
+import { createSignal, derived, Signal } from '#ui/signal.js'
 import { component, createContext } from '#ui/component.js'
 import { clientConfig } from '#ui/ClientConfig.js'
+import { loop } from '#ui/dynamic.js'
 
 import { initializeApp } from 'firebase/app'
 import { serverTimestamp } from 'firebase/database'
@@ -132,9 +133,7 @@ function List() {
   return (
     ul(
       li(
-        $counter.derive(counter =>
-          TestRealChild({ title: `[${counter}] Child of:` })
-        )
+        TestRealChild({ title: $counter.derive(counter =>`[${counter}] Child of:`) })
       )
     )
   )
@@ -151,13 +150,13 @@ const TestRealChild = component(({ title }) => {
 })
 
 function ArrayBasedLastFiveCounts({ $count }) {
-  const lastFiveCounts = $count.derive(
+  const $lastFiveCounts = $count.derive(
     (count, oldArray = []) => oldArray.concat(count).slice(-5)
   )
 
   return (
     p(
-      lastFiveCounts.derive(lastFiveCounts =>
+      $lastFiveCounts.derive(lastFiveCounts =>
         lastFiveCounts
           .map(count => TwoDigitCount({ count }))
           .map((x, i) =>
@@ -170,19 +169,24 @@ function ArrayBasedLastFiveCounts({ $count }) {
   )
 }
 
+/** @param {{ $count: Signal<number> }} props */
 function SlotBasedLastFiveCounts({ $count }) {
+  const $slots = $count
+    .derive(count => Math.min(count, 4))
+    .derive(length => range(length + 1))
+
   return (
     p(
-      $count
-        .derive(count => Math.min(count, 4))
-        .derive(length =>
-          range(length + 1).map(i => [
-            Boolean(i) && ' - ',
-            span(
-              $count.derive(count => TwoDigitCount({ count: count - (length - i) }))
-            )
-          ])
-        ),
+      loop(
+        $slots,
+        (i, _, slots) => `${i}-${slots.length}`,
+        (i, _, slots) => [
+          Boolean(i) && ' - ',
+          span(
+            $count.derive(count => TwoDigitCount({ count: count - (slots.length - i - 1) }))
+          )
+        ]
+      ),
       ' - ',
       FatCount({ $count })
     )

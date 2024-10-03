@@ -11,27 +11,22 @@ import { createSignal, Signal } from '#ui/signal.js'
 export function useEventSourceAsSignal(params) {
   const { events, initialValue = null } = params
 
-  if ('pathnameSignal' in params)
-    return useEventSourceAsSignalWithPathSignal(params)
+  const pathIsSignal = 'pathnameSignal' in params
 
   const [$signal, setValue] = createSignal(initialValue)
 
-  const eventSource = createEventSource(params.pathname, events, setValue)
-  useOnDestroy(() => eventSource.close())
+  const pathname = pathIsSignal ? params.pathnameSignal.get() : params.pathname
+  let eventSource = createEventSource(pathname, events, setValue)
 
-  return $signal
-}
-
-function useEventSourceAsSignalWithPathSignal({ pathnameSignal, events, initialValue = null }) {
-  const [$signal, setValue] = createSignal(initialValue)
-
-  const $eventSource = pathnameSignal.derive((pathname, previousEventSource) => {
-    if (previousEventSource) previousEventSource.close()
-    return createEventSource(pathname, events, setValue)
+  const unsubscribe = pathIsSignal && params.pathnameSignal.subscribe(pathname => {
+    eventSource.close()
+    eventSource = createEventSource(pathname, events, setValue)
   })
-  $eventSource.init()
 
-  useOnDestroy(() => $eventSource.get().close())
+  useOnDestroy(() => {
+    if (unsubscribe) unsubscribe()
+    eventSource.close()
+  })
 
   return $signal
 }

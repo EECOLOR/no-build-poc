@@ -212,16 +212,18 @@ function createSchema() {
         toDOM() {
           const contentDOM = document.createElement('p')
 
+          // TODO: should we call destroy here?
+          const { result, destroy } = render(
+            div({ style: { display: 'flex' }},
+              Item({ title: 'ONE',  backgroundColor: 'red' }),
+              Item({ title: 'TWO',  backgroundColor: 'blue' }),
+              Item({ title: raw(contentDOM),  backgroundColor: 'green' }),
+            )
+          )
           // For atom like components (that can not be directly edited) simply return the result of render
           // This is the more complex version where the content can be edited
           return {
-            dom: render(
-              div({ style: { display: 'flex' }},
-                Item({ title: 'ONE',  backgroundColor: 'red' }),
-                Item({ title: 'TWO',  backgroundColor: 'blue' }),
-                Item({ title: raw(contentDOM),  backgroundColor: 'green' }),
-              )
-            ),
+            dom: result,
             contentDOM
           }
 

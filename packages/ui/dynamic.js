@@ -1,9 +1,11 @@
 import { Signal } from './signal.js';
 
-const onDestroyCallbacks = [[]]
+const onDestroyCallbacks = []
 
 export function useOnDestroy(callback) {
-  onDestroyCallbacks[onDestroyCallbacks.length - 1].push(callback)
+  const target = onDestroyCallbacks[onDestroyCallbacks.length - 1]
+  if (!target) throw new Error(`useOnDestroy called while not capturing. If this is the result of a signal subscription, use the dynamic helper methods from.`)
+  target.push(callback)
 }
 
 export function withOnDestroyCapture(f) {
@@ -17,12 +19,12 @@ export function withOnDestroyCapture(f) {
  * @typedef {T extends Signal<infer X> ? Extract<X> : T extends Array<infer X> ? X : never} Extract
  */
 
-/** @template {Signal<Array<any>>} T */
+/** @template T */
 export class Loop {
   /**
-   * @param {T} signal
-   * @param {(value: Extract<T>, index: number) => any} getKey
-   * @param {(value: Extract<T>, index: number, items: Array<Extract<T>>) => any} renderItem
+   * @param {Signal<Array<T>>} signal
+   * @param {(value: T, index: number, items: Array<T>) => any} getKey
+   * @param {(value: T, index: number, items: Array<T>) => any} renderItem
    */
   constructor(signal, getKey, renderItem) {
     this.signal = signal
@@ -32,10 +34,10 @@ export class Loop {
 }
 
 /**
- * @template {Signal<Array<any>>} T
- * @param {T} signal
- * @param {(value: Extract<T>) => any} getKey
- * @param {(value: Extract<T>) => any} renderItem
+ * @template T
+ * @param {Signal<Array<T>>} signal
+ * @param {(value: T, index: number, items: Array<T>) => any} getKey
+ * @param {(value: T, index: number, items: Array<T>) => any} renderItem
  */
 export function loop(signal, getKey, renderItem) {
   return new Loop(signal, getKey, renderItem)

@@ -1,5 +1,5 @@
 import { Component, _setNodeContext } from '#ui/component.js'
-import { Loop, Conditional } from '#ui/dynamic.js'
+import { Loop, Conditional, withOnDestroyCapture } from '#ui/dynamic.js'
 import { Signal } from '#ui/signal.js'
 import { Raw, Tag } from '#ui/tags.js'
 
@@ -27,7 +27,7 @@ export const emptyValues = [false, undefined, null]
 /**
  * @template T
  * @param {RendererConstructor<T>} constructor
- * @returns {(tagOrComponent: Tag<any> | Component<any>) => T}
+ * @returns {(tagOrComponent: Tag<any> | Component<any>) => ({ destroy(): void, result: T })}
  */
 export function createRenderer(constructor) {
   const renderer = constructor({ renderValue })
@@ -36,11 +36,13 @@ export function createRenderer(constructor) {
 
   function render(tagOrComponent) {
     const context = {}
-    return (
+    const [result, onDestroyCallbacks] = withOnDestroyCapture(() =>
       tagOrComponent instanceof Component ? renderComponent(tagOrComponent, context) :
       tagOrComponent instanceof Tag ? renderer.renderTag(tagOrComponent, context) :
       renderValue(tagOrComponent, context)
     )
+
+    return { result, destroy() { for (const callback of onDestroyCallbacks) callback() } }
   }
 
   function renderComponent({ constructor, props, children }, context) {

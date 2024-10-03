@@ -1,5 +1,6 @@
 /* Using signals with functions as values does not work */
 
+// The class below only exists for instanceof checks
 /** @template T */
 export class Signal {
 
@@ -31,6 +32,8 @@ export function createSignal(initialValue) {
   let value = undefined
   let listeners = []
 
+  const e = new Error()
+
   const signal = {
     constructor: Signal,
 
@@ -53,6 +56,10 @@ export function createSignal(initialValue) {
 
     init() {
       getValue()
+    },
+
+    get stack() {
+      return e.stack
     },
   }
 
@@ -91,9 +98,45 @@ export function createSignal(initialValue) {
  */
 export function derived(signal, deriveValue) {
   const [newSignal, setValue] = createSignal(() => deriveValue(signal.get()))
-  // TODO: do we need to unsubscribe? yes, only be subscribed when we have listeners
-  signal.subscribe(newValue => setValue(oldValue => deriveValue(newValue, oldValue)))
-  return newSignal
+
+  let subscriptions = 0
+  let unsubscribe = null
+  const e = new Error()
+
+  const derivedSignal = {
+    constructor: Signal,
+
+    init: newSignal.init,
+    get: newSignal.get,
+    derive: f => derived(derivedSignal, f),
+
+    subscribe(callback) {
+      if (!subscriptions) connect()
+      subscriptions += 1
+      const unsubscribe = newSignal.subscribe(callback)
+
+      return () => {
+        unsubscribe()
+        subscriptions -= 1
+        if (!subscriptions) disconnect()
+      }
+    },
+
+    get stack() { return e.stack },
+  }
+
+  return derivedSignal
+
+  function connect() {
+    unsubscribe = signal.subscribe(newValue =>
+      setValue(oldValue => deriveValue(newValue, oldValue))
+    )
+  }
+
+  function disconnect() {
+    unsubscribe()
+    unsubscribe = null
+  }
 }
 
 /**

@@ -11,9 +11,9 @@ await Promise.all(
     const childrenPlaceholder = document.createComment('[childrenPlaceholder]')
     const { default: Component } = await import(info.path)
     const params = (info.props ? [info.props] : []).concat(raw(childrenPlaceholder))
-    const renderResult = render(Component(...params))
+    const rendered = render(Component(...params))
 
-    const nodeReplacements = [].concat(renderResult)
+    const nodeReplacements = [].concat(rendered.result)
 
     if (placeholderWasUsedAtIn(nodeReplacements, childrenPlaceholder))
       replacePlaceholderIn(nodeReplacements, childrenPlaceholder, nodes)

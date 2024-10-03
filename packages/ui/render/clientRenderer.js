@@ -26,12 +26,16 @@ import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
         const nodes = renderValue(value, context)
 
         const unsubscribe = signal.subscribe(newValue => {
-          const newNodes = renderValue(newValue, context)
-          const oldNodes = nodes.slice(1, -1)
+          try {
+            const newNodes = renderValue(newValue, context)
+            const oldNodes = nodes.slice(1, -1)
 
-          swapNodesInDom(marker, newNodes, oldNodes)
+            swapNodesInDom(marker, newNodes, oldNodes)
 
-          nodes.splice(1, oldNodes.length, ...newNodes)
+            nodes.splice(1, oldNodes.length, ...newNodes)
+          } catch (e) {
+            throw `Problem rendering signal:\n${e.message}\n${signal.stack}`
+          }
         })
         useOnDestroy(unsubscribe)
 
@@ -41,7 +45,7 @@ import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
         const marker = comment()
         const infoByKey = new Map()
         const nodesFromLoop = loop.signal.get().flatMap((item, i, items) => {
-          const key = loop.getKey(item, i)
+          const key = loop.getKey(item, i, items)
           return renderItem(key, item, i, items)
         })
         const nodes = [marker, ...nodesFromLoop, comment()]
@@ -50,7 +54,7 @@ import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
           const unusedKeys = new Set(infoByKey.keys())
           const oldNodes = nodes.slice(1, -1)
           const newNodes = newItems.flatMap((item, i, items) => {
-            const key = loop.getKey(item, i)
+            const key = loop.getKey(item, i, items)
             unusedKeys.delete(key)
             return infoByKey.has(key) ? infoByKey.get(key).nodes : renderItem(key, item, i, items)
           })
