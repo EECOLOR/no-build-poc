@@ -13,7 +13,30 @@ p, h1, h2, h3, h4, h5, h6 {
   overflow-wrap: break-word;
 }
 
+h1 { font-size: 1.5rem; }
+h2 { font-size: 1.1rem; }
+h3 { font-size: 1rem; }
+
+input, button, textarea, select {
+  font: inherit;
+}
+
+input, button:active {
+  border: inset 1px lightgray;
+}
+
+button {
+  border: outset 1px lightgray;
+
+}
+
+input {
+  padding-left: 0.2rem;
+  padding-right: 0.2rem;
+}
+
 body {
+  font-family: Verdana, sans-serif;
   min-height: 100vh;
   line-height: 1.5;
 }

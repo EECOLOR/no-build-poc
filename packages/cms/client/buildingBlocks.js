@@ -7,7 +7,7 @@ const { ul, li, button, a } = tags
 List.style = css`& {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.3rem;
 
   & > li {
     display: block;
@@ -32,8 +32,8 @@ export const ButtonChevronUp = createIconButton(chevronUp)
 export const ButtonChevronDown = createIconButton(chevronDown)
 export const ButtonChevronRight = createIconButton(chevronRight)
 
-export function Link({ href }, ...children) {
-  return a({ href, onClick: linkClick(href) }, ...children)
+export function Link({ href, className = undefined }, ...children) {
+  return a({ className, href, onClick: linkClick(href) }, ...children)
 }
 
 function linkClick(to) {

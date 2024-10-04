@@ -8,13 +8,21 @@ import { useCombined } from '../machinery/useCombined.js'
 import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
 import { RichTextEditor } from './richTextEditor/RichTextEditor.js'
 
-const { div, h1, h2, label, span, input, button } = tags
+const { div, h1, h2, label, span, input, button, strong } = tags
 
+DocumentForm.style = css`& {
+  min-width: 25rem;
+
+  & > :last-child {
+    margin-top: 1rem;
+  }
+}`
 export function DocumentForm({ id, $document, schemaType }) {
   const document = { id, schema: getSchema(schemaType), $value: $document }
 
   return (
     div(// TODO: use context.documentView
+      DocumentForm.style,
       DocumentTitle({ document }),
       DocumentFields({ document }),
     )
@@ -41,13 +49,9 @@ function DocumentFields({ document }) {
 }
 
 ObjectFields.style = css`& {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  grid-column-gap: 1em;
-
-  & > * {
-    grid-column: span 2;
-  }
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }`
 function ObjectFields({ document, fields, $path }) {
 
@@ -69,10 +73,8 @@ const fieldRenderers = /** @type {const} */({
 })
 
 Field.style = css`& {
-  display: grid;
-  grid: inherit;
-  grid-template-columns: subgrid;
-  grid-gap: inherit;
+  display: flex;
+  flex-direction: column;
 }`
 function Field({ document, field, $path }) {
   let renderer = fieldRenderers[field.type]
@@ -163,7 +165,20 @@ function RichTextField({ document, field, $path }) {
   }
 }
 
+ObjectField.style = css`& {
+  padding-left: 0.5rem;
+  border-left: 1px solid lightgrey;
+}`
 function ObjectField({ document, field, $path }) {
+  return (
+    div(
+      ObjectField.style,
+      Object({ document, field, $path })
+    )
+  )
+}
+
+function Object({ document, field, $path }) {
   const [$expanded, setExpanded] = createSignal(true)
 
   return (
@@ -186,15 +201,31 @@ function ObjectTitle({ title, $expanded, onExpandClick }) {
     .derive(x => x ? ButtonChevronUp : ButtonChevronDown)
     .derive(Button => Button({ onClick: onExpandClick }))
 
-  return h2(ObjectTitle.style, title, $expandButton)
+  return strong(ObjectTitle.style, title, $expandButton)
 }
 
+ArrayField.style = css`& {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-left: 0.5rem;
+  border-left: 1px solid lightgray;
+
+  .buttonContainer {
+    margin-top: 1rem;
+
+    & > button {
+      width: 100%;
+    }
+  }
+}`
 function ArrayField({ document, field, $path }) {
   const $documentAndPath = useCombined(document.$value, $path)
   const $valueFromDocument = $documentAndPath.derive(([doc, path]) => get(doc, path) || [])
 
   return (
     div(
+      ArrayField.style,
       loop(
         $valueFromDocument,
         (item, i) => item._key || i, // TODO: introduce _key to array so we do not rerender on a move
@@ -212,8 +243,17 @@ function ArrayField({ document, field, $path }) {
           })
         }
       ),
-      field.of.map(objectType =>
-        button({ type: 'button', onClick: _ => handleAdd(objectType.type) }, `Add ${objectType.title}`)
+      div({ className: 'buttonContainer'},
+        field.of.map(objectType =>
+          button({ type: 'button', onClick: _ => handleAdd(objectType.type) },
+            css`& {
+              border: 1px solid black;
+              border-radius: 5px;
+              padding: 0.2rem;
+            }`,
+            `Add ${objectType.title}`
+          )
+        )
       )
     )
   )
@@ -227,15 +267,33 @@ function ArrayField({ document, field, $path }) {
   }
 }
 
+ArrayItem.style = css`& {
+  display: flex;
+  gap: 0.5rem;
+
+  & > :nth-child(2) {
+    flex-grow: 1;
+  }
+
+  .buttonContainer {
+    align-self: flex-end;
+
+    display: flex;
+    flex-direction: column;
+  }
+}`
 function ArrayItem({ $isFirst, $isLast, document, $arrayPath, $index, field }) {
   const $arrayPathAndIndex = useCombined($arrayPath, $index)
   const $path = $arrayPathAndIndex.derive(([arrayPath, index]) => `${arrayPath}/${index}`)
   return (
     div(
-      ObjectField({ document, field, $path }),
-      ButtonUp({ disabled: $isFirst, onClick: handleUpClick }),
-      ButtonDown({ disabled: $isLast, onClick: handleDownClick }),
-      ButtonDelete({ onClick: handleDeleteClick }),
+      ArrayItem.style,
+      Object({ document, field, $path }),
+      div({ className: 'buttonContainer' },
+        ButtonUp({ disabled: $isFirst, onClick: handleUpClick }),
+        ButtonDown({ disabled: $isLast, onClick: handleDownClick }),
+        ButtonDelete({ onClick: handleDeleteClick }),
+      )
     )
   )
 
@@ -281,6 +339,7 @@ function useFieldValue({ document, $path }) {
     dirty = true
     localValue = value
 
+    // TODO: debounce
     patch({ document, path: $path.get(), value })
   }
 }

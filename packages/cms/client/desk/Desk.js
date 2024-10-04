@@ -1,19 +1,22 @@
 import { conditional, loop } from '#ui/dynamic.js'
+import { createSignal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
 import { ButtonAdd, ButtonChevronRight, Link, List } from '../buildingBlocks.js'
 import { context, getSchema } from '../context.js'
 import { DocumentForm } from '../form/DocumentForm.js'
 import { DocumentHistory } from '../history/DocumentHistory.js'
 import { $pathname, pushState } from '../machinery/history.js'
+import { useCombined } from '../machinery/useCombined.js'
 import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
 
-const { div, a, button } = tags
+const { div, input } = tags
 
 const connecting = Symbol('connecting')
 
 Desk.style = css`& {
   display: flex;
   flex-direction: column;
+  min-height: 100%;
 
   & > * {
     padding: 0.5rem;
@@ -21,6 +24,10 @@ Desk.style = css`& {
 
   & > :not(:first-child, :last-child) {
     border-bottom: 1px solid lightgray;
+  }
+
+  & > :last-child {
+    flex-grow: 1;
   }
 }`
 export function Desk({ deskStructure }) {
@@ -41,16 +48,19 @@ Panes.style = css`& {
   display: flex;
 
   & > :not(:nth-child(2)) {
-    padding-left: 0.5rem;
+    padding-left: 1rem;
+  }
+
+  & > * {
+    padding-right: 1rem;
   }
 
   & > :not(:last-child) {
-    padding-right: 0.5rem;
     max-width: 20rem;
     flex-shrink: 0;
   }
 
-  & > :not(:first-child, :last-child) {
+  & > :not(:first-child) {
     border-right: 1px solid lightgray;
   }
 }`
@@ -99,16 +109,28 @@ function ListPane({ items, path }) {
   )
 }
 
+DocumentListPane.style = css`& {
+  & > :not(:first-child, :last-child) {
+    margin-bottom: 0.5rem;
+  }
+}`
 function DocumentListPane({ schemaType, path }) {
   const $documents = useDocuments({ schemaType })
   const schema = getSchema(schemaType)
   if (!schema) throw new Error(`Could not find schema '${schemaType}'`)
 
+  const [$filter, setFilter] = createSignal('')
+  const $filteredDocuments = useCombined($documents, $filter)
+    .derive(([documents, filter]) => documents.filter(doc =>
+      schema.preview(doc).title.toLowerCase().includes(filter.toLowerCase()))
+    )
+
   return (
     div(
-      ButtonAdd({ title: `Add ${schema.title}`, onClick: handleAddClick }),
+      DocumentListPane.style,
+      DocumentListHeader({ schema, onFilterChange: handleFilterChange, onAddClick: handleAddClick }),
       List({ renderItems: renderItem =>
-        loop($documents, x => x._id + hack(x), document => // TODO: document should probably be a signal, if the id does not change, nothing will be re-rendered
+        loop($filteredDocuments, x => x._id + hack(x), document => // TODO: document should probably be a signal, if the id does not change, nothing will be re-rendered
           renderItem(
             ListItem({
               href: [context.basePath, ...path, document._id].join('/'),
@@ -120,14 +142,36 @@ function DocumentListPane({ schemaType, path }) {
     )
   )
 
-  function handleAddClick(e) {
+  function handleAddClick() {
     const newPath = `${context.basePath}/${path.concat(window.crypto.randomUUID()).join('/')}`
     pushState(null, undefined, newPath)
+  }
+
+  function handleFilterChange(value) {
+    setFilter(value)
   }
 
   function hack(document) {
     return JSON.stringify(schema.preview(document))
   }
+}
+
+DocumentListHeader.style = css`& {
+  display: flex;
+  gap: 0.5rem;
+
+  & > input {
+    flex-grow: 1;
+  }
+}`
+function DocumentListHeader({ schema, onFilterChange, onAddClick }) {
+  return (
+    div(
+      DocumentListHeader.style,
+      input({ type: 'text', onInput: e => onFilterChange(e.currentTarget.value) }),
+      ButtonAdd({ title: `Add ${schema.title}`, onClick: onAddClick }),
+    )
+  )
 }
 
 DocumentPane.style = css`& {
@@ -154,12 +198,17 @@ ListItem.style = css`& {
   justify-content: space-between;
   gap: 1rem;
 
-  &:hover {
+  &:hover, &.active {
     background-color: lightblue;
+  }
+
+  & > button {
+    border: none;
   }
 }`
 function ListItem({ href, title }) {
-  return Link({ href },
+  const $className = $pathname.derive(pathname => pathname.startsWith(href) ? 'active' : '')
+  return Link({ className: $className, href },
     ListItem.style,
     title,
     ButtonChevronRight({ disabled: true })

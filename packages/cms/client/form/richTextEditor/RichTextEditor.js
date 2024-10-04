@@ -58,7 +58,7 @@ export function RichTextEditor({ initialValue, $steps, synchronize }) {
       tryToSynchronize(view)
     },
     attributes: {
-      style: `border: inset 1px light-dark(rgb(118, 118, 118), rgb(133, 133, 133))`,
+      style: `padding: 0.2rem; border: inset 1px lightgray;`,
     },
   })
   const unsubscribe = $steps.subscribe(({ steps, clientIds }) => {
