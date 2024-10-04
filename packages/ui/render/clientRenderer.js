@@ -41,20 +41,20 @@ import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
 
         return nodes
       },
-      renderLoop(loop, context) {
+      renderDynamic(dynamic, context) {
         const marker = comment()
         const infoByKey = new Map()
-        const nodesFromLoop = loop.signal.get().flatMap((item, i, items) => {
-          const key = loop.getKey(item, i, items)
+        const nodesFromLoop = dynamic.signal.get().flatMap((item, i, items) => {
+          const key = dynamic.getKey(item, i, items)
           return renderItem(key, item, i, items)
         })
         const nodes = [marker, ...nodesFromLoop, comment()]
 
-        const unsubscribe = loop.signal.subscribe(newItems => {
+        const unsubscribe = dynamic.signal.subscribe(newItems => {
           const unusedKeys = new Set(infoByKey.keys())
           const oldNodes = nodes.slice(1, -1)
           const newNodes = newItems.flatMap((item, i, items) => {
-            const key = loop.getKey(item, i, items)
+            const key = dynamic.getKey(item, i, items)
             unusedKeys.delete(key)
             return infoByKey.has(key) ? infoByKey.get(key).nodes : renderItem(key, item, i, items)
           })
@@ -81,50 +81,10 @@ import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
 
         function renderItem(key, item, i, items) {
           const [nodes, callbacks] = withOnDestroyCapture(() => {
-            const rendered = loop.renderItem(item, i, items)
+            const rendered = dynamic.renderItem(item, i, items)
             return renderValue(rendered, context)
           })
           infoByKey.set(key, { callbacks, nodes })
-          return nodes
-        }
-      },
-      renderConditional(conditional, context) {
-        const marker = comment()
-        let onDestroyCallbacks = []
-        const nodesFromLoop = conditional.predicate(conditional.signal.get())
-          ? renderItem(conditional.signal.get())
-          : []
-        const nodes = [marker, ...nodesFromLoop, comment()]
-
-        const unsubscribe = conditional.signal.subscribe(newValue => {
-          const show = conditional.predicate(newValue)
-          const oldNodes = nodes.slice(1, -1)
-
-          if (show && oldNodes.length)
-            return
-
-          for (const callback of onDestroyCallbacks) callback()
-
-          const newNodes = show ? renderItem(newValue) : []
-
-          swapNodesInDom(marker, newNodes, oldNodes)
-
-          nodes.splice(1, oldNodes.length, ...newNodes)
-        })
-
-        useOnDestroy(() => {
-          unsubscribe()
-          for (const callback of onDestroyCallbacks) callback()
-        })
-
-        return nodes
-
-        function renderItem(item) {
-          const [nodes, callbacks] = withOnDestroyCapture(() => {
-            const rendered = conditional.renderItem(item)
-            return renderValue(rendered, context)
-          })
-          onDestroyCallbacks = callbacks
           return nodes
         }
       },

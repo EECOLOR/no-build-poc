@@ -1,3 +1,4 @@
+import { derive } from '#ui/dynamic.js'
 import { createSignal } from '#ui/signal.js'
 import { tags } from '#ui/tags.js'
 
@@ -15,7 +16,12 @@ export default function MemoryLeak() {
   return (
     div(
       h2('Toggler'),
-      $toggler.derive(on => on ? On({ $counter }) : Off({ $counter }))
+
+      // bad:
+      // $toggler.derive(on => on ? On({ $counter }) : Off({ $counter }))
+
+      // good:
+      derive($toggler, on => on ? On({ $counter }) : Off({ $counter }))
     )
   )
 }

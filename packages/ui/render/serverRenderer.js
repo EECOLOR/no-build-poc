@@ -23,14 +23,8 @@ export const render = createRenderer(
           `</${tagName}>`
         )
       },
-      renderLoop(loop, context) {
-        const value = loop.signal.get().map(loop.renderItem)
-        const result = [].concat(emptyComment(), value, emptyComment())
-        return renderValue(result, context)
-      },
-      renderConditional(conditional, context) {
-        const item = conditional.signal.get()
-        const value = conditional.predicate(item) ? conditional.renderItem(item) : []
+      renderDynamic(dynamic, context) {
+        const value = dynamic.signal.get().map(dynamic.renderItem)
         const result = [].concat(emptyComment(), value, emptyComment())
         return renderValue(result, context)
       },

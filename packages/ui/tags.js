@@ -1,6 +1,6 @@
 import { Component } from './component.js'
+import { Dynamic } from './dynamic.js'
 import { separatePropsAndChildren } from './utils.js'
-import { Loop } from './dynamic.js'
 
 export class Raw { constructor(value) { this.value = value } }
 export function raw(value) { return new Raw(value) }
@@ -37,7 +37,7 @@ export function raw(value) { return new Raw(value) }
 
 /**
  * @template T
- * @typedef {T extends (Tag<any> | Signal<any> | Component<any> | Loop<any> | Raw | string | number | boolean | null | undefined | Children<T>) ? T : never} Child
+ * @typedef {T extends (Tag<any> | Signal<any> | Component<any> | Dynamic<any> | Raw | string | number | boolean | null | undefined | Children<T>) ? T : never} Child
  */
 
 /** @template T @typedef {Array<Child<any>>} Children */

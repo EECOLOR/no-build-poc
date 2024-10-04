@@ -1,5 +1,5 @@
 import { Component, _setNodeContext } from '#ui/component.js'
-import { Loop, Conditional, withOnDestroyCapture } from '#ui/dynamic.js'
+import { Dynamic, withOnDestroyCapture } from '#ui/dynamic.js'
 import { Signal } from '#ui/signal.js'
 import { Raw, Tag } from '#ui/tags.js'
 
@@ -13,8 +13,7 @@ export const emptyValues = [false, undefined, null]
  * @typedef {{
  *   renderTag<tagName extends TagNames>(tag: Tag<tagName>, context: Context): T
  *   renderSignal<X>(signal: Signal<X>, context: Context): Array<T>
- *   renderLoop<X>(loop: Loop<X>, context: Context): Array<T>
- *   renderConditional<X>(conditional: Conditional<X>, context: Context): Array<T>
+ *   renderDynamic<X>(loop: Dynamic<X>, context: Context): Array<T>
  *   renderString(value: string): T
  * }} Renderer
  */
@@ -64,8 +63,7 @@ export function createRenderer(constructor) {
       value instanceof Tag ? [renderer.renderTag(value, context)] :
       value instanceof Component ? renderComponent(value, context) :
       value instanceof Signal ? renderer.renderSignal(value, context) :
-      value instanceof Loop ? renderer.renderLoop(value, context) :
-      value instanceof Conditional ? renderer.renderConditional(value, context) :
+      value instanceof Dynamic ? renderer.renderDynamic(value, context) :
       [renderer.renderString(String(value))]
     )
   }

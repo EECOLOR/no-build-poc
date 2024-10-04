@@ -4,7 +4,7 @@ const onDestroyCallbacks = []
 
 export function useOnDestroy(callback) {
   const target = onDestroyCallbacks[onDestroyCallbacks.length - 1]
-  if (!target) throw new Error(`useOnDestroy called while not capturing. If this is the result of a signal subscription, use the dynamic helper methods from.`)
+  if (!target) throw new Error(`useOnDestroy called while not capturing. You most likely are rendering a signal from within another signal, instead of 'signal.derive' use 'derive' or any other method form '#ui/dynamic.js'.`)
   target.push(callback)
 }
 
@@ -14,13 +14,8 @@ export function withOnDestroyCapture(f) {
   return [result, onDestroyCallbacks.pop()]
 }
 
-/**
- * @template T
- * @typedef {T extends Signal<infer X> ? Extract<X> : T extends Array<infer X> ? X : never} Extract
- */
-
 /** @template T */
-export class Loop {
+export class Dynamic {
   /**
    * @param {Signal<Array<T>>} signal
    * @param {(value: T, index: number, items: Array<T>) => any} getKey
@@ -40,23 +35,13 @@ export class Loop {
  * @param {(value: T, index: number, items: Array<T>) => any} renderItem
  */
 export function loop(signal, getKey, renderItem) {
-  return new Loop(signal, getKey, renderItem)
-}
-
-/** @template T */
-export class Conditional {
-  /**
-   * @param {Signal<T>} signal
-   * @param {(value: T) => boolean} predicate
-   * @param {(value: T) => any} renderItem
-   */
-  constructor(signal, predicate, renderItem) {
-    this.signal = signal
-    this.predicate = predicate
-    this.renderItem = renderItem
-  }
+  return new Dynamic(signal, getKey, renderItem)
 }
 
 export function conditional(signal, predicate, renderItem) {
-  return new Conditional(signal, predicate, renderItem)
+  return new Dynamic(signal.derive(x => predicate(x) ? [x] : []), predicate, renderItem)
+}
+
+export function derive(signal, renderItem) {
+  return new Dynamic(signal.derive(x => [x]), x => x, renderItem)
 }

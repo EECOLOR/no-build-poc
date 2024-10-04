@@ -24,7 +24,7 @@ export function IndexHtml({ css, importMap }) {
         ),
       ),
       body(
-        // MemoryLeak(),
+        MemoryLeak(),
         UniversalContainer1(
           'banana',
           br(), // TODO: this should be self closing
