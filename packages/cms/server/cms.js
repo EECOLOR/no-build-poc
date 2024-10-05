@@ -215,7 +215,7 @@ export function createCms({ basePath }) {
     sendUpdatedDocument(type, id, document)
     sendUpdatedDocuments(type, listDocumentsByType({ type }))
 
-    const details = getChangeDetails(oldValue, newValue, steps)
+    const details = getChangeDetails([patch], oldValue, newValue, steps)
     updateHistory(clientId, id, patch.path, details)
     sendUpdatedHistory(type, id, listHistoryById({ id }))
 
@@ -224,7 +224,7 @@ export function createCms({ basePath }) {
 
   function updateHistory(clientId, documentId, fieldPath, newDetails) {
     const timestamp = Date.now()
-    console.log({ documentId, clientId, timestamp })
+
     /** @type {any} */
     let result = database
       .prepare(`
@@ -251,6 +251,7 @@ export function createCms({ basePath }) {
           oldValue: previous.oldValue,
           newValue: newDetails.newValue,
           steps: newDetails.steps && previous.steps.concat(newDetails.steps),
+          patches: newDetails.patches && previous.patches.concat(newDetails.patches),
         }
       }
       : {
@@ -262,8 +263,8 @@ export function createCms({ basePath }) {
     if (details.type === 'string')
       details.difference = diffChars(details.oldValue || '', details.newValue)
 
-    if (details.type === 'object')
-      details.patches = getPatches(details.oldValue, details.newValue)
+    // if (details.type === 'object' && details.newValue)
+    //   details.patches = getPatches(details.oldValue, details.newValue)
 
     if (result) {
       //TODO: if the old and new value end up to be the same (or in case of an object, when there are no patches) remove the history item
@@ -289,8 +290,8 @@ export function createCms({ basePath }) {
     }
   }
 
-  function getChangeDetails(oldValue, newValue, steps = undefined) {
-    const baseDetails = { oldValue, newValue, steps }
+  function getChangeDetails(patches, oldValue, newValue, steps = undefined) {
+    const baseDetails = { patches, oldValue, newValue, steps }
     const valueForType = oldValue ?? newValue
 
     if (typeof valueForType === 'string')

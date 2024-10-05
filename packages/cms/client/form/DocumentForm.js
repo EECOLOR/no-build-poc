@@ -327,6 +327,8 @@ function useFieldValue({ document, $path }) {
   let localValue = $valueFromDocument.get()
   let dirty = false
 
+  const patchDebounced = debounce(patch, 300)
+
   // This signal only updates when it has seen the current local value
   const $value = $valueFromDocument.derive((valueFromDocument, oldValueFromDocument) => {
     if (localValue === valueFromDocument) dirty = false
@@ -339,8 +341,7 @@ function useFieldValue({ document, $path }) {
     dirty = true
     localValue = value
 
-    // TODO: debounce
-    patch({ document, path: $path.get(), value })
+    patchDebounced({ document, path: $path.get(), value })
   }
 }
 
@@ -371,4 +372,18 @@ function patch(params) {
 function get(o, path) {
   const keys = path.split('/').filter(Boolean)
   return keys.reduce((result, key) => result && result[key], o)
+}
+
+/**
+ * @template {any[]} T
+ * @param {(...args: T) => void} f
+ * @returns {(...args: T) => void}
+ */
+function debounce(f, milliseconds) {
+  let timeout = null
+
+  return function debounced(...args) {
+    clearTimeout(timeout)
+    timeout = setTimeout(() => { f(...args) }, milliseconds)
+  }
 }

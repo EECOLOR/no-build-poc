@@ -41,6 +41,7 @@ HistoryItemHeader.style = css`& {
   & > .dateAndAuthor {
     display: flex;
     justify-content: space-between;
+    gap: 1rem;
   }
 
   & > .pathAndAction {
@@ -67,9 +68,15 @@ function HistoryItemHeader({ historyItem, schema }) {
 }
 
 function Action({ details }) {
-  const { oldValue, newValue } = details
+  const { patches = [], oldValue, newValue } = details
+  const [patch] = patches.slice(-1)
+  const { op } = patch || {}
   return (
     em(
+      op === 'replace' && oldValue ? 'Updated' :
+      op === 'replace' ? 'Added' :
+      op === 'move' ? 'Moved' :
+      op === 'remove' ? 'Removed' :
       oldValue && newValue ? 'Updated' :
       oldValue ? 'Removed' :
       'Added'
@@ -102,7 +109,7 @@ function HistoryItemBody({ historyItem, schema }) {
 
 function UnsupportedTypeItem({ historyItem }) {
   return (
-    pre(css`& { max-width: 35rem; overflow: scroll; }`,
+    pre(css`& { max-width: 35rem; overflow: scroll; max-height: 20rem; }`,
       code(
         `Unsupported type ${historyItem.details.type}\n`,
         JSON.stringify(historyItem.details),
@@ -176,14 +183,25 @@ function ObjectItem({ historyItem, schema }) {
   if (details.steps)
     return itemRenderers['rich-text']({ historyItem, schema })
 
-  const isAdd = !details.oldValue
-  if (!isAdd)
-    throw new Error(`[ObjectItem] Do not know how to render history item, only support adds\n${JSON.stringify(details)}`)
+  const { patches = [] } = details
+
+  const [patch] = patches.slice(-1)
 
   const pathInfo = getPathInfo(schema, historyItem.fieldPath)
   const [{ field }] = pathInfo.slice(-1)
 
-  return `Add ${field.title}`
+  if (patch.op === 'replace' && !details.oldValue) {
+    return `Add ${field.title}`
+  } else if (patch.op === 'move') {
+    const [lastFrom] = patch.from.split('/').slice(-1)
+    const [lastPath] = patch.path.split('/').slice(-1)
+    return `Move ${field.title} from ${lastFrom} to ${lastPath}`
+  } else if (patch.op === 'remove') {
+    const [lastPath] = patch.path.split('/').slice(-1)
+    return `Removed ${field.title} at ${lastPath}`
+  } else {
+    throw new Error(`[ObjectItem] Do not know how to render history item\n${JSON.stringify(details, null, 2)}`)
+  }
 }
 
 function useDocumentHistory({ id, schemaType }) {
