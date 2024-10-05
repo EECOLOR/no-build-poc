@@ -103,10 +103,6 @@ function StringField({ document, field, $path }) {
 }
 
 RichTextField.style = css`& {
-  ol, ul, li {
-    margin: revert;
-    padding: revert;
-  }
 }`
 function RichTextField({ document, field, $path }) {
   const $richTextPathname = $path.derive(path => getRichTextPathname({ document, fieldPath: path }))

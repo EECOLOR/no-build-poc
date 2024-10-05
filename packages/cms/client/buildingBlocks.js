@@ -7,16 +7,16 @@ const { ul, li, button, a } = tags
 List.style = css`& {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: var(--gap, 0.3rem);
 
   & > li {
     display: block;
     list-style-type: none;
   }
 }`
-export function List({ renderItems }) {
+export function List({ gap = undefined, renderItems }) {
 
-  return ul(
+  return ul({ style: { ...(gap && { '--gap': gap }) } },
     List.style,
     renderItems((...args) =>
       li(...args)

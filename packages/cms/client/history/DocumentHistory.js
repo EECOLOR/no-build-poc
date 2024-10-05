@@ -1,60 +1,189 @@
 import { loop } from '#ui/dynamic.js'
-import { tags } from '#ui/tags.js'
-import { context } from '../context.js'
+import { css, tags } from '#ui/tags.js'
+import { List } from '../buildingBlocks.js'
+import { context, getPathInfo, getSchema } from '../context.js'
 import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
 
-const { div, li, span, pre, code, ol, del, ins } = tags
+const { div, span, pre, code, del, ins, date, time, em } = tags
 
+DocumentHistory.style = css`& {
+}`
 export function DocumentHistory({ id, schemaType }) {
   const $history = useDocumentHistory({ id, schemaType })
+  const schema = getSchema(schemaType)
   return (
-    ol({ reversed: true, style: { maxHeight: '100vh', overflow: 'scroll' } },
-      loop(
-        $history,
-        history => `${history.clientId} ${history.fieldPath} ${history.timestampEnd}`,
-        history => HistoryItem({ history })
+    div(
+      DocumentHistory.style,
+      List({ gap: '1rem', renderItems: renderItem =>
+        loop(
+          $history.derive(history => history.filter(x => x.details.type !== 'empty')),
+          historyItem => `${historyItem.clientId} ${historyItem.fieldPath} ${historyItem.timestampEnd}`,
+          historyItem => renderItem(HistoryItem({ historyItem, schema }))
+        )
+      })
+    )
+  )
+}
+
+HistoryItem.style = css`&{
+  padding: 0.2rem;
+}`
+function HistoryItem({ historyItem, schema }) {
+  return (
+    div(
+      HistoryItemHeader({ historyItem, schema }),
+      HistoryItemBody({ historyItem, schema }),
+    )
+  )
+}
+
+HistoryItemHeader.style = css`& {
+  & > .dateAndAuthor {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  & > .pathAndAction {
+    display: flex;
+    gap: 1ex;
+    font-size: 0.85em;
+  }
+}`
+function HistoryItemHeader({ historyItem, schema }) {
+
+  return (
+    div(
+      HistoryItemHeader.style,
+      div({ className: 'dateAndAuthor'},
+        DateTime({ timestamp: historyItem.timestampStart }),
+        Author({ clientId: historyItem.clientId }),
+      ),
+      div({ className: 'pathAndAction' },
+        Action({ details: historyItem.details }),
+        Path({ fieldPath: historyItem.fieldPath, schema }),
       )
     )
   )
 }
 
-function HistoryItem({ history }) {
-  const dateTime = new Date(history.timestampStart).toISOString()
+function Action({ details }) {
+  const { oldValue, newValue } = details
   return (
-    li(
-      div(`${dateTime} ${history.clientId}`),
-      history.details.type === 'string'
-        ? HistoryString({ difference: history.details.difference })
-        : pre(
-            code(
-              JSON.stringify({
-                oldValue: '...',
-                newValue: '...',
-                patches: history.details.patches,
-                steps: history.details.steps?.map(x => ({
-                  stepType: x.stepType,
-                  slice: JSON.stringify(x.slice)?.replaceAll('\\', '').replaceAll('"', ''),
-                  '...': '...',
-                }))
-              }, null, 2)
-            )
-          )
+    em(
+      oldValue && newValue ? 'Updated' :
+      oldValue ? 'Removed' :
+      'Added'
     )
   )
 }
 
-function HistoryString({ difference }) {
+function Path({ fieldPath, schema }) {
+  const pathInfo = getPathInfo(schema, fieldPath)
+  return (
+    div(
+      pathInfo.flatMap((fieldInfo, i) =>
+        [Boolean(i) && ' > ', fieldInfo.field?.title || `[${fieldInfo.key}]`, fieldInfo.inArray && ` at ${fieldInfo.key}`]
+      )
+    )
+  )
+}
+
+const itemRenderers = {
+  'string': StringItem,
+  'object': ObjectItem,
+  'rich-text': UnsupportedTypeItem,
+  default: UnsupportedTypeItem,
+}
+
+function HistoryItemBody({ historyItem, schema }) {
+  const renderer = itemRenderers[historyItem.details.type] || itemRenderers.default
+  return renderer({ historyItem, schema })
+}
+
+function UnsupportedTypeItem({ historyItem }) {
+  return (
+    pre(css`& { max-width: 35rem; overflow: scroll; }`,
+      code(
+        `Unsupported type ${historyItem.details.type}\n`,
+        JSON.stringify(historyItem.details),
+        JSON.stringify({
+          oldValue: '...',
+          newValue: '...',
+          patches: historyItem.details.patches,
+          steps: historyItem.details.steps?.map(x => ({
+            stepType: x.stepType,
+            slice: JSON.stringify(x.slice)?.replaceAll('\\', '').replaceAll('"', ''),
+            '...': '...',
+          }))
+        }, null, 2)
+      )
+    )
+  )
+}
+
+DateTime.style = css`& {
+  & > date {
+    margin-right: 0.5rem;
+  }
+}`
+function DateTime({ timestamp }) {
+  const [dateString, timeString] = new Date(timestamp).toISOString().split('T')
+  return (
+    span(
+      DateTime.style,
+      date(dateString),
+      time(timeString.slice(0, 5)),
+    )
+  )
+}
+
+Author.style = css`&{
+  display: inline-block;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 1.5rem;
+  background-color: var(--color);
+}`
+function Author({ clientId }) {
+  return span({ style: { '--color': `#${clientId.slice(0, 6)}` }, title: clientId },
+    Author.style,
+  )
+}
+
+StringItem.style = css`& {
+  & > ins { background-color: lightgreen; }
+  & > del { background-color: lightcoral; }
+}`
+function StringItem({ historyItem }) {
+  const { difference } = historyItem.details
   const merged = mergeChanges(difference)
 
   return (
     span(
+      StringItem.style,
       merged.map(x =>
-        x.added ? ins({ style: { backgroundColor: 'lightgreen' } },x.value) :
-        x.removed? del({ style: { backgroundColor: 'lightcoral' } }, x.value) :
+        x.added ? ins(x.value) :
+        x.removed ? del(x.value) :
         x.value
       )
     )
   )
+}
+
+function ObjectItem({ historyItem, schema }) {
+  const { details } = historyItem
+
+  if (details.steps)
+    return itemRenderers['rich-text']({ historyItem, schema })
+
+  const isAdd = !details.oldValue
+  if (!isAdd)
+    throw new Error(`[ObjectItem] Do not know how to render history item, only support adds\n${JSON.stringify(details)}`)
+
+  const pathInfo = getPathInfo(schema, historyItem.fieldPath)
+  const [{ field }] = pathInfo.slice(-1)
+
+  return `Add ${field.title}`
 }
 
 function useDocumentHistory({ id, schemaType }) {

@@ -16,12 +16,18 @@ export function raw(value) { return new Raw(value) }
 
 /**
  * @template {object} T
- * @typedef {{ [key in keyof T]: (T[key] | Signal<T[key]>)}} AllowSignalValue
+ * @template {keyof T} key
+ * @typedef {key extends 'style' ? (T[key] & { [k: `--${string}`]: string }) : T[key]} AllowCustomPropertiesInStyles
+ */
+
+/**
+ * @template {object} T
+ * @typedef {{ [key in keyof T]: (AllowCustomPropertiesInStyles<T, key> | Signal<T[key]>)}} AllowSignalValueAndCustomProperty
  */
 
 /**
  * @template {TagNames} tagName
- * @typedef {AllowSignalValue<
+ * @typedef {AllowSignalValueAndCustomProperty<
  *   Omit<JSX.IntrinsicElements[tagName], ForbiddenJsxProperties | ExcludeTagSpecific<tagName>>
  * >} Attributes
  */

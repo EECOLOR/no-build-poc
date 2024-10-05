@@ -90,14 +90,15 @@ import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
       },
       renderTag({ tagName, attributes, children }, context) {
         const element = document.createElement(tagName)
+        const subscriptions = []
 
         if (attributes)
           for (const [k, v] of Object.entries(attributes)) {
             if (typeof k !== 'string') return
 
             if (k.startsWith('on')) element[k.toLowerCase()] = v
-            else if (v instanceof Signal) bindSignalToAttribute(element, k, v)
-            else if (k === 'style') Object.assign(element.style, v)
+            else if (v instanceof Signal) subscriptions.push(bindSignalToAttribute(element, k, v))
+            else if (k === 'style') applyStyles(element.style, v)
             else setAttributeOrProperty(element, k, v)
           }
 
@@ -109,11 +110,23 @@ import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
           else element.appendChild(node)
         }
 
+        useOnDestroy(() => {
+          for (const unsubscribe of subscriptions) unsubscribe()
+        })
+
         return element
       }
     }
   }
 )
+
+function applyStyles(style, styles) {
+  for (const [k, v] of Object.entries(styles)) {
+    if (typeof k !== 'string') continue
+    if (k.startsWith('--')) style.setProperty(k, v)
+    else style[k] = v
+  }
+}
 
 function isTemplateTag(tagName) {
   return tagName === 'template'
@@ -145,6 +158,8 @@ function bindSignalToAttribute(element, attribute, signal) {
       setAttributeOrProperty(element, attribute, value)
     })
   })
+
+  return unsubscribe
 }
 
 function swapNodesInDom(marker, newNodes, oldNodes) {

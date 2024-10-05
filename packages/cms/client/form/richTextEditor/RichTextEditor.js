@@ -8,7 +8,7 @@ import { baseKeymap, toggleMark, chainCommands, lift } from 'prosemirror-command
 import { wrapInList, liftListItem, sinkListItem, splitListItem } from 'prosemirror-schema-list'
 import * as collab from 'prosemirror-collab'
 
-import { raw, tags } from '#ui/tags.js'
+import { css, raw, tags } from '#ui/tags.js'
 import { Signal } from '#ui/signal.js'
 import { useOnDestroy } from '#ui/dynamic.js'
 import { render } from '#ui/render/clientRenderer.js'
@@ -24,6 +24,19 @@ const schema = createSchema()
  *   abort(reason?: string): void,
  * }} Synchronize
  */
+
+RichTextEditor.style = css`
+  .ProseMirror {
+    padding: 0.2rem;
+    border: inset 1px lightgray;
+    min-height: 10rem;
+
+    & ol, ul, li {
+      margin: revert;
+      padding: revert;
+    }
+  }
+`
 
 /**
  * @param {{
@@ -57,9 +70,6 @@ export function RichTextEditor({ initialValue, $steps, synchronize }) {
       //   })
       tryToSynchronize(view)
     },
-    attributes: {
-      style: `padding: 0.2rem; border: inset 1px lightgray;`,
-    },
   })
   const unsubscribe = $steps.subscribe(({ steps, clientIds }) => {
     view.dispatch(
@@ -72,7 +82,12 @@ export function RichTextEditor({ initialValue, $steps, synchronize }) {
     view.destroy()
   })
 
-  return raw(view.dom)
+  return (
+    div(
+      RichTextEditor.style,
+      raw(view.dom),
+    )
+  )
 }
 
 // TODO: synchronize is probbaly a bad name

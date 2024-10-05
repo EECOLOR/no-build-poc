@@ -2,7 +2,7 @@ import { raw, tags, css } from '#ui/tags.js'
 import { createSignal, derived, Signal } from '#ui/signal.js'
 import { component, createContext } from '#ui/component.js'
 import { clientConfig } from '#ui/ClientConfig.js'
-import { loop } from '#ui/dynamic.js'
+import { derive, loop } from '#ui/dynamic.js'
 
 import { initializeApp } from 'firebase/app'
 import { serverTimestamp } from 'firebase/database'
@@ -156,7 +156,7 @@ function ArrayBasedLastFiveCounts({ $count }) {
 
   return (
     p(
-      $lastFiveCounts.derive(lastFiveCounts =>
+      derive($lastFiveCounts, lastFiveCounts =>
         lastFiveCounts
           .map(count => TwoDigitCount({ count }))
           .map((x, i) =>

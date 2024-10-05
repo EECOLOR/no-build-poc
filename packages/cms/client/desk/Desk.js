@@ -176,6 +176,7 @@ function DocumentListHeader({ schema, onFilterChange, onAddClick }) {
 
 DocumentPane.style = css`& {
   display: flex;
+  gap: 1rem;
 }`
 function DocumentPane({ id, schemaType }) {
   const $document = useDocument({ id, schemaType })
