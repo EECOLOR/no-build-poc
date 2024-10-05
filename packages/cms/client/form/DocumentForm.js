@@ -1,4 +1,4 @@
-import { loop } from '#ui/dynamic.js'
+import { derive, loop } from '#ui/dynamic.js'
 import { createSignal } from '#ui/signal.js'
 import { tags, css } from '#ui/tags.js'
 import { ButtonChevronDown, ButtonChevronUp, ButtonDelete, ButtonDown, ButtonUp } from '../buildingBlocks.js'
@@ -193,11 +193,15 @@ ObjectTitle.style = css`& {
   align-items: center;
 }`
 function ObjectTitle({ title, $expanded, onExpandClick }) {
-  const $expandButton = $expanded
-    .derive(x => x ? ButtonChevronUp : ButtonChevronDown)
-    .derive(Button => Button({ onClick: onExpandClick }))
+  const $Button = $expanded.derive(x => x ? ButtonChevronUp : ButtonChevronDown)
 
-  return strong(ObjectTitle.style, title, $expandButton)
+  return strong(
+    ObjectTitle.style,
+    title,
+    derive($Button, Button =>
+      Button({ onClick: onExpandClick })
+    )
+  )
 }
 
 ArrayField.style = css`& {
