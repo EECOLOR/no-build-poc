@@ -7,17 +7,13 @@
   "imports": {
     "#config": "./packages/config/index.js",
     "#server": "./packages/server/index.js",
-    "#server/*": "./packages/server/*",
-    "#dependency-analysis/*": "./packages/dependency-analysis/*",
-    "#import-universal/*": "./packages/import-universal/*",
     "#import-root-slash/*": "./packages/import-root-slash/*",
-    "#import-css/*": "./packages/import-css/*",
-    "#import-client-only/*": "./packages/import-client-only/*",
-    "#browser-code-analyser": "./packages/browser-code-analyser/index.js",
+    "#import-browser/*": "./packages/import-browser/*",
+    "#islands": "./packages/islands/index.js",
+    "#islands/*": "./packages/islands/*",
     "#utils": "./packages/utils/index.js",
     "#utils/*": "./packages/utils/*",
     "#ui/*": "./packages/ui/*",
-    "#routing/*": "./packages/routing/*",
     "#cms/*": "./packages/cms/*"
   },
   "dependencies": {
@@ -36,7 +32,6 @@
   },
   "devDependencies": {
     "@types/diff": "^5.2.2",
-    "@types/node": "^22.5.5",
-    "esbuild": "^0.21.5"
+    "@types/node": "^22.5.5"
   }
 }

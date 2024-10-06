@@ -1,4 +1,4 @@
-import { arrowDown, arrowUp, chevronDown, chevronRight, chevronUp, plus, trash } from '#cms/icons.js'
+import { arrowDown, arrowUp, chevronDown, chevronRight, chevronUp, plus, trash } from '#cms/client/icons.js'
 import { tags, css, Tag } from '#ui/tags.js'
 import { pushState } from './machinery/history.js'
 
