@@ -11,6 +11,7 @@ export function createCms({ basePath, storagePath }) {
   const apiPath = `${basePath}/api/`
   const documentListeners = {}
   const richTextInfo = {}
+  const imageListeners = {}
   const database = createDatabase(path.join(storagePath, './cms.db'))
 
   return {
@@ -46,13 +47,47 @@ export function createCms({ basePath, storagePath }) {
   function handleImages(req, res, pathSegments, searchParams) {
     const [filename, feature] = pathSegments
 
-    if (req.method === 'GET')
-      return handleGetImage(req, res, { filename, searchParams })
+    if (req.method === 'GET') {
+      if (filename && feature === 'metadata')
+        return handleGetImageMetadata(req, res, { filename })
+      else
+        return filename
+          ? handleGetImage(req, res, { filename, searchParams })
+          : handleListImages(req, res)
+    }
 
     if (req.method === 'POST')
-      return handleFileUpload(req, res, { searchParams })
+      return handlePostImage(req, res, { searchParams })
 
     return false
+  }
+
+  /**
+   * @param {import('node:http').IncomingMessage} req
+   * @param {import('node:http').ServerResponse} res
+   */
+  function handleGetImageMetadata(req, res, { filename }) {
+    const target = getOrCreate(newSet, imageListeners, 'metadata', filename)
+    addListener(res, target)
+    startEventStream(res)
+
+    const metadata = getImageMetadataByFilename(filename)
+    sendEvent(res, 'metadata', metadata)
+    return true
+  }
+
+  /**
+   * @param {import('node:http').IncomingMessage} req
+   * @param {import('node:http').ServerResponse} res
+   */
+  function handleListImages(req, res) {
+    const target = getOrCreate(newSet, imageListeners, 'list')
+    addListener(res, target)
+    startEventStream(res)
+
+    const images = listImages()
+    sendEvent(res, 'images', images)
+    return true
   }
 
   /**
@@ -75,7 +110,7 @@ export function createCms({ basePath, storagePath }) {
    * @param {import('node:http').IncomingMessage} req
    * @param {import('node:http').ServerResponse} res
    */
-  function handleFileUpload(req, res, { searchParams }) {
+  function handlePostImage(req, res, { searchParams }) {
     console.log(req.headers['content-type'], searchParams)
 
     withRequestBufferBody(req, async (buffer, e) => {
@@ -106,6 +141,9 @@ export function createCms({ basePath, storagePath }) {
         .run({ filename: fileInfo.filename, metadata: JSON.stringify(fileInfo.metadata) })
 
       respondJson(res, 200, fileInfo)
+
+      sendUpdatedImageMetadata(fileInfo.filename, fileInfo.metadata)
+      sendUpdatedImages(listImages())
     })
 
     return true
@@ -410,6 +448,22 @@ export function createCms({ basePath, storagePath }) {
     }
   }
 
+  function sendUpdatedImages(images) {
+    const subscriptions = imageListeners.list
+    if (!subscriptions) return
+    for (const res of subscriptions) {
+      sendEvent(res, 'images', images)
+    }
+  }
+
+  function sendUpdatedImageMetadata(filename, metadata) {
+    const subscriptions = imageListeners.metadata?.[filename]
+    if (!subscriptions) return
+    for (const res of subscriptions) {
+      sendEvent(res, 'metadata', metadata)
+    }
+  }
+
   function getById({ id }) {
     const result = database
       .prepare(`SELECT * FROM documents WHERE id = :id`)
@@ -460,6 +514,24 @@ export function createCms({ basePath, storagePath }) {
       timestampEnd: x.timestampEnd,
       details: JSON.parse(x.details),
     }))
+  }
+  function listImages() {
+    /** @type {any} */
+    const result = database
+      .prepare(`SELECT * FROM images`)
+      .all()
+    return result.map(x => ({ ...x, metadata: JSON.parse(x.metadata) }))
+  }
+  function getImageMetadataByFilename(filename) {
+    const result = database
+      .prepare(`SELECT * FROM images WHERE filename = :filename`)
+      .get({ filename })
+
+    if (!result)
+      return null
+
+    const { metadata } = result
+    return JSON.parse(metadata)
   }
 }
 

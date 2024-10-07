@@ -162,7 +162,7 @@ function ObjectField({ document, field, $path }) {
 function ImageField({ document, field, $path }) {
   const [$value, setValue] = useFieldValue({
     document, $path, initialValue: null,
-    compareValues: (local, document) => local.filename === document.filename
+    compareValues: (local, document) => local?.filename === document?.filename
   })
 
   return (

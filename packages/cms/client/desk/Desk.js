@@ -10,7 +10,7 @@ import { renderOnValue } from '../machinery/renderOnValue.js'
 import { useCombined } from '../machinery/useCombined.js'
 import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
 
-const { div, input, h1 } = tags
+const { div, input, h1, img, pre, code } = tags
 
 const connecting = Symbol('connecting')
 
@@ -50,7 +50,7 @@ Panes.style = css`& {
   height: 100%;
   min-height: 0; /* display: flex sets it to auto */
 
-  & > :not(:last-child) {
+  & > .list {
     max-width: 20rem;
     flex-shrink: 0;
   }
@@ -83,18 +83,19 @@ function Pane({ pane, path }) {
     type === 'list' ? ListPane({ items: pane.items, path }) :
     type === 'documentList' ? DocumentListPane({ schemaType: pane.schemaType, path }) :
     type === 'document' ? DocumentPane({ id: pane.id, schemaType: pane.schemaType }) :
+    type === 'images' ? ImagesPane({ path }) :
+    type === 'image' ? ImagePane({ id: pane.id, path }) :
     `Unknown pane type '${type}'`
   )
 }
 
 ListPane.style = css`& {
   height: 100%;
-  overflow-y: auto;
   padding: 0.5rem;
 }`
 function ListPane({ items, path }) {
   return (
-    div(
+    div({ className: 'list' },
       ListPane.style,
       List({ scrollBarPadding: '0.5rem', renderItems: renderItem =>
         items.map(item =>
@@ -136,7 +137,7 @@ function DocumentListPane({ schemaType, path }) {
     )
 
   return (
-    div(
+    div({ className: 'list' },
       DocumentListPane.style,
       DocumentListHeader({ schema, onFilterChange: handleFilterChange, onAddClick: handleAddClick }),
       List({ scrollBarPadding: '0.5rem', renderItems: renderItem =>
@@ -221,6 +222,92 @@ function DocumentPane({ id, schemaType }) {
   )
 }
 
+ImagesPane.style = css`& {
+  height: 100%;
+  padding: 0.5rem;
+
+  & > * {
+    height: 100%;
+  }
+}`
+function ImagesPane({ path }) {
+  const $images = useImages()
+
+  return (
+    div({ className: 'list' },
+      ImagesPane.style,
+      List({ scrollBarPadding: '0.5rem', renderItems: renderItem =>
+        loop(
+          $images,
+          image => image.filename,
+          image => renderItem(ImageItem({ image, path }))
+        )
+      })
+    )
+  )
+}
+
+function ImageItem({ image, path }) {
+  return (
+    ListItem({
+      href: [context.basePath, ...path, image.filename].join('/'),
+      title: div(
+        css`& {
+          max-height: 5rem;
+          width: 5rem;
+          padding: 1rem;
+
+          & > img {
+            max-height: 100%;
+          }
+        }`,
+        img({ src: `${context.apiPath}/images/${image.filename}` }),
+      )
+     })
+  )
+}
+
+ImagePane.style = css`& {
+  padding: 0.5rem;
+
+  & > * {
+    height: 100%;
+  }
+}`
+function ImagePane({ id, path }) {
+  const $metadata = useImageMetadata({ id })
+  return (
+    div(
+      ImagePane.style,
+      Scrollable({ scrollBarPadding: '0.5rem' },
+        HotspotAndTrim({ id }),
+        pre(code($metadata.derive(metadata => JSON.stringify(metadata, null, 2)))),
+      )
+    )
+  )
+}
+
+HotspotAndTrim.style = css`& {
+  display: grid;
+  grid-template-columns: 1fr;
+
+  & > * {
+    grid-row-start: 1;
+    grid-column-start: 1;
+  }
+}`
+function HotspotAndTrim({ id }) {
+  return (
+    div(
+      HotspotAndTrim.style,
+      img({ src: `${context.apiPath}/images/${id}` }),
+      div(
+        css`& { width: 100%; height: 100%; }`
+      )
+    )
+  )
+}
+
 DocumentHeader.style = css`& {
   display: flex;
   justify-content: space-between;
@@ -291,6 +378,21 @@ function useDocuments({ schemaType }) {
   }).derive(x => x?.data || [])
 }
 
+function useImages() {
+  return useEventSourceAsSignal({
+    pathname: `${context.apiPath}/images`,
+    events: ['images'],
+  }).derive(x => x?.data || [])
+}
+
+function useImageMetadata({ id }) {
+  return useEventSourceAsSignal({
+    pathname: `${context.apiPath}/images/${id}/metadata`,
+    events: ['metadata'],
+    initialValue: connecting,
+  }).derive(x => typeof x === 'symbol' ? x : x && x.data)
+}
+
 /** @returns {Array<{ pane: any, path: Array<string> }>} */
 function resolvePanes(pane, pathSegments, path = []) {
   if (!pathSegments.length) return [{ pane, path }]
@@ -311,6 +413,16 @@ function resolvePanes(pane, pathSegments, path = []) {
       { pane, path },
       {
         pane: { type: 'document', id: nextPathSegment, schemaType: pane.schemaType },
+        path: path.concat(nextPathSegment),
+      }
+    ]
+  }
+
+  if (pane.type === 'images') {
+    return [
+      { pane, path },
+      {
+        pane: { type: 'image', id: nextPathSegment },
         path: path.concat(nextPathSegment),
       }
     ]

@@ -10,6 +10,9 @@ export class Signal {
   /** @param {(value: T, oldValue: T) => void} callback @returns {() => void} */
   subscribe(callback){ return null }
 
+  /** @param {(value: T, oldValue: T) => void} callback @returns {() => void} */
+  subscribeDirect(callback){ return null }
+
   /** @template X @param {(value: T, previous?: X) => X} f @returns {Signal<X>} */
   derive(f) { return null }
 
@@ -30,7 +33,8 @@ Object.defineProperty(Signal, Symbol.hasInstance, { value: o => o.constructor ==
 export function createSignal(initialValue) {
   let isInitialized = false
   let value = undefined
-  let listeners = []
+  const listeners = []
+  const directListeners = []
 
   const e = new Error()
 
@@ -42,12 +46,11 @@ export function createSignal(initialValue) {
     },
 
     subscribe(callback) {
-      listeners.push(callback)
-      return function unsubscribe() {
-        const index = listeners.indexOf(callback)
-        if (index < 0) return
-        listeners.splice(index, 1)
-      }
+      return addListener(callback, listeners)
+    },
+
+    subscribeDirect(callback) {
+      return addListener(callback, directListeners)
     },
 
     derive(f) {
@@ -74,6 +77,10 @@ export function createSignal(initialValue) {
       if (newValue === oldValue) return
       value = newValue
 
+      for (const callback of directListeners) {
+        callback(value, oldValue)
+      }
+
       for (const callback of listeners) {
         setTimeout(() => { callback(value, oldValue) }, 0)
       }
@@ -87,6 +94,15 @@ export function createSignal(initialValue) {
     }
 
     return value
+  }
+
+  function addListener(callback, target) {
+    target.push(callback)
+    return function unsubscribe() {
+      const index = target.indexOf(callback)
+      if (index < 0) return
+      target.splice(index, 1)
+    }
   }
 }
 
@@ -111,15 +127,10 @@ export function derived(signal, deriveValue) {
     derive: f => derived(derivedSignal, f),
 
     subscribe(callback) {
-      if (!subscriptions) connect()
-      subscriptions += 1
-      const unsubscribe = newSignal.subscribe(callback)
-
-      return () => {
-        unsubscribe()
-        subscriptions -= 1
-        if (!subscriptions) disconnect()
-      }
+      return addSubscription(callback, 'subscribe')
+    },
+    subscribeDirect(callback) {
+      return addSubscription(callback, 'subscribeDirect')
     },
 
     get stack() { return e.stack },
@@ -128,7 +139,7 @@ export function derived(signal, deriveValue) {
   return derivedSignal
 
   function connect() {
-    unsubscribe = signal.subscribe(newValue =>
+    unsubscribe = signal.subscribeDirect(newValue =>
       setValue(oldValue => deriveValue(newValue, oldValue))
     )
   }
@@ -136,6 +147,18 @@ export function derived(signal, deriveValue) {
   function disconnect() {
     unsubscribe()
     unsubscribe = null
+  }
+
+  function addSubscription(callback, method) {
+    if (!subscriptions) connect()
+    subscriptions += 1
+    const unsubscribe = newSignal[method](callback)
+
+    return () => {
+      unsubscribe()
+      subscriptions -= 1
+      if (!subscriptions) disconnect()
+    }
   }
 }
 
