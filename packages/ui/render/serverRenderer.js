@@ -42,6 +42,7 @@ function renderServerAttributes(attributes) {
       if (k.startsWith('on')) return []
       if (k === 'className') k = 'class'
       if (k === 'style') v = renderStyles(v)
+      if (k === 'ref') return []
       const value = v instanceof Signal ? v.get() : v
       return `${k}="${escapeHtml(String(value))}"`
     })

@@ -7,6 +7,12 @@ import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
 const { div, span, pre, code, del, ins, date, time, em } = tags
 
 DocumentHistory.style = css`& {
+  height: 100%;
+  width: 20rem;
+
+  & > * {
+    height: 100%;
+  }
 }`
 export function DocumentHistory({ id, schemaType }) {
   const $history = useDocumentHistory({ id, schemaType })
@@ -14,7 +20,7 @@ export function DocumentHistory({ id, schemaType }) {
   return (
     div(
       DocumentHistory.style,
-      List({ gap: '1rem', renderItems: renderItem =>
+      List({ gap: '1rem', scrollBarPadding: '0.5rem', renderItems: renderItem =>
         loop(
           $history.derive(history => history.filter(x => x.details.type !== 'empty')),
           historyItem => `${historyItem.clientId} ${historyItem.fieldPath} ${historyItem.timestampEnd}`,

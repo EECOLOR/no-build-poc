@@ -99,6 +99,7 @@ import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
             if (k.startsWith('on')) element[k.toLowerCase()] = v
             else if (v instanceof Signal) subscriptions.push(bindSignalToAttribute(element, k, v))
             else if (k === 'style') applyStyles(element.style, v)
+            else if (k === 'ref') v(element)
             else setAttributeOrProperty(element, k, v)
           }
 

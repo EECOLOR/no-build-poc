@@ -1,12 +1,14 @@
-import { arrowDown, arrowUp, chevronDown, chevronRight, chevronUp, plus, trash } from '#cms/client/icons.js'
+import { arrowDown, arrowUp, chevronDown, chevronLeft, chevronRight, chevronUp, plus, trash } from '#cms/client/icons.js'
 import { tags, css, Tag } from '#ui/tags.js'
 import { pushState } from './machinery/history.js'
+import { useHasScrollbar } from './machinery/useHasScrollbar.js'
 
-const { ul, li, button, a } = tags
+const { ul, li, button, a, div } = tags
 
 List.style = css`& {
   display: flex;
   flex-direction: column;
+  min-height: 0;
   gap: var(--gap, 0.3rem);
 
   & > li {
@@ -14,12 +16,37 @@ List.style = css`& {
     list-style-type: none;
   }
 }`
-export function List({ gap = undefined, renderItems }) {
+export function List({ gap = undefined, scrollBarPadding, renderItems }) {
 
-  return ul({ style: { ...(gap && { '--gap': gap }) } },
-    List.style,
-    renderItems((...args) =>
-      li(...args)
+  return Scrollable({ scrollBarPadding },
+    ul({ style: { ...(gap && { '--gap': gap }) } },
+      List.style,
+      renderItems((...args) =>
+        li(...args)
+      )
+    )
+  )
+}
+
+Scrollable.styles = css`& {
+  overflow-y: auto;
+
+  &.hasScrollbar {
+    padding-right: var(--scrollBarPadding);
+  }
+}`
+export function Scrollable({ scrollBarPadding }, ...children) {
+  const { ref, $hasScrollbar } = useHasScrollbar()
+
+  return (
+    div(
+      {
+        ref,
+        className: $hasScrollbar.derive(hasScrollbar => hasScrollbar ? 'hasScrollbar' : ''),
+        style: { ...(scrollBarPadding && { '--scrollBarPadding': scrollBarPadding }) }
+      },
+      Scrollable.styles,
+      ...children,
     )
   )
 }
@@ -31,6 +58,7 @@ export const ButtonDelete = createIconButton(trash)
 export const ButtonChevronUp = createIconButton(chevronUp)
 export const ButtonChevronDown = createIconButton(chevronDown)
 export const ButtonChevronRight = createIconButton(chevronRight)
+export const ButtonChevronLeft = createIconButton(chevronLeft)
 
 export function Link({ href, className = undefined }, ...children) {
   return a({ className, href, onClick: linkClick(href) }, ...children)

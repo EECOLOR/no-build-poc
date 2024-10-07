@@ -8,7 +8,7 @@ import { useCombined } from '../machinery/useCombined.js'
 import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
 import { RichTextEditor } from './richTextEditor/RichTextEditor.js'
 
-const { div, h1, h2, label, span, input, button, strong } = tags
+const { div, h1, label, span, input, button, strong } = tags
 
 DocumentForm.style = css`& {
   min-width: 25rem;
@@ -17,30 +17,13 @@ DocumentForm.style = css`& {
     margin-top: 1rem;
   }
 }`
-export function DocumentForm({ id, $document, schemaType }) {
-  const document = { id, schema: getSchema(schemaType), $value: $document }
-
+export function DocumentForm({ document }) {
   return (
     div(// TODO: use context.documentView
       DocumentForm.style,
-      DocumentTitle({ document }),
       DocumentFields({ document }),
     )
   )
-}
-
-DocumentTitle.style = css`& {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}`
-function DocumentTitle({ document }) {
-  const $title = document.$value.derive(doc => document.schema.preview(doc).title)
-  return h1(DocumentTitle.style, $title, ButtonDelete({ onClick: handleClick }))
-
-  function handleClick() {
-    patch({ document, path: '', op: 'remove',  })
-  }
 }
 
 function DocumentFields({ document }) {
@@ -352,7 +335,7 @@ function useFieldValue({ document, $path }) {
  *   { op: 'remove', path: string }
  * )} params
  */
-function patch(params) {
+export function patch(params) {
   const { document } = params
   const { op = 'replace', path, value, from } = /** @type {typeof params & { value?: any, from?: any }} */ (params)
   // TODO: add retries if the versions do not match

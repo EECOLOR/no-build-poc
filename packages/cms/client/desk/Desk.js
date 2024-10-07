@@ -1,22 +1,23 @@
-import { conditional, loop } from '#ui/dynamic.js'
+import { conditional, derive, loop } from '#ui/dynamic.js'
 import { createSignal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
-import { ButtonAdd, ButtonChevronRight, Link, List } from '../buildingBlocks.js'
+import { ButtonAdd, ButtonChevronLeft, ButtonChevronRight, ButtonDelete, Link, List, Scrollable } from '../buildingBlocks.js'
 import { context, getSchema } from '../context.js'
-import { DocumentForm } from '../form/DocumentForm.js'
+import { DocumentForm, patch } from '../form/DocumentForm.js'
 import { DocumentHistory } from '../history/DocumentHistory.js'
 import { $pathname, pushState } from '../machinery/history.js'
+import { renderOnValue } from '../machinery/renderOnValue.js'
 import { useCombined } from '../machinery/useCombined.js'
 import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
 
-const { div, input } = tags
+const { div, input, h1 } = tags
 
 const connecting = Symbol('connecting')
 
 Desk.style = css`& {
   display: flex;
   flex-direction: column;
-  min-height: 100%;
+  height: 100%;
 
   & > * {
     padding: 0.5rem;
@@ -41,19 +42,13 @@ export function Desk({ deskStructure }) {
 }
 
 function DeskHeader() {
-  return div('CMS')
+  return div(div(css`& { padding: 0.5rem; }`, 'CMS'))
 }
 
 Panes.style = css`& {
   display: flex;
-
-  & > :not(:nth-child(2)) {
-    padding-left: 1rem;
-  }
-
-  & > * {
-    padding-right: 1rem;
-  }
+  height: 100%;
+  min-height: 0; /* display: flex sets it to auto */
 
   & > :not(:last-child) {
     max-width: 20rem;
@@ -92,10 +87,16 @@ function Pane({ pane, path }) {
   )
 }
 
+ListPane.style = css`& {
+  height: 100%;
+  overflow-y: auto;
+  padding: 0.5rem;
+}`
 function ListPane({ items, path }) {
   return (
     div(
-      List({ renderItems: renderItem =>
+      ListPane.style,
+      List({ scrollBarPadding: '0.5rem', renderItems: renderItem =>
         items.map(item =>
           renderItem(
             ListItem({
@@ -110,8 +111,17 @@ function ListPane({ items, path }) {
 }
 
 DocumentListPane.style = css`& {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0.5rem;
+
   & > :not(:first-child, :last-child) {
     margin-bottom: 0.5rem;
+  }
+
+  & > :last-child {
+    flex-grow: 1;
   }
 }`
 function DocumentListPane({ schemaType, path }) {
@@ -129,7 +139,7 @@ function DocumentListPane({ schemaType, path }) {
     div(
       DocumentListPane.style,
       DocumentListHeader({ schema, onFilterChange: handleFilterChange, onAddClick: handleAddClick }),
-      List({ renderItems: renderItem =>
+      List({ scrollBarPadding: '0.5rem', renderItems: renderItem =>
         loop($filteredDocuments, x => x._id + hack(x), document => // TODO: document should probably be a signal, if the id does not change, nothing will be re-rendered
           renderItem(
             ListItem({
@@ -176,20 +186,70 @@ function DocumentListHeader({ schema, onFilterChange, onAddClick }) {
 
 DocumentPane.style = css`& {
   display: flex;
+  flex-direction: column;
   gap: 1rem;
+  padding: 0.5rem;
+
+  & > div {
+    display: flex;
+    min-height: 0;
+    gap: 1rem;
+    flex-grow: 1;
+
+  }
 }`
 function DocumentPane({ id, schemaType }) {
   const $document = useDocument({ id, schemaType })
+  const document = { id, schema: getSchema(schemaType), $value: $document }
+  const [$showHistory, setShowHistory] = createSignal(false)
 
   return (
     div(
       DocumentPane.style,
       conditional($document, doc => doc !== connecting, _ => [
-        DocumentForm({ id, $document, schemaType }),
-        DocumentHistory({ id, schemaType }),
+        DocumentHeader({ document, $showHistory, onShowHistoryClick: _ => setShowHistory(x => !x) }),
+        div(
+          Scrollable({ scrollBarPadding: '0.5rem' },
+            DocumentForm({ document }),
+          ),
+          renderOnValue($showHistory,
+            _ => DocumentHistory({ id, schemaType }),
+          )
+        )
       ])
     )
   )
+}
+
+DocumentHeader.style = css`& {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  & > div {
+    display: flex;
+  }
+}`
+function DocumentHeader({ document, $showHistory, onShowHistoryClick }) {
+  const $title = document.$value.derive(doc => document.schema.preview(doc).title)
+  const $Button = $showHistory.derive(x => x ? ButtonChevronLeft : ButtonChevronRight)
+
+  return (
+    div(
+      DocumentHeader.style,
+      h1($title),
+      div(
+        ButtonDelete({ onClick: handleDeleteClick }),
+        derive($Button, Button =>
+          Button({ onClick: onShowHistoryClick })
+        )
+      )
+    )
+  )
+
+  function handleDeleteClick() {
+    patch({ document, path: '', op: 'remove',  })
+  }
 }
 
 ListItem.style = css`& {
