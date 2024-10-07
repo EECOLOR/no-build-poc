@@ -1,6 +1,5 @@
 import { DatabaseSync } from 'node:sqlite'
 import { diffChars } from 'diff'
-import { generateJSONPatch } from 'generate-json-patch'
 
 export function createCms({ basePath }) {
   const apiPath = `${basePath}/api/`
@@ -261,9 +260,6 @@ export function createCms({ basePath }) {
     if (details.type === 'string')
       details.difference = diffChars(details.oldValue || '', details.newValue)
 
-    // if (details.type === 'object' && details.newValue)
-    //   details.patches = getPatches(details.oldValue, details.newValue)
-
     if (result) {
       //TODO: if the old and new value end up to be the same (or in case of an object, when there are no patches) remove the history item
       return database
@@ -467,19 +463,6 @@ async function withRequestJsonBody(req, callback) {
     }
   })
   req.on('error', e => { callback(null, e) })
-}
-
-function getPatches(oldValue, newValue) {
-  const patches = generateJSONPatch(oldValue, newValue)
-  for (const patch of patches) {
-    if (patch.op !== 'replace') {
-      console.log(`Unknown operation: ${patch.op}`)
-      continue
-    }
-
-    patch['difference'] = diffChars(get(oldValue, patch.path) || '', get(newValue, patch.path))
-  }
-  return patches
 }
 
 function respondJson(res, status, body) {

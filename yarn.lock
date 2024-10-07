@@ -569,11 +569,6 @@ firebase@^10.12.2:
     "@firebase/util" "1.9.6"
     "@firebase/vertexai-preview" "0.0.2"
 
-generate-json-patch@^1.2.4:
-  version "1.2.4"
-  resolved "https://registry.yarnpkg.com/generate-json-patch/-/generate-json-patch-1.2.4.tgz#a91c9ec9b8ac2aaa4f710e897861fa32ddc666a3"
-  integrity sha512-9ME7ZJpfm29lz52QUK2OSHbMd1XGqGCREg7kQdg7ImcGLnOkSFNJnlPN5rN9wNDFBSTAqNzSyWhEG7icheDQLg==
-
 get-caller-file@^2.0.5:
   version "2.0.5"
   resolved "https://registry.yarnpkg.com/get-caller-file/-/get-caller-file-2.0.5.tgz#4f94412a82db32f36e3b0b9741f8a97feb031f7e"
