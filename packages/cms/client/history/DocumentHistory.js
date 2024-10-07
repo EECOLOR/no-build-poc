@@ -213,44 +213,36 @@ function useDocumentHistory({ id, schemaType }) {
 
 // https://github.com/kpdecker/jsdiff/issues/528
 function mergeChanges(changes) {
-  // create accumulators for the added and removed text. Once a neutral part is encountered, merge the diffs and reset the accumulators
-  let addedText = ""
-  let addedCount = 0
-  let removedText = ""
-  let removedCount = 0
-  let mergedChanges = []
+  let addedText = ''
+  let removedText = ''
+  const mergedChanges = []
 
-  for (const part of changes) {
-    if (part?.added) {
-      addedText += part.value
-      addedCount += part.count ?? 0
-    } else if (part?.removed) {
-      removedText += part.value
-      removedCount += part.count ?? 0
-    } else if (part.value.length <= 2) {
-      // we ignore small unchanged segments (<= 4 characters), which catches most whitespace too
-      addedText += part.value
-      removedText += part.value
+  for (const change of changes) {
+    if (change.added) {
+      addedText += change.value
+    } else if (change.removed) {
+      removedText += change.value
+    } else if (change.value.length <= 2) {
+      // we ignore small unchanged segments
+      addedText += change.value
+      removedText += change.value
     } else {
-      // if the part is not added or removed, merge the added and removed text and append to the diff alongside neutral text
-      mergedChanges.push({ value: removedText, removed: true, count: removedCount })
-      mergedChanges.push({ value: addedText, added: true, count: addedCount })
-      mergedChanges.push(part)
+      // if the change is not added or removed, merge the added and removed text and append to the diff alongside neutral text
+      mergedChanges.push(
+        { value: removedText, removed: true },
+        { value: addedText, added: true },
+        { value: change.value },
+      )
 
-      addedText = ""
-      addedCount = 0
-      removedText = ""
-      removedCount = 0
+      addedText = ''
+      removedText = ''
     }
   }
 
-  // after exiting the loop we might have ended with some added or removed text that needs to be appended
-  if (addedText) {
-    mergedChanges.push({ value: addedText, added: true, count: addedCount })
-  }
-  if (removedText) {
-    mergedChanges.push({ value: removedText, removed: true, count: removedCount })
-  }
+  if (removedText)
+    mergedChanges.push({ value: removedText, removed: true })
+  if (addedText)
+    mergedChanges.push({ value: addedText, added: true })
 
   return mergedChanges
 }
