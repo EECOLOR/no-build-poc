@@ -27,6 +27,7 @@
     "prosemirror-schema-list": "^1.4.1",
     "prosemirror-state": "^1.4.3",
     "prosemirror-view": "^1.34.2",
+    "sharp": "^0.33.5",
     "three": "^0.166.0"
   },
   "devDependencies": {

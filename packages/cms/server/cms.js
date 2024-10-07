@@ -1,11 +1,17 @@
 import { DatabaseSync } from 'node:sqlite'
 import { diffChars } from 'diff'
+import path from 'node:path'
+import sharp from 'sharp'
+import fs from 'node:fs'
 
-export function createCms({ basePath }) {
+export function createCms({ basePath, storagePath }) {
+  const imagesPath = path.join(storagePath, 'images')
+  if (!fs.existsSync(imagesPath)) fs.mkdirSync(imagesPath)
+
   const apiPath = `${basePath}/api/`
   const documentListeners = {}
   const richTextInfo = {}
-  const database = createDatabase('./cms.db')
+  const database = createDatabase(path.join(storagePath, './cms.db'))
 
   return {
     canHandleRequest,
@@ -19,11 +25,15 @@ export function createCms({ basePath }) {
   function handleRequest(req, res) {
     const { searchParams, pathname } = new URL(`fake://fake.local${req.url}`)
     const [version, category, ...rest] = pathname.replace(apiPath, '').split('/')
-    console.log('version', version)
+    console.log('version', version, category, rest.join('/'))
 
     let response = false
     if (category === 'documents') {
       response = handleDocuments(req, res, rest, searchParams)
+    }
+
+    if (category === 'images') {
+      response = handleImages(req, res, rest, searchParams)
     }
 
     if (response)
@@ -31,6 +41,74 @@ export function createCms({ basePath }) {
 
     res.writeHead(404)
     res.end()
+  }
+
+  function handleImages(req, res, pathSegments, searchParams) {
+    const [filename, feature] = pathSegments
+
+    if (req.method === 'GET')
+      return handleGetImage(req, res, { filename, searchParams })
+
+    if (req.method === 'POST')
+      return handleFileUpload(req, res, { searchParams })
+
+    return false
+  }
+
+  /**
+   * @param {import('node:http').IncomingMessage} req
+   * @param {import('node:http').ServerResponse} res
+   */
+  function handleGetImage(req, res, { filename, searchParams }) {
+    const imagePath = path.join(imagesPath, filename)
+    if (!fs.existsSync(imagePath))
+      return false
+
+    res.writeHead(200)
+    res.write(fs.readFileSync(imagePath))
+    res.end()
+
+    return true
+  }
+
+  /**
+   * @param {import('node:http').IncomingMessage} req
+   * @param {import('node:http').ServerResponse} res
+   */
+  function handleFileUpload(req, res, { searchParams }) {
+    console.log(req.headers['content-type'], searchParams)
+
+    withRequestBufferBody(req, async (buffer, e) => {
+      // TODO: error handling
+      // TODO: scan for virus
+      const $image = sharp(buffer)
+
+      const { width, height } = await $image.metadata()
+      const newName = `${crypto.randomUUID()}-${width}x${height}.webp`
+      const newBuffer = await $image.webp().toBuffer()
+      fs.writeFileSync(path.join(imagesPath, newName), newBuffer)
+
+      const fileInfo = {
+        filename: newName,
+        metadata: {
+          width,
+          height,
+          originalFilename: searchParams.name
+        }
+      }
+
+      database
+        .prepare(`
+          INSERT INTO images (filename, metadata)
+          VALUES (:filename, :metadata)
+        `)
+        // TODO: user metadata
+        .run({ filename: fileInfo.filename, metadata: JSON.stringify(fileInfo.metadata) })
+
+      respondJson(res, 200, fileInfo)
+    })
+
+    return true
   }
 
   /**
@@ -435,14 +513,23 @@ function createDatabase(file) {
   )
   // database.exec(`DROP TABLE history`)
   database.exec( // TODO: foreign key to documents
-    `CREATE TABLE IF NOT EXISTS history (
-      documentId BLOB NOT NULL,
-      fieldPath TEXT NOT NULL,
-      clientId TEXT NOT NULL,
-      timestampStart NUMERIC NOT NULL,
-      timestampEnd NUMERIC NOT NULL,
-      details TEXT NOT NULL,
-      PRIMARY KEY (documentId, clientId, fieldPath, timestampStart)
+  `CREATE TABLE IF NOT EXISTS history (
+    documentId BLOB NOT NULL,
+    fieldPath TEXT NOT NULL,
+    clientId TEXT NOT NULL,
+    timestampStart NUMERIC NOT NULL,
+    timestampEnd NUMERIC NOT NULL,
+    details TEXT NOT NULL,
+    PRIMARY KEY (documentId, clientId, fieldPath, timestampStart)
+    )`
+  )
+
+  // database.exec(`DROP TABLE images`)
+  database.exec(
+    `CREATE TABLE IF NOT EXISTS images (
+      filename BLOB NOT NULL,
+      metadata TEXT NOT NULL,
+      PRIMARY KEY (filename)
     )`
   )
   return database
@@ -452,12 +539,22 @@ function createDatabase(file) {
  * @param {import('node:http').IncomingMessage} req
  */
 async function withRequestJsonBody(req, callback) {
+  withRequestBufferBody(req, (buffer, e) => {
+    if (e) return callback(null, e)
+    try {
+      callback(JSON.parse(buffer.toString('utf-8')), null)
+    } catch (e) {
+      callback(null, e)
+    }
+  })
+}
+
+async function withRequestBufferBody(req, callback) {
   const data = []
   req.on('data', chunk => { data.push(chunk) })
   req.on('end', () => {
     try {
-      const json = JSON.parse(Buffer.concat(data).toString('utf-8'))
-      callback(json)
+      callback(Buffer.concat(data), null)
     } catch (e) {
       callback(null, e)
     }

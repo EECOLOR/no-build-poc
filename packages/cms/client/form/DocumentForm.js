@@ -1,17 +1,18 @@
-import { derive, loop } from '#ui/dynamic.js'
+import { conditional, derive, loop } from '#ui/dynamic.js'
 import { createSignal } from '#ui/signal.js'
 import { tags, css } from '#ui/tags.js'
 import { ButtonChevronDown, ButtonChevronUp, ButtonDelete, ButtonDown, ButtonUp } from '../buildingBlocks.js'
-import { context, getSchema } from '../context.js'
+import { context } from '../context.js'
 import { renderOnValue } from '../machinery/renderOnValue.js'
 import { useCombined } from '../machinery/useCombined.js'
 import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
 import { RichTextEditor } from './richTextEditor/RichTextEditor.js'
 
-const { div, h1, label, span, input, button, strong } = tags
+const { div, h1, label, span, input, button, strong , img} = tags
 
 DocumentForm.style = css`& {
   min-width: 25rem;
+  max-width: 35rem;
 
   & > :last-child {
     margin-top: 1rem;
@@ -52,6 +53,7 @@ const fieldRenderers = /** @type {const} */({
   'string': StringField,
   'rich-text': RichTextField,
   'array': ArrayField,
+  'image': ImageField,
   default: ObjectField,
 })
 
@@ -76,7 +78,7 @@ function Field({ document, field, $path }) {
 }
 
 function StringField({ document, field, $path }) {
-  const [$value, setValue] = useFieldValue({ document, $path })
+  const [$value, setValue] = useFieldValue({ document, $path, initialValue: '' })
 
   return input({ type: 'text', value: $value, onInput: handleInput })
 
@@ -155,6 +157,53 @@ function ObjectField({ document, field, $path }) {
       Object({ document, field, $path })
     )
   )
+}
+
+function ImageField({ document, field, $path }) {
+  const [$value, setValue] = useFieldValue({
+    document, $path, initialValue: null,
+    compareValues: (local, document) => local.filename === document.filename
+  })
+
+  return (
+    div(
+      conditional(
+        $value,
+        value => value?.filename,
+        value =>
+          img({ src: `${context.apiPath}/images/${value.filename}` })
+      ),
+      input({
+        type: 'file',
+        onChange: handleFileChange,
+        accept:'image/jpeg,image/png,image/webp,image/bmp'
+      })
+    )
+  )
+
+  async function handleFileChange(e) {
+    /** @type {Array<File>} */
+    const [file] = e.currentTarget.files
+    if (!file)
+      return
+
+    // TODO: prevent large files from being uploaded
+
+    const response = await fetch(`${context.apiPath}/images?${new URLSearchParams({ name: file.name })}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': file.type,
+        'Content-Length': String(file.size),
+      },
+      body: file,
+    }) // TODO: error handling
+
+    if (!response.ok) {
+      throw new Error(`Image upload failed [${response.status}]\n${await response.text()}`)
+    }
+
+    setValue(await response.json())
+  }
 }
 
 function Object({ document, field, $path }) {
@@ -304,9 +353,9 @@ function getRichTextPathname({ document, fieldPath }) {
   return `${context.apiPath}/documents/${document.schema.type}/${document.id}/rich-text?fieldPath=${fieldPath}`
 }
 
-function useFieldValue({ document, $path }) {
+function useFieldValue({ document, $path, initialValue, compareValues = (local, document) => local === document }) {
   const $documentAndPath = useCombined(document.$value, $path)
-  const $valueFromDocument = $documentAndPath.derive(([doc, path]) => get(doc, path) || '')
+  const $valueFromDocument = $documentAndPath.derive(([doc, path]) => get(doc, path) || initialValue)
   let localValue = $valueFromDocument.get()
   let dirty = false
 
@@ -314,7 +363,7 @@ function useFieldValue({ document, $path }) {
 
   // This signal only updates when it has seen the current local value
   const $value = $valueFromDocument.derive((valueFromDocument, oldValueFromDocument) => {
-    if (localValue === valueFromDocument) dirty = false
+    if (compareValues(localValue, valueFromDocument)) dirty = false
     return dirty ? oldValueFromDocument : valueFromDocument
   })
 

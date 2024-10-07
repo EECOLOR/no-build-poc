@@ -113,7 +113,7 @@ function HistoryItemBody({ historyItem, schema }) {
   return renderer({ historyItem, schema })
 }
 
-function UnsupportedTypeItem({ historyItem }) {
+function UnsupportedTypeItem({ historyItem, schema }) {
   return (
     pre(css`& { max-width: 35rem; overflow: scroll; max-height: 20rem; }`,
       code(
@@ -167,7 +167,7 @@ StringItem.style = css`& {
   & > ins { background-color: lightgreen; }
   & > del { background-color: lightcoral; }
 }`
-function StringItem({ historyItem }) {
+function StringItem({ historyItem, schema }) {
   const { difference } = historyItem.details
   const merged = mergeChanges(difference)
 
@@ -188,6 +188,9 @@ function ObjectItem({ historyItem, schema }) {
 
   if (details.steps)
     return itemRenderers['rich-text']({ historyItem, schema })
+
+  if (details.newValue.filename)
+    return itemRenderers['default']({ historyItem, schema })
 
   const { patches = [] } = details
 

@@ -30,7 +30,7 @@ export async function startServer({ indexFiles, allowedPackages, allowedLibrarie
   })
 
   function requestHandler(req, res) {
-    if (req.url.includes('.') || req.url.startsWith('/static'))
+    if (req.url.startsWith('/static'))
       return handleStaticFile(req, res)
 
     const indexInfo = indices.find(x => req.url.startsWith(x.indexPath.slice(7))) // TODO: we are cutting of /server
