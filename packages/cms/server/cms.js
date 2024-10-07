@@ -105,7 +105,6 @@ export function createCms({ basePath }) {
     const path = searchParams.get('fieldPath')
     withRequestJsonBody(req, (body, error) => {
       // TODO: error handling
-      // console.dir({ body, error }, { depth: 8 })
       const { clientId, steps, documentVersion, valueVersion, value } = body
       const { initialValue } = richTextInfo[type][id][path].info
       if (initialValue.version !== valueVersion)
@@ -162,7 +161,6 @@ export function createCms({ basePath }) {
   }
 
   function patchDocument(type, id, version, patch, clientId, steps = undefined) {
-    // TODO: add document version, this allows us to reject changes, this is useful when one person moves something in an array while another edits the contents
     const documentFromDatabase = getById({ id })
     const isUpdate = Boolean(documentFromDatabase)
     const document = documentFromDatabase || { _id: id, _type: type, version: 0 }
