@@ -17,7 +17,7 @@ export function raw(value) { return new Raw(value) }
 /**
  * @template {object} T
  * @template {keyof T} key
- * @typedef {key extends 'style' ? (T[key] & { [k: `--${string}`]: string }) : T[key]} AllowCustomPropertiesInStyles
+ * @typedef {key extends 'style' ? ({ [k: `--${string}`]: string } & { [k in keyof T[key]]: T[key][k] | Signal<T[key][k]> }) : T[key]} AllowCustomPropertiesInStyles
  */
 
 /**

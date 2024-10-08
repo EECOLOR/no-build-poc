@@ -16,6 +16,9 @@ const deskStructure = {
             })
           ]
         })
+      }),
+      item('images', {
+        child: pane('images')
       })
     ]
   })
@@ -41,6 +44,7 @@ const documentSchemas = [
           field('readTime', 'string'),
         ]
       }),
+      field('heroImage', 'image'),
       field('content', 'rich-text'),
       field('items', 'array', {
         of: [

@@ -1,4 +1,5 @@
-import { conditional, derive, loop } from '#ui/dynamic.js'
+import { writeToDom } from '#ui/domInteraction.js'
+import { conditional, derive, loop, useOnDestroy } from '#ui/dynamic.js'
 import { createSignal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
 import { ButtonAdd, ButtonChevronLeft, ButtonChevronRight, ButtonDelete, Link, List, Scrollable } from '../buildingBlocks.js'
@@ -8,6 +9,7 @@ import { DocumentHistory } from '../history/DocumentHistory.js'
 import { $pathname, pushState } from '../machinery/history.js'
 import { renderOnValue } from '../machinery/renderOnValue.js'
 import { useCombined } from '../machinery/useCombined.js'
+import { useDrag } from '../machinery/useDrag.js'
 import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
 
 const { div, input, h1, img, pre, code } = tags
@@ -297,15 +299,37 @@ HotspotAndTrim.style = css`& {
   }
 }`
 function HotspotAndTrim({ id }) {
+  const { onMouseDown, $translate } = useDrag({ onDragEnd })
+
   return (
     div(
       HotspotAndTrim.style,
       img({ src: `${context.apiPath}/images/${id}` }),
       div(
-        css`& { width: 100%; height: 100%; }`
+        css`& {
+          width: 100%;
+          height: 100%;
+          position: relative;
+        }`,
+        div({ onMouseDown, style: { transform: $translate.derive(({ x, y }) => `translate(${x}px,${y}px)`) }},
+          css`& {
+            cursor: move;
+            top: 40px;
+            left: 60px;
+            width: 20px;
+            height: 20px;
+            will-change: transform;
+            background-color: turquoise;
+            position: absolute;
+          }`
+        )
       )
     )
   )
+
+  function onDragEnd({ x, y }) {
+    console.log('done', { x, y })
+  }
 }
 
 DocumentHeader.style = css`& {

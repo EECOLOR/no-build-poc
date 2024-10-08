@@ -25,7 +25,7 @@ import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
         const value = [].concat(raw(marker), signal.get(), raw(comment()))
         const nodes = renderValue(value, context)
 
-        const unsubscribe = signal.subscribe(newValue => {
+        const unsubscribe = signal.subscribeDirect(newValue => {
           try {
             const newNodes = renderValue(newValue, context)
             const oldNodes = nodes.slice(1, -1)
@@ -50,7 +50,7 @@ import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
         })
         const nodes = [marker, ...nodesFromLoop, comment()]
 
-        const unsubscribe = dynamic.signal.subscribe(newItems => {
+        const unsubscribe = dynamic.signal.subscribeDirect(newItems => {
           const unusedKeys = new Set(infoByKey.keys())
           const oldNodes = nodes.slice(1, -1)
           const newNodes = newItems.flatMap((item, i, items) => {
@@ -98,7 +98,7 @@ import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
 
             if (k.startsWith('on')) element[k.toLowerCase()] = v
             else if (v instanceof Signal) subscriptions.push(bindSignalToAttribute(element, k, v))
-            else if (k === 'style') applyStyles(element.style, v)
+            else if (k === 'style') subscriptions.push(...applyStyles(element.style, v))
             else if (k === 'ref') v(element)
             else setAttributeOrProperty(element, k, v)
           }
@@ -111,9 +111,10 @@ import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
           else element.appendChild(node)
         }
 
-        useOnDestroy(() => {
-          for (const unsubscribe of subscriptions) unsubscribe()
-        })
+        if (subscriptions.length)
+          useOnDestroy(() => {
+            for (const unsubscribe of subscriptions) unsubscribe()
+          })
 
         return element
       }
@@ -122,11 +123,12 @@ import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
 )
 
 function applyStyles(style, styles) {
+  const subscriptions = []
   for (const [k, v] of Object.entries(styles)) {
-    if (typeof k !== 'string') continue
-    if (k.startsWith('--')) style.setProperty(k, v)
-    else style[k] = v
+    if (v instanceof Signal) subscriptions.push(bindSignalToStyle(style, k, v))
+    else setStyleOrProperty(style, k, v)
   }
+  return subscriptions
 }
 
 function isTemplateTag(tagName) {
@@ -145,21 +147,30 @@ function handleTemplateAsChild(element, template) {
 }
 
 function setAttributeOrProperty(element, k, v) {
-  if (k in element) element[k] = v
-  else element.setAttribute(k, v)
+  writeToDom.outsideAnimationFrame(() => {
+    if (k in element) element[k] = v
+    else element.setAttribute(k, v)
+  })
+}
+
+function setStyleOrProperty(style, k, v) {
+  writeToDom.outsideAnimationFrame(() => {
+    if (k.startsWith('--')) style.setProperty(k, v)
+    else style[k] = v
+  })
+}
+
+function bindSignalToStyle(style, k, signal) {
+  return bindSignalTo(signal, setStyleOrProperty.bind(null, style, k))
 }
 
 function bindSignalToAttribute(element, attribute, signal) {
-  setAttributeOrProperty(element, attribute, signal.get())
+  return bindSignalTo(signal, setAttributeOrProperty.bind(null, element, attribute))
+}
 
-  const unsubscribe = signal.subscribe(value => {
-    if (!element.isConnected) return unsubscribe()
-
-    writeToDom.outsideAnimationFrame(() => {
-      setAttributeOrProperty(element, attribute, value)
-    })
-  })
-
+function bindSignalTo(signal, setValue) {
+  setValue(signal.get())
+  const unsubscribe = signal.subscribeDirect(setValue)
   return unsubscribe
 }
 
