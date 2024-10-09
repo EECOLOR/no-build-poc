@@ -1,35 +1,25 @@
 import { useOnDestroy } from '#ui/dynamic.js'
 import { createSignal } from '#ui/signal.js'
 
-export function useDrag({ onDragEnd }) {
-  const [$translate, setTranslate] = createSignal({ x: 0, y: 0 })
+export function useDrag(initialPosition, getArea) {
+  const [$position, setPosition] = createSignal(initialPosition)
+  const $translate = $position.derive(({ x, y }) => ({ x: x - initialPosition.x, y: y - initialPosition.y }))
 
   let state = {}
 
   useOnDestroy(removeListeners)
 
-  return { onMouseDown, $translate }
+  return { handleMouseDown, $translate, $position, move }
 
-  function onMouseDown(e) {
-    const translate = $translate.get()
-    const element = e.currentTarget.getBoundingClientRect()
+  function move(f) {
+    setPosition(position => getBoundedPosition(f(position)))
+  }
+
+  function handleMouseDown(e) {
     const parent = e.currentTarget.parentElement.getBoundingClientRect()
-
     const offset = { x: e.offsetX, y: e.offsetY }
-    const area = parent
-    const start = {
-      x: (element.x - area.x) - translate.x,
-      y: (element.y - area.y) - translate.y,
-    }
-    const minX = -start.x
-    const minY = -start.y
-    const bounds = {
-      minX, maxX: minX + area.width - element.width,
-      minY, maxY: minY + area.height - element.height
-    }
-    state = { offset, area, start, bounds, element }
+    state = { offset, parent }
 
-    console.log(state)
     addListeners()
     e.preventDefault()
   }
@@ -44,24 +34,30 @@ export function useDrag({ onDragEnd }) {
   }
 
   function handleMouseMove(e) {
-    const { start, area, offset, bounds } = state
-    const localMouseX = e.clientX - area.x
-    const localMouseY = e.clientY - area.y
+    const { offset, parent } = state
+    const localMouseX = e.clientX - parent.x
+    const localMouseY = e.clientY - parent.y
 
-    const translateX = clamp(bounds.minX, bounds.maxX, localMouseX - start.x - offset.x)
-    const translateY = clamp(bounds.minY, bounds.maxY, localMouseY - start.y - offset.y)
+    const position = {
+      x: localMouseX - offset.x,
+      y: localMouseY - offset.y,
+    }
 
-    setTranslate({ x: translateX, y: translateY })
+    setPosition(getBoundedPosition(position))
+  }
+
+  function getBoundedPosition({ x, y, ...other }) {
+    const area = getArea()
+    return {
+      ...other,
+      x: clamp(area.x, area.width, x),
+      y: clamp(area.y, area.height, y),
+    }
   }
 
   function handleMouseUp() {
-    const translate = $translate.get()
-    const { start, area, element } = state
-
     state = {}
     removeListeners()
-
-    onDragEnd(calculateActualPosition({ translate, start, area, element }))
   }
 }
 

@@ -11,6 +11,8 @@ export function useHasScrollbar() {
 
   function ref(element) {
     observer.disconnect()
+    if (!element) return
+
     update(element)
     observer.observe(element)
   }

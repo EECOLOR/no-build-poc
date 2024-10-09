@@ -92,6 +92,8 @@ import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
         const element = document.createElement(tagName)
         const subscriptions = []
 
+        let ref = null
+
         if (attributes)
           for (const [k, v] of Object.entries(attributes)) {
             if (typeof k !== 'string') return
@@ -99,7 +101,7 @@ import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
             if (k.startsWith('on')) element[k.toLowerCase()] = v
             else if (v instanceof Signal) subscriptions.push(bindSignalToAttribute(element, k, v))
             else if (k === 'style') subscriptions.push(...applyStyles(element.style, v))
-            else if (k === 'ref') v(element)
+            else if (k === 'ref') /** @type {typeof element[k]} */ (ref = v)(element)
             else setAttributeOrProperty(element, k, v)
           }
 
@@ -111,9 +113,10 @@ import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
           else element.appendChild(node)
         }
 
-        if (subscriptions.length)
+        if (subscriptions.length || ref)
           useOnDestroy(() => {
             for (const unsubscribe of subscriptions) unsubscribe()
+            if (ref) ref(null)
           })
 
         return element

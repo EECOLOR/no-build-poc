@@ -3,6 +3,7 @@ import { createSignal } from '#ui/signal.js'
 import { tags, css } from '#ui/tags.js'
 import { ButtonChevronDown, ButtonChevronUp, ButtonDelete, ButtonDown, ButtonUp } from '../buildingBlocks.js'
 import { context } from '../context.js'
+import { debounce } from '../machinery/debounce.js'
 import { renderOnValue } from '../machinery/renderOnValue.js'
 import { useCombined } from '../machinery/useCombined.js'
 import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
@@ -404,18 +405,4 @@ export function patch(params) {
 function get(o, path) {
   const keys = path.split('/').filter(Boolean)
   return keys.reduce((result, key) => result && result[key], o)
-}
-
-/**
- * @template {any[]} T
- * @param {(...args: T) => void} f
- * @returns {(...args: T) => void}
- */
-function debounce(f, milliseconds) {
-  let timeout = null
-
-  return function debounced(...args) {
-    clearTimeout(timeout)
-    timeout = setTimeout(() => { f(...args) }, milliseconds)
-  }
 }
