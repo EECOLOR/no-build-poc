@@ -10,7 +10,7 @@ import { debounce } from '../machinery/debounce.js'
 import { $pathname, pushState } from '../machinery/history.js'
 import { renderOnValue } from '../machinery/renderOnValue.js'
 import { useCombined } from '../machinery/useCombined.js'
-import { useDrag } from '../machinery/useDrag.js'
+import { useDrag, useDragableRectangle } from '../machinery/useDrag.js'
 import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
 
 const { div, input, h1, img, pre, code } = tags
@@ -304,7 +304,7 @@ HotspotAndTrim.style = css`& {
 }`
 function HotspotAndTrim({ id, metadata }) {
   // const { handleMouseDown, $translate, $position } = useDrag({ x: metadata.width, y: metadata.height })
-  const { corners, $area } = useDragableRectangle({ width: metadata.width, height: metadata.height })
+  const { corners, rectangle, $area } = useDragableRectangle({ width: metadata.width, height: metadata.height })
   const [tl, tr, bl, br] = corners
   // const debounced = debounce(onDragEnd, 200)
   // useOnDestroy($position.subscribe(debounced))
@@ -313,46 +313,67 @@ function HotspotAndTrim({ id, metadata }) {
     div(
       HotspotAndTrim.style,
       img({ src: `${context.apiPath}/images/${id}` }),
+      div({ style: { width: '100%', height: '100%', backgroundColor: 'rgb(0 0 0 / 40%)' } }),
+      img({
+        src: `${context.apiPath}/images/${id}`,
+        style: {
+          clipPath: $area.derive(x => `inset(${x.top}px ${x.right}px ${x.bottom}px ${x.left}px)`)
+        }
+      }),
       div(
-        {
-          style: {
-            // TODO: overlap
-            boxShadow: $area.derive(x => `inset ${x.left}px ${x.top}px rgb(0 0 0 / 20%), inset -${x.right}px -${x.bottom}px rgb(0 0 0 / 20%)`)
-          }
-        },
         css`& {
           width: 100%;
           height: 100%;
           position: relative;
-          outline: solid;
         }`,
+        div(
+          {
+            onMouseDown: rectangle.handleMouseDown,
+            style: {
+              top: $area.derive(x => x.top),
+              left: $area.derive(x => x.left),
+              bottom: $area.derive(x => x.bottom),
+              right: $area.derive(x => x.right),
+            }
+          },
+          css`& {
+            cursor: move;
+            position: absolute;
+          }`
+        ),
         corners.map(corner => {
           return (
             div({
               onMouseDown: corner.handleMouseDown,
+              className: corner.name,
               style: {
-                transform: corner.$translate.derive(({ x, y }) => `translate(${x}px,${y}px)`),
-                ...(
-                  corner === tl ? { top: 0, left: 0 } :
-                  corner === tr ? { top: 0, right: -20 } :
-                  corner === bl ? { bottom: -20, left: 0 } :
-                  corner === br ? { bottom: -20, right: -20 } :
-                  null
-                )
+                transform: corner.$translate.derive(([x, y]) => `translate(${x}px,${y}px)`),
               }
             },
               css`& {
-                cursor: ${[bl, tr].includes(corner) ? 'nesw-resize' : 'nwse-resize'};
-                width: 20px;
-                height: 20px;
                 will-change: transform;
+
+                width: 0;
+                height: 0;
+                overflow: visible;
+
+                --corner-size: 20px;
+                --min-corner-size: calc(-1 * var(--corner-size));
+
+                &.tl, &.br { cursor: nwse-resize; }
+                &.tr, &.bl { cursor: nesw-resize; }
                 position: absolute;
+
+                &.tl { top: 0; left: 0 }
+                &.tr { top: 0; right: 0; }
+                &.bl { bottom: 0; left: 0; }
+                &.br { bottom: 0; right: 0; }
 
                 &::after {
                   content: '';
                   display: block;
-                  width: 100%;
-                  height: 100%;
+                  width: var(--corner-size);
+                  height: var(--corner-size);
                   transform: translate(-50%, -50%);
                   background-color: turquoise;
                 }
@@ -360,22 +381,6 @@ function HotspotAndTrim({ id, metadata }) {
             )
           )
         }),
-        // TODO: move area
-        // div(
-        //   {
-        //     style: {
-        //       top: $area.derive(x => x.top),
-        //       left: $area.derive(x => x.left),
-        //       bottom: $area.derive(x => x.bottom),
-        //       right: $area.derive(x => x.right),
-        //     }
-        //   },
-        //   css`& {
-        //     position: absolute;
-        //     pointer-events: none;
-        //     background-color: green;
-        //   }`
-        // )
       )
     )
   )
@@ -383,87 +388,6 @@ function HotspotAndTrim({ id, metadata }) {
   // function onDragEnd() {
   //   console.log('done', $position.get())
   // }
-}
-
-function useDragableRectangle({ width, height }) {
-  const corners = [
-    useDrag({ x: 0, y: 0 }, getAreaTl), useDrag({ x: width, y: 0 }, getAreaTr),
-    useDrag({ x: 0, y: height }, getAreaBl), useDrag({ x: width, y: height }, getAreaBr)
-  ]
-
-  function getAreaTl() {
-    const { x, y } = br.$position.get()
-    return { x: 0, y: 0, width: x, height: y }
-  }
-  function getAreaTr() {
-    const { x, y } = bl.$position.get()
-    return { x, y: 0, width, height: y }
-  }
-  function getAreaBl() {
-    const { x, y } = tr.$position.get()
-    return { x: 0, y, width: x, height }
-  }
-  function getAreaBr() {
-    const { x, y } = tl.$position.get()
-    return { x, y, width, height }
-  }
-
-  /* TopLeft, TopRight, BottomLeft, BottomRight */
-  const [tl, tr, bl, br] = corners
-
-  tl.$position.subscribeDirect((newValue, oldValue) => {
-    if (newValue.origin) return
-    const origin = tl
-    const diffX = newValue.x - oldValue.x
-    const diffY = newValue.y - oldValue.y
-
-    // TODO: switch to arrays for positions
-    tr.move(old => ({ x: old.x, y: old.y + diffY, origin }))
-    bl.move(old => ({ x: old.x + diffX, y: old.y, origin }))
-  })
-  tr.$position.subscribeDirect((newValue, oldValue) => {
-    if (newValue.origin) return
-    const origin = tr
-
-    const diffX = newValue.x - oldValue.x
-    const diffY = newValue.y - oldValue.y
-    // TODO: switch to arrays for positions
-    tl.move(old => ({ x: old.x, y: old.y + diffY, origin }))
-    br.move(old => ({ x: old.x + diffX, y: old.y, origin }))
-  })
-  bl.$position.subscribeDirect((newValue, oldValue) => {
-    if (newValue.origin) return
-    const origin = bl
-
-    const diffX = newValue.x - oldValue.x
-    const diffY = newValue.y - oldValue.y
-
-    // TODO: switch to arrays for positions
-    tl.move(old => ({ x: old.x + diffX, y: old.y, origin }))
-    br.move(old => ({ x: old.x, y: old.y + diffY, origin }))
-  })
-  br.$position.subscribeDirect((newValue, oldValue) => {
-    if (newValue.origin) return
-    const origin = br
-
-    const diffX = newValue.x - oldValue.x
-    const diffY = newValue.y - oldValue.y
-
-    // TODO: switch to arrays for positions
-    tr.move(old => ({ x: old.x + diffX, y: old.y, origin }))
-    bl.move(old => ({ x: old.x, y: old.y + diffY, origin }))
-  })
-
-
-  const $area = useCombined(tl.$position, br.$position)
-    .derive(([tl,br]) => ({
-      top: tl.y,
-      left: tl.x,
-      bottom: height - br.y,
-      right: width - br.x,
-    }))
-
-  return { corners, $area }
 }
 
 DocumentHeader.style = css`& {
