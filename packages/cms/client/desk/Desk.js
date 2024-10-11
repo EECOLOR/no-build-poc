@@ -303,9 +303,13 @@ HotspotAndTrim.style = css`& {
   }
 }`
 function HotspotAndTrim({ id, metadata }) {
-  // const { handleMouseDown, $translate, $position } = useDrag({ x: metadata.width, y: metadata.height })
-  const { corners, rectangle, $area } = useDragableRectangle({ width: metadata.width, height: metadata.height })
-  const [tl, tr, bl, br] = corners
+  const initialRectangle = { x: 20, y: 40, width: 120, height: 100 }
+  const { x, y, width, height } = initialRectangle
+
+  const { corners, rectangle, $area } = useDragableRectangle(
+    { width: metadata.width, height: metadata.height },
+    initialRectangle
+  )
   // const debounced = debounce(onDragEnd, 200)
   // useOnDestroy($position.subscribe(debounced))
 
@@ -348,6 +352,13 @@ function HotspotAndTrim({ id, metadata }) {
               className: corner.name,
               style: {
                 transform: corner.$translate.derive(([x, y]) => `translate(${x}px,${y}px)`),
+                ...(
+                  corner.name === 'tl' ? { left: x, top: y } :
+                  corner.name === 'tr' ? { left: x + width , top: y } :
+                  corner.name === 'bl' ? { left: x , top: y + height } :
+                  corner.name === 'br' ? { left: x + width , top: y + height } :
+                  null
+                )
               }
             },
               css`& {
@@ -363,11 +374,6 @@ function HotspotAndTrim({ id, metadata }) {
                 &.tl, &.br { cursor: nwse-resize; }
                 &.tr, &.bl { cursor: nesw-resize; }
                 position: absolute;
-
-                &.tl { top: 0; left: 0 }
-                &.tr { top: 0; right: 0; }
-                &.bl { bottom: 0; left: 0; }
-                &.br { bottom: 0; right: 0; }
 
                 &::after {
                   content: '';

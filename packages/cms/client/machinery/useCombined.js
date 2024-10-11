@@ -4,9 +4,9 @@ import { createSignal } from '#ui/signal.js'
 export function useCombined(...signals) {
   const [$combined, setCombined] = createSignal(() => signals.map(signal => signal.get()))
 
-  const unsubscribeCallbacks = []
+  const subscriptions = []
   for (const [i, signal] of signals.entries()) {
-    const unsubscribe = signal.subscribe(value => {
+    const unsubscribe = signal.subscribeDirect(value => {
       setCombined(previous => {
         const newValue = previous.slice()
         newValue[i] = value
@@ -14,11 +14,11 @@ export function useCombined(...signals) {
       })
     })
 
-    unsubscribeCallbacks.push(unsubscribe)
+    subscriptions.push(unsubscribe)
   }
 
   useOnDestroy(() => {
-    for (const callback of unsubscribeCallbacks) callback()
+    for (const unsubscribe of subscriptions) unsubscribe()
   })
 
   return $combined

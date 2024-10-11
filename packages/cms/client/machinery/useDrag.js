@@ -26,11 +26,17 @@ export function useDrag([initialX, initialY], getBounds = undefined, name = unde
 
   return { handleMouseDown, $translate, $position, move, name }
 
-  function move(f) {
+  function move(newValueOrFunction) {
     if (!getBounds)
       throw new Error(`Can not move a dragable when no 'getBounds' function was given`)
 
-    setPosition(position => getBoundedPosition(f(position), getBounds()))
+    setPosition(position => {
+      const newValue = typeof newValueOrFunction === 'function'
+          ? newValueOrFunction(position)
+          : newValueOrFunction
+
+      return getBoundedPosition(newValue, getBounds())
+    })
   }
 
   function handleMouseDown(e) {
@@ -70,11 +76,18 @@ export function useDrag([initialX, initialY], getBounds = undefined, name = unde
   }
 }
 
-export function useDragableRectangle({ width, height }) {
-  const rectangle = useDrag([0, 0], getRectangleBounds)
+/**
+ * @param {{ width: number, height: number }} bounds
+ * @param {{ x: number, y: number, width: number, height: number }} initialRectangle
+ */
+export function useDragableRectangle(bounds, initialRectangle) {
+  const { width, height } = bounds
+  const [tlPos, trPos, blPos, brPos] = getInitialPositions(initialRectangle)
+
+  const rectangle = useDrag(tlPos, getRectangleBounds)
   const corners = [
-    useDrag([0, 0], getTlBounds, 'tl'), useDrag([width, 0], getTrBounds, 'tr'),
-    useDrag([0, height], getBlBounds, 'bl'), useDrag([width, height], getBrBounds, 'br')
+    useDrag(tlPos, getTlBounds, 'tl'), useDrag(trPos, getTrBounds, 'tr'),
+    useDrag(blPos, getBlBounds, 'bl'), useDrag(brPos, getBrBounds, 'br')
   ]
 
   /* TopLeft, TopRight, BottomLeft, BottomRight */
@@ -82,20 +95,24 @@ export function useDragableRectangle({ width, height }) {
 
   let movingSiblings = false
 
-  bind(tl, [{ xAxis: bl, yAxis: tr }])
-  bind(tr, [{ xAxis: br, yAxis: tl }])
-  bind(bl, [{ xAxis: tl, yAxis: br }])
-  bind(br, [{ xAxis: tr, yAxis: bl }])
-
-  bind(tl, [{ xAxis: rectangle, yAxis: rectangle }])
-  bind(rectangle, [tl, tr, bl, br].map(target =>
-    ({ xAxis: target, yAxis: target })
-  ))
-
   const $area = useCombined(tl.$position, br.$position)
     .derive(([[tlX, tlY], [brX, brY]]) =>
       ({ top: tlY, left: tlX, bottom: height - brY, right: width - brX })
     )
+
+  const subscriptions = [
+    bind(tl, { xAxis: bl, yAxis: tr }),
+    bind(tr, { xAxis: br, yAxis: tl }),
+    bind(bl, { xAxis: tl, yAxis: br }),
+    bind(br, { xAxis: tr, yAxis: bl }),
+
+    bind(tl, { xAxis: rectangle, yAxis: rectangle }),
+    bindRectangle(),
+  ]
+
+  useOnDestroy(() => {
+    for (const unsubscribe of subscriptions) unsubscribe()
+  })
 
   return { corners, rectangle, $area }
 
@@ -121,28 +138,53 @@ export function useDragableRectangle({ width, height }) {
   }
   /** @returns {Area} */
   function getRectangleBounds() {
-    const [left, top] = tl.$position.get()
-    const [right, bottom] = br.$position.get()
-    return [0, 0, width - (right - left), height - (bottom - top)]
+    const [minX, minY] = tl.$position.get()
+    const [maxX, maxY] = br.$position.get()
+    return [0, 0, width - (maxX - minX), height - (maxY - minY)]
   }
 
-  function bind(corner, axes) {
-    corner.$position.subscribeDirect(([newX, newY], [oldX, oldY]) => {
-      if (movingSiblings) return
-      movingSiblings = true
+  function bind(corner, { xAxis, yAxis }) {
+    return corner.$position.subscribeDirect(([newX, newY]) =>
+      moveWithoutRecursion(() => {
+        xAxis.move(([_, y]) => [newX, y])
+        yAxis.move(([x, _]) => [x, newY])
+      })
+    )
+  }
 
-      for (const { xAxis, yAxis } of axes) {
-        xAxis.move(([x, y]) => [x + diff(oldX, newX), y])
-        yAxis.move(([x, y]) => [x, y + diff(oldY, newY)])
-      }
+  function bindRectangle() {
+    return rectangle.$position.subscribeDirect(([newX, newY]) =>
+      moveWithoutRecursion(() => {
+        const [minX, minY] = tl.$position.get()
+        const [maxX, maxY] = br.$position.get()
+        const width = maxX - minX
+        const height = maxY - minY
 
-      movingSiblings = false
-    })
+        tl.move([newX, newY])
+        tr.move([newX + width, newY])
+        bl.move([newX, newY + height])
+        br.move([newX + width, newY + height])
+      })
+    )
+  }
+
+  function moveWithoutRecursion(f) {
+    if (movingSiblings) return
+    movingSiblings = true
+
+    f()
+
+    movingSiblings = false
   }
 }
 
-function diff(oldValue, newValue) {
-  return newValue - oldValue
+function getInitialPositions(rectangle) {
+  const { x, y, width, height } = rectangle
+  const [minX, minY, maxX, maxY] = [x, y, x + width, y + height]
+  return /** @type const */ ([
+    [minX, minY], [maxX, minY],
+    [minX, maxY], [maxX, maxY]]
+  )
 }
 
 function getBoundedPosition([x, y], [areaX, areaY, areaWidth, areaHeight]) {
