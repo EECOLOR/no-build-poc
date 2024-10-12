@@ -12,6 +12,7 @@ import { renderOnValue } from '../machinery/renderOnValue.js'
 import { useCombined } from '../machinery/useCombined.js'
 import { useDrag, useDragableRectangle } from '../machinery/useDrag.js'
 import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
+import { useElementSize } from '../machinery/useHasScrollbar.js'
 
 const { div, input, h1, img, pre, code } = tags
 
@@ -283,16 +284,19 @@ function ImagePane({ id, path }) {
     div(
       ImagePane.style,
       Scrollable({ scrollBarPadding: '0.5rem' },
-        conditional($metadata, x => x !== connecting, metadata => [
-          HotspotAndTrim({ id, metadata }),
-          pre(code(JSON.stringify(metadata, null, 2))),
-        ])
+        div(
+          css`&{ width: 50%; }`,
+          derive($metadata, metadata => metadata !== connecting && [
+            HotspotAndCrop({ id, metadata }),
+            pre(code(JSON.stringify(metadata, null, 2))),
+          ])
+        )
       )
     )
   )
 }
 
-HotspotAndTrim.style = css`& {
+HotspotAndCrop.style = css`& {
   display: grid;
   grid-template-columns: 1fr;
   padding: 10px;
@@ -300,100 +304,188 @@ HotspotAndTrim.style = css`& {
   & > * {
     grid-row-start: 1;
     grid-column-start: 1;
+
+    width: 100%;
+    height: 100%;
   }
 }`
-function HotspotAndTrim({ id, metadata }) {
-  const initialRectangle = { x: 20, y: 40, width: 120, height: 100 }
-  const { x, y, width, height } = initialRectangle
+function HotspotAndCrop({ id, metadata }) {
+  const imageSrc = `${context.apiPath}/images/${id}`
+  const crop = null // { x: 20, y: 40, width: 120, height: 100 }
+  const hotspot = null
 
-  const { corners, rectangle, $area } = useDragableRectangle(
-    { width: metadata.width, height: metadata.height },
-    initialRectangle
-  )
   // const debounced = debounce(onDragEnd, 200)
   // useOnDestroy($position.subscribe(debounced))
 
+  const { ref, $size } = useElementSize()
+
   return (
     div(
-      HotspotAndTrim.style,
-      img({ src: `${context.apiPath}/images/${id}` }),
-      div({ style: { width: '100%', height: '100%', backgroundColor: 'rgb(0 0 0 / 40%)' } }),
-      img({
-        src: `${context.apiPath}/images/${id}`,
-        style: {
-          clipPath: $area.derive(x => `inset(${x.top}px ${x.right}px ${x.bottom}px ${x.left}px)`)
-        }
-      }),
-      div(
-        css`& {
-          width: 100%;
-          height: 100%;
-          position: relative;
-        }`,
-        div(
-          {
-            onMouseDown: rectangle.handleMouseDown,
-            style: {
-              top: $area.derive(x => x.top),
-              left: $area.derive(x => x.left),
-              bottom: $area.derive(x => x.bottom),
-              right: $area.derive(x => x.right),
-            }
-          },
-          css`& {
-            cursor: move;
-            position: absolute;
-          }`
-        ),
-        corners.map(corner => {
-          return (
-            div({
-              onMouseDown: corner.handleMouseDown,
-              className: corner.name,
-              style: {
-                transform: corner.$translate.derive(([x, y]) => `translate(${x}px,${y}px)`),
-                ...(
-                  corner.name === 'tl' ? { left: x, top: y } :
-                  corner.name === 'tr' ? { left: x + width , top: y } :
-                  corner.name === 'bl' ? { left: x , top: y + height } :
-                  corner.name === 'br' ? { left: x + width , top: y + height } :
-                  null
-                )
-              }
-            },
-              css`& {
-                will-change: transform;
-
-                width: 0;
-                height: 0;
-                overflow: visible;
-
-                --corner-size: 20px;
-                --min-corner-size: calc(-1 * var(--corner-size));
-
-                &.tl, &.br { cursor: nwse-resize; }
-                &.tr, &.bl { cursor: nesw-resize; }
-                position: absolute;
-
-                &::after {
-                  content: '';
-                  display: block;
-                  width: var(--corner-size);
-                  height: var(--corner-size);
-                  transform: translate(-50%, -50%);
-                  background-color: turquoise;
-                }
-              }`
-            )
-          )
-        }),
+      HotspotAndCrop.style,
+      img({ ref, src: imageSrc }),
+      derive($size, size =>
+        size && HotspotAndCropOverlay({
+          imageSrc,
+          displaySize: size,
+          crop: crop || addPosition(size),
+          hotspot: hotspot || crop || addPosition(size),
+        })
       )
     )
   )
 
+  function addPosition(size) {
+    return { x: 0, y: 0, ...size }
+  }
+
   // function onDragEnd() {
   //   console.log('done', $position.get())
   // }
+
+  function smallestEllipseBounds([x, y]) {
+    const distance = Math.sqrt(x ** 2 + y ** 2)
+    const angle = Math.atan2(y, x)
+    const semiMajorAxis = distance
+    const semiMinorAxis = distance * Math.min(Math.abs(Math.cos(angle)), Math.abs(Math.sin(angle)))
+
+    const orientation = Math.abs(y) > Math.abs(x)
+    const xAxis = orientation ? semiMinorAxis : semiMajorAxis
+    const yAxis = orientation ? semiMajorAxis : semiMinorAxis
+
+    return { left: -xAxis, right: xAxis, top: yAxis, bottom: -yAxis }
+  }
+}
+
+function HotspotAndCropOverlay({ imageSrc, crop, hotspot, displaySize }) {
+  const { corners, rectangle, $inset, $area } = useDragableRectangle(displaySize, crop)
+
+  return [
+    CropOverlay({ imageSrc, crop, corners, rectangle, $inset }),
+    HotspotOverlay({ imageSrc, hotspot, $area }),
+  ]
+}
+
+function HotspotOverlay({ imageSrc, $area, hotspot }) {
+  const center = useDrag(getCenterPosition(), getHotspotBounds)
+  // const handle = useDrag(getHandlePosition(), getHandleBounds())
+
+  // TODO: This might not be needed if bounds is a Signal
+  const subscriptions = [
+    $area.subscribeDirect(_ => center.move(x => x)) // make sure the hotspot remain within bounds
+  ]
+
+  useOnDestroy(() => {
+    for (const unsubscribe of subscriptions) unsubscribe()
+  })
+
+  /** @returns {[number, number]} */
+  function getHandlePosition() {
+    const { x, y, width, height } = hotspot
+    return
+  }
+
+  /** @returns {[number, number]} */
+  function getCenterPosition() {
+    const { x, y, width, height } = hotspot
+    return [x + (width / 2), y + (height / 2)]
+  }
+
+  /** @returns {[number, number, number, number]} */
+  function getHotspotBounds() {
+    const { x, y, width, height } = $area.get()
+    return [x, y, width - hotspot.width, height - hotspot.height]
+  }
+}
+
+function CropOverlay({ imageSrc, crop, corners, rectangle, $inset }) {
+
+  const $clipPath = $inset.derive(x => `inset(${x.top}px ${x.right}px ${x.bottom}px ${x.left}px)`)
+
+  return [
+    CropShadow(),
+    img({ src: imageSrc, style: { clipPath: $clipPath } }),
+    CropRectangle({ corners, onMouseDown: rectangle.handleMouseDown, $inset, crop })
+  ]
+}
+
+function CropShadow() {
+  return div(css`& { background-color: rgb(0 0 0 / 40%) }`)
+}
+
+CropRectangle.style = css`& {
+  position: relative;
+
+  & > * {
+    position: absolute;
+  }
+
+  & > * { cursor: move; }
+  & > .tl, & > .br { cursor: nwse-resize; }
+  & > .tr, & > .bl { cursor: nesw-resize; }
+}`
+function CropRectangle({ corners, onMouseDown, $inset, crop }) {
+  const { x, y, width, height } = crop
+  const initialPositions = {
+    tl: { left: x, top: y },
+    tr: { left: x + width , top: y },
+    bl: { left: x, top: y + height },
+    br: { left: x + width , top: y + height },
+  }
+
+  return (
+    div(
+      CropRectangle.style,
+      CropArea({ onMouseDown, $inset }),
+      corners.map(corner =>
+        CropCorner({ corner, position: initialPositions[corner.id] })
+      ),
+    )
+  )
+}
+
+function CropArea({ onMouseDown, $inset }) {
+  const style = {
+    top: $inset.derive(x => x.top),
+    left: $inset.derive(x => x.left),
+    bottom: $inset.derive(x => x.bottom),
+    right: $inset.derive(x => x.right),
+  }
+
+  return div({ className: 'CropArea', onMouseDown, style })
+}
+
+CropCorner.style = css`& {
+  will-change: transform;
+
+  width: 0;
+  height: 0;
+  overflow: visible;
+
+  --corner-size: 20px;
+  --min-corner-size: calc(-1 * var(--corner-size));
+
+  &::after {
+    content: '';
+    display: block;
+    width: var(--corner-size);
+    height: var(--corner-size);
+    transform: translate(-50%, -50%);
+    background-color: turquoise;
+  }
+}`
+function CropCorner({ corner, position }) {
+  const { id, handleMouseDown, $translate } = corner
+  const $transformStyle = $translate.derive(([x, y]) => `translate(${x}px,${y}px)`)
+  return (
+    div(
+      {
+        onMouseDown: handleMouseDown,
+        className: id,
+        style: { transform: $transformStyle, ...position }
+      },
+      CropCorner.style
+    )
+  )
 }
 
 DocumentHeader.style = css`& {

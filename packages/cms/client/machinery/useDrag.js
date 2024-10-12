@@ -14,9 +14,9 @@ import { useCombined } from './useCombined.js'
 /**
  * @param {readonly [x, y]} initialPosition
  * @param {() => [x, y, width, height]} [getBounds]
- * @param {any} [name]
+ * @param {any} [id]
  */
-export function useDrag([initialX, initialY], getBounds = undefined, name = undefined) {
+export function useDrag([initialX, initialY], getBounds = undefined, id = undefined) {
   const [$position, setPosition] = createSignal([initialX, initialY])
   const $translate = $position.derive(([x, y]) => [x - initialX, y - initialY])
 
@@ -24,7 +24,7 @@ export function useDrag([initialX, initialY], getBounds = undefined, name = unde
 
   useOnDestroy(removeListeners)
 
-  return { handleMouseDown, $translate, $position, move, name }
+  return { handleMouseDown, $translate, $position, move, id }
 
   function move(newValueOrFunction) {
     if (!getBounds)
@@ -95,10 +95,16 @@ export function useDragableRectangle(bounds, initialRectangle) {
 
   let movingSiblings = false
 
-  const $area = useCombined(tl.$position, br.$position)
-    .derive(([[tlX, tlY], [brX, brY]]) =>
-      ({ top: tlY, left: tlX, bottom: height - brY, right: width - brX })
+  const $minMax = useCombined(tl.$position, br.$position)
+
+  const $area = $minMax
+    .derive(([[minX, minY], [maxX, maxY]]) =>
+      ({ x: minX, y: minY, width: maxX - minX, height: maxX - minY })
     )
+
+  const $inset = $minMax.derive(([[minX, minY], [maxX, maxY]]) =>
+    ({ top: minY, left: minX, bottom: height - maxY, right: width - maxX })
+  )
 
   const subscriptions = [
     bind(tl, { xAxis: bl, yAxis: tr }),
@@ -114,7 +120,7 @@ export function useDragableRectangle(bounds, initialRectangle) {
     for (const unsubscribe of subscriptions) unsubscribe()
   })
 
-  return { corners, rectangle, $area }
+  return { corners, rectangle, $inset, $area }
 
   /** @returns {Area } */
   function getTlBounds() {

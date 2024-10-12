@@ -45,8 +45,12 @@ import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
         const marker = comment()
         const infoByKey = new Map()
         const nodesFromLoop = dynamic.signal.get().flatMap((item, i, items) => {
-          const key = dynamic.getKey(item, i, items)
-          return renderItem(key, item, i, items)
+          try {
+            const key = dynamic.getKey(item, i, items)
+            return renderItem(key, item, i, items)
+          } catch (e) {
+            throw `Problem rendering dynamic:\n${e.message}\n${dynamic.signal.stack}`
+          }
         })
         const nodes = [marker, ...nodesFromLoop, comment()]
 
