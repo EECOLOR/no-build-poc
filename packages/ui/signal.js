@@ -15,10 +15,8 @@ export class Signal {
 
   /** @template X @param {(value: T, previous?: X) => X} f @returns {Signal<X>} */
   derive(f) { return null }
-
-  init() {}
 }
-Object.defineProperty(Signal, Symbol.hasInstance, { value: o => o.constructor === Signal })
+Object.defineProperty(Signal, Symbol.hasInstance, { value: o => o?.constructor === Signal })
 
 /**
  * @template T
@@ -55,10 +53,6 @@ export function createSignal(initialValue) {
 
     derive(f) {
       return derived(signal, f)
-    },
-
-    init() {
-      getValue()
     },
 
     get stack() {
@@ -122,7 +116,6 @@ export function derived(signal, deriveValue) {
   const derivedSignal = {
     constructor: Signal,
 
-    init: newSignal.init,
     get: newSignal.get,
     derive: f => derived(derivedSignal, f),
 

@@ -49,7 +49,7 @@ import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
             const key = dynamic.getKey(item, i, items)
             return renderItem(key, item, i, items)
           } catch (e) {
-            throw `Problem rendering dynamic:\n${e.message}\n${dynamic.signal.stack}`
+            throw `Problem rendering dynamic:\n${e.message}\n${dynamic.signal.stack}\nTrigger:\n${e.stack}`
           }
         })
         const nodes = [marker, ...nodesFromLoop, comment()]
@@ -154,6 +154,7 @@ function handleTemplateAsChild(element, template) {
 }
 
 function setAttributeOrProperty(element, k, v) {
+  if (v === undefined) return
   writeToDom.outsideAnimationFrame(() => {
     if (k in element) element[k] = v
     else element.setAttribute(k, v)

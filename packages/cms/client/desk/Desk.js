@@ -1,16 +1,14 @@
-import { writeToDom } from '#ui/domInteraction.js'
-import { conditional, derive, loop, useOnDestroy } from '#ui/dynamic.js'
+import { conditional, derive, loop } from '#ui/dynamic.js'
 import { createSignal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
 import { ButtonAdd, ButtonChevronLeft, ButtonChevronRight, ButtonDelete, Link, List, Scrollable } from '../buildingBlocks.js'
 import { context, getSchema } from '../context.js'
 import { DocumentForm, patch } from '../form/DocumentForm.js'
 import { DocumentHistory } from '../history/DocumentHistory.js'
-import { debounce } from '../machinery/debounce.js'
 import { $pathname, pushState } from '../machinery/history.js'
 import { renderOnValue } from '../machinery/renderOnValue.js'
 import { useCombined } from '../machinery/useCombined.js'
-import { useDrag, useDragableRectangle } from '../machinery/useDrag.js'
+import { useDragableRectangle, useDraggableEllipse } from '../machinery/useDrag.js'
 import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
 import { useElementSize } from '../machinery/useHasScrollbar.js'
 
@@ -307,12 +305,14 @@ HotspotAndCrop.style = css`& {
 
     width: 100%;
     height: 100%;
+
+    position: relative;
   }
 }`
 function HotspotAndCrop({ id, metadata }) {
   const imageSrc = `${context.apiPath}/images/${id}`
   const crop = null // { x: 20, y: 40, width: 120, height: 100 }
-  const hotspot = null
+  const hotspot = null // { x: 40, y: 60, width: 80, height: 60 }
 
   // const debounced = debounce(onDragEnd, 200)
   // useOnDestroy($position.subscribe(debounced))
@@ -341,104 +341,130 @@ function HotspotAndCrop({ id, metadata }) {
   // function onDragEnd() {
   //   console.log('done', $position.get())
   // }
-
-  function smallestEllipseBounds([x, y]) {
-    const distance = Math.sqrt(x ** 2 + y ** 2)
-    const angle = Math.atan2(y, x)
-    const semiMajorAxis = distance
-    const semiMinorAxis = distance * Math.min(Math.abs(Math.cos(angle)), Math.abs(Math.sin(angle)))
-
-    const orientation = Math.abs(y) > Math.abs(x)
-    const xAxis = orientation ? semiMinorAxis : semiMajorAxis
-    const yAxis = orientation ? semiMajorAxis : semiMinorAxis
-
-    return { left: -xAxis, right: xAxis, top: yAxis, bottom: -yAxis }
-  }
 }
 
 function HotspotAndCropOverlay({ imageSrc, crop, hotspot, displaySize }) {
   const { corners, rectangle, $inset, $area } = useDragableRectangle(displaySize, crop)
 
   return [
-    CropOverlay({ imageSrc, crop, corners, rectangle, $inset }),
-    HotspotOverlay({ imageSrc, hotspot, $area }),
+    CropOverlay({ imageSrc, corners, rectangle, $inset }),
+    HotspotOverlay({ imageSrc, hotspot, $bounds: $area }),
   ]
 }
 
-function HotspotOverlay({ imageSrc, $area, hotspot }) {
-  const center = useDrag(getCenterPosition(), getHotspotBounds)
-  // const handle = useDrag(getHandlePosition(), getHandleBounds())
+function HotspotOverlay({ imageSrc, $bounds, hotspot }) {
 
-  // TODO: This might not be needed if bounds is a Signal
-  const subscriptions = [
-    $area.subscribeDirect(_ => center.move(x => x)) // make sure the hotspot remain within bounds
-  ]
-
-  useOnDestroy(() => {
-    for (const unsubscribe of subscriptions) unsubscribe()
-  })
-
-  /** @returns {[number, number]} */
-  function getHandlePosition() {
-    const { x, y, width, height } = hotspot
-    return
-  }
-
-  /** @returns {[number, number]} */
-  function getCenterPosition() {
-    const { x, y, width, height } = hotspot
-    return [x + (width / 2), y + (height / 2)]
-  }
-
-  /** @returns {[number, number, number, number]} */
-  function getHotspotBounds() {
-    const { x, y, width, height } = $area.get()
-    return [x, y, width - hotspot.width, height - hotspot.height]
-  }
-}
-
-function CropOverlay({ imageSrc, crop, corners, rectangle, $inset }) {
-
-  const $clipPath = $inset.derive(x => `inset(${x.top}px ${x.right}px ${x.bottom}px ${x.left}px)`)
+  const { center, handle, $ellipse } = useDraggableEllipse({ $bounds, initialEllipse: hotspot })
 
   return [
-    CropShadow(),
-    img({ src: imageSrc, style: { clipPath: $clipPath } }),
-    CropRectangle({ corners, onMouseDown: rectangle.handleMouseDown, $inset, crop })
+    Shadow(),
+    HotspotImage({ imageSrc, $ellipse }),
+    HotspotEllipse({ center, handle, $ellipse }),
   ]
 }
 
-function CropShadow() {
-  return div(css`& { background-color: rgb(0 0 0 / 40%) }`)
+function HotspotImage({ imageSrc, $ellipse }) {
+  const $clipPath = ellipseAsClipPath($ellipse)
+
+  return img({ src: imageSrc, style: { clipPath: $clipPath } })
+}
+
+function ellipseAsClipPath($ellipse) {
+  return $ellipse.derive(({ xAxis, yAxis, centerX, centerY }) =>
+    `ellipse(${xAxis}px ${yAxis}px at ${centerX}px ${centerY}px)`
+  )
+}
+
+HotspotEllipse.style = css`& {
+  pointer-events: none;
+  position: relative;
+
+  & > * {
+    pointer-events: auto;
+    position: absolute;
+  }
+
+  & > * { cursor: move; }
+  & > .handle { cursor: nwse-resize; }
+}`
+function HotspotEllipse({ center, handle, $ellipse }) {
+  return (
+    div(
+      HotspotEllipse.style,
+      HotspotArea({ onMouseDown: center.handleMouseDown, $ellipse }),
+      Handle({ handle })
+    )
+  )
+}
+
+HotspotArea.style = css`& {
+  overflow: visible;
+  width: 0;
+  height: 0;
+
+  &::after {
+    content: '';
+    display: block;
+    width: var(--width);
+    height: var(--height);
+    transform: translate(-50%, -50%);
+    clip-path: var(--clipPath);
+  }
+}`
+function HotspotArea({ onMouseDown, $ellipse }) {
+  const $localEllipse = $ellipse.derive(({ xAxis, yAxis }) =>
+    ({ centerX: xAxis, centerY: yAxis, xAxis, yAxis })
+  )
+  const $clipPath = ellipseAsClipPath($localEllipse)
+
+  const style = {
+    top: $ellipse.derive(x => x.centerY),
+    left: $ellipse.derive(x => x.centerX),
+    '--width': $ellipse.derive(x => `${x.xAxis * 2}px`),
+    '--height': $ellipse.derive(x => `${x.yAxis * 2}px`),
+    '--clipPath': $clipPath,
+  }
+
+  return div({ className: 'HotspotArea', onMouseDown, style }, HotspotArea.style)
+}
+
+function CropOverlay({ imageSrc, corners, rectangle, $inset }) {
+  return [
+    Shadow(),
+    CropImage({ imageSrc, $inset }),
+    CropRectangle({ corners, rectangle, $inset })
+  ]
+}
+
+function CropImage({ imageSrc, $inset }) {
+  const $clipPath = $inset.derive(x => `inset(${x.top}px ${x.right}px ${x.bottom}px ${x.left}px)`)
+
+  return img({ src: imageSrc, style: { clipPath: $clipPath } })
+}
+
+function Shadow() {
+  return div(css`& { background-color: rgb(0 0 0 / 40%); pointer-events: none; }`)
 }
 
 CropRectangle.style = css`& {
   position: relative;
+  pointer-events: none;
 
   & > * {
     position: absolute;
+    pointer-events: auto;
   }
 
   & > * { cursor: move; }
   & > .tl, & > .br { cursor: nwse-resize; }
   & > .tr, & > .bl { cursor: nesw-resize; }
 }`
-function CropRectangle({ corners, onMouseDown, $inset, crop }) {
-  const { x, y, width, height } = crop
-  const initialPositions = {
-    tl: { left: x, top: y },
-    tr: { left: x + width , top: y },
-    bl: { left: x, top: y + height },
-    br: { left: x + width , top: y + height },
-  }
-
+function CropRectangle({ corners, rectangle, $inset }) {
   return (
     div(
       CropRectangle.style,
-      CropArea({ onMouseDown, $inset }),
-      corners.map(corner =>
-        CropCorner({ corner, position: initialPositions[corner.id] })
-      ),
+      CropArea({ onMouseDown: rectangle.handleMouseDown, $inset }),
+      corners.map(handle => Handle({ handle })),
     )
   )
 }
@@ -454,7 +480,7 @@ function CropArea({ onMouseDown, $inset }) {
   return div({ className: 'CropArea', onMouseDown, style })
 }
 
-CropCorner.style = css`& {
+Handle.style = css`& {
   will-change: transform;
 
   width: 0;
@@ -473,17 +499,18 @@ CropCorner.style = css`& {
     background-color: turquoise;
   }
 }`
-function CropCorner({ corner, position }) {
-  const { id, handleMouseDown, $translate } = corner
+function Handle({ handle }) {
+  const { id, handleMouseDown, $translate, $position } = handle
+  const [handleX, handleY] = $position.get()
   const $transformStyle = $translate.derive(([x, y]) => `translate(${x}px,${y}px)`)
   return (
     div(
       {
         onMouseDown: handleMouseDown,
         className: id,
-        style: { transform: $transformStyle, ...position }
+        style: { transform: $transformStyle, left: handleX, top: handleY }
       },
-      CropCorner.style
+      Handle.style
     )
   )
 }
