@@ -1,88 +1,265 @@
-import { useOnDestroy } from '#ui/dynamic.js'
+import { context } from '#cms/client/context.js'
+import { useDrag, useElementSize } from '#cms/client/machinery/elementHooks.js'
+import { useCombined } from '#cms/client/machinery/useCombined.js'
+import { derive, useOnDestroy } from '#ui/dynamic.js'
 import { createSignal, Signal } from '#ui/signal.js'
-import { useCombined } from './useCombined.js'
+import { css, tags } from '#ui/tags.js'
 
-/**
- * @typedef {number} x
- * @typedef {number} y
- * @typedef {number} width
- * @typedef {number} height
- * @typedef {[x, y]} Position
- * @typedef {[x, y, width, height]} Area
- */
+const { div, img } = tags
 
-/**
- * @param {readonly [x, y]} initialPosition
- * @param {object} options
- * @param {() => [x, y, width, height]} [options.getBounds]
- * @param {any} [options.id]
- */
-export function useDrag([initialX, initialY], options = undefined) {
-  const [$position, setPosition] = createSignal([initialX, initialY])
-  const $translate = $position.derive(([x, y]) => [x - initialX, y - initialY])
+ImageCropAndHotspot.style = css`& {
+  --handle-size: 1rem;
 
-  let state = null
-  useOnDestroy(removeListeners)
+  display: grid;
+  grid-template-columns: 1fr;
+  padding: calc(var(--handle-size) / 2);
+  border: 1px solid lightgray;
 
-  return {
-    handleMouseDown,
-    $translate,
-    $position,
-    move,
-    id: options?.id,
+  & > * {
+    grid-row-start: 1;
+    grid-column-start: 1;
+
+    width: 100%;
+    height: 100%;
+
+    position: relative;
+  }
+}`
+export function ImageCropAndHotspot({ src, metadata, onCropChange, onHotspotChange }) {
+  const crop = null // { x: 20, y: 40, width: 120, height: 100 }
+  const hotspot = null // { x: 40, y: 60, width: 80, height: 60 }
+
+  const { ref, $size } = useElementSize()
+
+  return (
+    div(
+      ImageCropAndHotspot.style,
+      img({ ref, src }),
+      derive($size, size => {
+        if (!size) return
+
+        const widthRatio = metadata.width / size.width
+        const heightRatio = metadata.height / size.height
+
+        // TODO: use size to adjust crop and hotspot (scaling)
+        return HotspotAndCropOverlay({
+          src,
+          displaySize: size,
+          crop: crop || addPosition(size),
+          hotspot: hotspot || crop || addPosition(size),
+          onCropChange(crop) {
+            onCropChange(correctRatio(crop, { widthRatio, heightRatio }))
+          },
+          onHotspotChange(hotspot) {
+            onHotspotChange(correctRatio(hotspot, { widthRatio, heightRatio }))
+          },
+        })
+      })
+    )
+  )
+
+  function addPosition(size) {
+    return { x: 0, y: 0, ...size }
   }
 
-  function move(newValueOrFunction) {
-    if (!options?.getBounds)
-      throw new Error(`Can not move a dragable when no 'getBounds' function was given`)
-
-    setPosition(position => {
-      const newValue = typeof newValueOrFunction === 'function'
-          ? newValueOrFunction(position)
-          : newValueOrFunction
-
-      return getBoundedPosition(newValue, options.getBounds())
-    })
-  }
-
-  function handleMouseDown(e) {
-    const parent = e.currentTarget.parentElement.getBoundingClientRect()
-    const parentArea = [parent.x, parent.y, parent.width, parent.height]
-    state = {
-      offset: [Math.round(e.offsetX), Math.round(e.offsetY)],
-      parent: parentArea,
+  function correctRatio({ x, y, width, height }, { widthRatio, heightRatio }) {
+    const result = {
+      x: Math.round(widthRatio * x),
+      y: Math.round(heightRatio * y),
+      width: Math.round(widthRatio * width),
+      height: Math.round(heightRatio * height),
     }
+    return result
+  }
+}
 
-    addListeners()
-    e.preventDefault()
+function HotspotAndCropOverlay({ src, crop, hotspot, displaySize, onCropChange, onHotspotChange }) {
+  const { corners, rectangle, $inset, $area } = useDragableRectangle(displaySize, crop)
+
+  const unsubscribe = $area.subscribe(onCropChange)
+  useOnDestroy(unsubscribe)
+
+  return [
+    CropOverlay({ src, corners, rectangle, $inset }),
+    HotspotOverlay({ src, hotspot, $bounds: $area, onHotspotChange }),
+  ]
+}
+
+function HotspotOverlay({ src, $bounds, hotspot, onHotspotChange }) {
+
+  const { center, handle, $ellipse, $area } = useDraggableEllipse({ $bounds, initialEllipse: hotspot })
+
+  const unsubscribe = $area.subscribe(onHotspotChange)
+  useOnDestroy(unsubscribe)
+
+  return [
+    Shadow(),
+    HotspotImage({ src, $ellipse }),
+    HotspotEllipse({ center, handle, $ellipse }),
+  ]
+}
+
+function HotspotImage({ src, $ellipse }) {
+  const $clipPath = ellipseAsClipPath($ellipse)
+
+  return img({ src: src, style: { clipPath: $clipPath } })
+}
+
+function ellipseAsClipPath($ellipse) {
+  return $ellipse.derive(({ xAxis, yAxis, centerX, centerY }) =>
+    `ellipse(${xAxis}px ${yAxis}px at ${centerX}px ${centerY}px)`
+  )
+}
+
+HotspotEllipse.style = css`& {
+  pointer-events: none;
+  position: relative;
+
+  & > * {
+    pointer-events: auto;
+    position: absolute;
   }
 
-  function addListeners() {
-    window.addEventListener('mousemove', handleMouseMove)
-    window.addEventListener('mouseup', removeListeners)
+  & > * { cursor: move; }
+  & > .handle { cursor: nwse-resize; }
+}`
+function HotspotEllipse({ center, handle, $ellipse }) {
+  return (
+    div(
+      HotspotEllipse.style,
+      HotspotArea({ onMouseDown: center.handleMouseDown, $ellipse }),
+      Handle({ handle, type: 'circle' })
+    )
+  )
+}
+
+HotspotArea.style = css`& {
+  overflow: visible;
+  width: 0;
+  height: 0;
+
+  &::after {
+    content: '';
+    display: block;
+    width: var(--width);
+    height: var(--height);
+    transform: translate(-50%, -50%);
+    clip-path: var(--clipPath);
   }
-  function removeListeners() {
-    window.removeEventListener('mousemove', handleMouseMove)
-    window.removeEventListener('mouseup', removeListeners)
-    state = null
+}`
+function HotspotArea({ onMouseDown, $ellipse }) {
+  const $localEllipse = $ellipse.derive(({ xAxis, yAxis }) =>
+    ({ centerX: xAxis, centerY: yAxis, xAxis, yAxis })
+  )
+  const $clipPath = ellipseAsClipPath($localEllipse)
+
+  const style = {
+    top: $ellipse.derive(x => x.centerY),
+    left: $ellipse.derive(x => x.centerX),
+    '--width': $ellipse.derive(x => `${x.xAxis * 2}px`),
+    '--height': $ellipse.derive(x => `${x.yAxis * 2}px`),
+    '--clipPath': $clipPath,
   }
 
-  function handleMouseMove(e) {
-    const { offset: [offsetX, offsetY], parent } = state
-    const  [parentX, parentY] = parent
-    const localMouseX = Math.round(e.clientX - parentX)
-    const localMouseY = Math.round(e.clientY - parentY)
-    const bounds = options?.getBounds ? options.getBounds() : parent
+  return div({ className: 'HotspotArea', onMouseDown, style }, HotspotArea.style)
+}
 
-    setPosition(getBoundedPosition([localMouseX - offsetX, localMouseY - offsetY], bounds))
+function CropOverlay({ src, corners, rectangle, $inset }) {
+  return [
+    Shadow(),
+    CropImage({ src, $inset }),
+    CropRectangle({ corners, rectangle, $inset })
+  ]
+}
+
+function CropImage({ src, $inset }) {
+  const $clipPath = $inset.derive(x => `inset(${x.top}px ${x.right}px ${x.bottom}px ${x.left}px)`)
+
+  return img({ src: src, style: { clipPath: $clipPath } })
+}
+
+function Shadow() {
+  return div(css`& { background-color: rgb(0 0 0 / 40%); pointer-events: none; }`)
+}
+
+CropRectangle.style = css`& {
+  position: relative;
+  pointer-events: none;
+
+  & > * {
+    position: absolute;
+    pointer-events: auto;
   }
+
+  & > * { cursor: move; }
+  & > .tl, & > .br { cursor: nwse-resize; }
+  & > .tr, & > .bl { cursor: nesw-resize; }
+}`
+function CropRectangle({ corners, rectangle, $inset }) {
+  return (
+    div(
+      CropRectangle.style,
+      CropArea({ onMouseDown: rectangle.handleMouseDown, $inset }),
+      corners.map(handle => Handle({ handle })),
+    )
+  )
+}
+
+function CropArea({ onMouseDown, $inset }) {
+  const style = {
+    top: $inset.derive(x => x.top),
+    left: $inset.derive(x => x.left),
+    bottom: $inset.derive(x => x.bottom),
+    right: $inset.derive(x => x.right),
+  }
+
+  return div({ className: 'CropArea', onMouseDown, style })
+}
+
+Handle.style = css`& {
+  will-change: transform;
+
+  width: 0;
+  height: 0;
+  overflow: visible;
+
+  &::after {
+    content: '';
+    display: block;
+    width: var(--handle-size);
+    height: var(--handle-size);
+    transform: translate(-50%, -50%);
+    background-color: turquoise;
+    border-radius: var(--borderRadius);
+  }
+}`
+/** @param {{ handle: any, type?: 'square' | 'circle' }} props */
+function Handle({ handle, type = 'square' }) {
+  const { id, handleMouseDown, $translate, $position } = handle
+  const [handleX, handleY] = $position.get()
+  const $transformStyle = $translate.derive(([x, y]) => `translate(${x}px,${y}px)`)
+  return (
+    div(
+      {
+        onMouseDown: handleMouseDown,
+        className: id,
+        style: {
+          transform: $transformStyle,
+          left: handleX,
+          top: handleY,
+          '--borderRadius': type === 'circle' ? '50%' : '0',
+        }
+      },
+      Handle.style
+    )
+  )
 }
 
 /**
  * @param {{ width: number, height: number }} bounds
  * @param {{ x: number, y: number, width: number, height: number }} initialRectangle
  */
-export function useDragableRectangle(bounds, initialRectangle) {
+ function useDragableRectangle(bounds, initialRectangle) {
   const { width, height } = bounds
   /* TopLeft, TopRight, BottomLeft, BottomRight */
   const [tlPos, trPos, blPos, brPos] = areaToCornerPositions(initialRectangle)
@@ -147,7 +324,7 @@ export function useDragableRectangle(bounds, initialRectangle) {
  * @param {Signal<{ x: number, y: number, width: number, height: number }>} props.$bounds
  * @param {{ x: number, y: number, width: number, height: number }} props.initialEllipse
  */
-export function useDraggableEllipse({ $bounds, initialEllipse }) {
+function useDraggableEllipse({ $bounds, initialEllipse }) {
 
   const [centerPosition, handlePosition] = getPositions()
   const [centerOptions, handleOptions] = getOptions()
@@ -361,12 +538,4 @@ function areaToCornerPositions(area) {
     [minX, minY], [maxX, minY],
     [minX, maxY], [maxX, maxY],
   ])
-}
-
-function getBoundedPosition([x, y], [areaX, areaY, areaWidth, areaHeight]) {
-  return [clamp(areaX, areaX + areaWidth, x), clamp(areaY, areaY + areaHeight, y)]
-}
-
-function clamp(min, max, input) {
-  return Math.min(max, Math.max(min, input))
 }

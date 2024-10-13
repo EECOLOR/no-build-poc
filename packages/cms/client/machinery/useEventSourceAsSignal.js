@@ -6,7 +6,7 @@ import { createSignal, Signal } from '#ui/signal.js'
  * @param {({ pathname: string } | { pathnameSignal: Signal<string> }) &
  *   { events: Array<string>, initialValue?: T }
  * } params
- * @returns
+ * @returns {Signal<T | { event: string, data: any }>}
  */
 export function useEventSourceAsSignal(params) {
   const { events, initialValue = null } = params

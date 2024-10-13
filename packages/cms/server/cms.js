@@ -93,17 +93,119 @@ export function createCms({ basePath, storagePath }) {
   /**
    * @param {import('node:http').IncomingMessage} req
    * @param {import('node:http').ServerResponse} res
+   * @param {{ filename: string, searchParams: URLSearchParams }} options
    */
   function handleGetImage(req, res, { filename, searchParams }) {
     const imagePath = path.join(imagesPath, filename)
     if (!fs.existsSync(imagePath))
       return false
 
+    const image = fs.readFileSync(imagePath)
+
+    const entries = Array.from(searchParams.entries())
+    if (!entries.length) {
+      res.writeHead(200)
+      res.write(image)
+      res.end()
+      return true
+    }
+
+    const params = Object.fromEntries(entries)
+
+    // TODO: error responses
     res.writeHead(200)
-    res.write(fs.readFileSync(imagePath))
-    res.end()
+    handleModifiedImage(image, params)
+      .then(x => {
+        console.log(x.info)
+        res.write(x.data)
+      })
+      .catch(e => console.error(e))
+      .then(_ => {
+        res.end()
+      })
 
     return true
+  }
+
+  async function handleModifiedImage(image, params) {
+    if (!params.w || !params.h)
+      throw new Error(`Expected w and h params`)
+
+    const $image = sharp(image)
+    const metadata = await $image.metadata()
+    console.log(params)
+
+    const width = parseInt(params.w, 10)
+    const height = parseInt(params.h, 10)
+    const crop = params.crop
+      ? rectangleFromArray(params.crop?.split(','))
+      : { x: 0, y: 0, width: metadata.width, height: metadata.height }
+    const hotspot = params.hotspot
+      ? rectangleFromArray(params.hotspot.split(','))
+      : crop
+    const rectangle = determineImageRegion(crop, hotspot, width / height)
+
+    return $image
+      .extract({ left: rectangle.x, top: rectangle.y, width: rectangle.width, height: rectangle.height })
+      .resize({ width, height })
+      .toBuffer({ resolveWithObject: true })
+  }
+
+  function rectangleFromArray(array) {
+    const [x, y, width, height] = array.map(x => parseInt(x, 10))
+    return { x, y, width, height }
+  }
+
+  /**
+   * TODO: this function should be modified
+   * Note to self: use a pen and paper to figure out what would work best
+   */
+  /**
+   * Assumptions:
+   * - hotspot is within crop
+   * - hotspot maximum size is crop size
+   * - hotspot minimal position is crop position
+   *
+   * Result:
+   * A rectangle that:
+   * - is within crop
+   * - has the desired ratio
+   * - shows as much of the hotspot area as possible
+   * - has either the height or width of the crop
+   *
+   * @param {{ x: number, y: number, width: number, height: number }} crop
+   * @param {{ x: number, y: number, width: number, height: number }} hotspot
+   * @param {number} desiredRatio Calculated by width / height
+   *
+   * @returns {{ x: number, y: number, width: number, height: number }}
+   */
+  function determineImageRegion(crop, hotspot, desiredRatio) {
+    const hotspotCenterX = hotspot.x + hotspot.width / 2
+    const hotspotCenterY = hotspot.y + hotspot.height / 2
+
+    const cropRatio = crop.width / crop.height
+    const cropIsMoreWide = cropRatio > desiredRatio
+
+    let width, height
+    if (cropIsMoreWide) {
+      height = Math.max(crop.height, hotspot.height)
+      width = height * desiredRatio
+    } else {
+      width = Math.max(crop.width, hotspot.width)
+      height = width / desiredRatio
+    }
+
+    const desiredX = hotspotCenterX - width / 2
+    const desiredY = hotspotCenterY - height / 2
+
+    const x = clamp(crop.x, crop.x + crop.width - width, desiredX)
+    const y = clamp(crop.y, crop.y + crop.height - height, desiredY)
+
+    return rectangleFromArray([x, y, width, height].map(x => Math.round(x)))
+
+    function clamp(min, max, value) {
+      return Math.max(min, Math.min(value, max))
+    }
   }
 
   /**

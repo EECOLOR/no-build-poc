@@ -1,16 +1,17 @@
-import { conditional, derive, loop } from '#ui/dynamic.js'
-import { createSignal } from '#ui/signal.js'
+import { conditional, derive, loop, useOnDestroy } from '#ui/dynamic.js'
+import { createSignal, Signal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
 import { ButtonAdd, ButtonChevronLeft, ButtonChevronRight, ButtonDelete, Link, List, Scrollable } from '../buildingBlocks.js'
 import { context, getSchema } from '../context.js'
 import { DocumentForm, patch } from '../form/DocumentForm.js'
+import { ImageCropAndHotspot } from '../form/image/ImageCropAndHotspot.js'
 import { DocumentHistory } from '../history/DocumentHistory.js'
+import { debounce } from '../machinery/debounce.js'
+import { useElementSize } from '../machinery/elementHooks.js'
 import { $pathname, pushState } from '../machinery/history.js'
 import { renderOnValue } from '../machinery/renderOnValue.js'
 import { useCombined } from '../machinery/useCombined.js'
-import { useDragableRectangle, useDraggableEllipse } from '../machinery/useDrag.js'
 import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
-import { useElementSize } from '../machinery/useHasScrollbar.js'
 
 const { div, input, h1, img, pre, code } = tags
 
@@ -59,6 +60,10 @@ Panes.style = css`& {
 
   & > :not(:first-child) {
     border-right: 1px solid lightgray;
+  }
+
+  & > :last-child {
+    flex-grow: 1;
   }
 }`
 function Panes({ firstPane }) {
@@ -192,6 +197,7 @@ DocumentPane.style = css`& {
   flex-direction: column;
   gap: 1rem;
   padding: 0.5rem;
+  max-width: fit-content;
 
   & > div {
     display: flex;
@@ -271,255 +277,155 @@ function ImageItem({ image, path }) {
 
 ImagePane.style = css`& {
   padding: 0.5rem;
+  display: flex;
+  gap: 1rem;
 
   & > * {
     height: 100%;
+    width: 50%;
   }
 }`
 function ImagePane({ id, path }) {
-  const $metadata = useImageMetadata({ id })
+  const src = `${context.apiPath}/images/${id}`
+
+  const $serverMetadata = useImageMetadata({ id })
+  const [$clientMetadata, setClientMetadata] = createSignal({})
+
+  const $combinedMetadata = useCombined($serverMetadata, $clientMetadata)
+    .derive(([serverMetadata, clientMetadata]) =>
+      serverMetadata === connecting ? null : { ...serverMetadata, ...clientMetadata, }
+    )
+
+  const debouncedSaveMetadata = debounce(saveMetadata, 200)
+  const unsubscribe = $combinedMetadata.subscribe(debouncedSaveMetadata)
+  useOnDestroy(unsubscribe)
+
   return (
     div(
       ImagePane.style,
       Scrollable({ scrollBarPadding: '0.5rem' },
-        div(
-          css`&{ width: 50%; }`,
-          derive($metadata, metadata => metadata !== connecting && [
-            HotspotAndCrop({ id, metadata }),
-            pre(code(JSON.stringify(metadata, null, 2))),
-          ])
-        )
-      )
-    )
-  )
-}
-
-HotspotAndCrop.style = css`& {
-  display: grid;
-  grid-template-columns: 1fr;
-  padding: 10px;
-
-  & > * {
-    grid-row-start: 1;
-    grid-column-start: 1;
-
-    width: 100%;
-    height: 100%;
-
-    position: relative;
-  }
-}`
-function HotspotAndCrop({ id, metadata }) {
-  const imageSrc = `${context.apiPath}/images/${id}`
-  const crop = null // { x: 20, y: 40, width: 120, height: 100 }
-  const hotspot = null // { x: 40, y: 60, width: 80, height: 60 }
-
-  // const debounced = debounce(onDragEnd, 200)
-  // useOnDestroy($position.subscribe(debounced))
-
-  const { ref, $size } = useElementSize()
-
-  return (
-    div(
-      HotspotAndCrop.style,
-      img({ ref, src: imageSrc }),
-      derive($size, size =>
-        size && HotspotAndCropOverlay({
-          imageSrc,
-          displaySize: size,
-          crop: crop || addPosition(size),
-          hotspot: hotspot || crop || addPosition(size),
+        ImageEditor({
+          src,
+          $serverMetadata,
+          onCropChange: handleCropChange,
+          onHotspotChange: handleHotspotChange,
         })
+      ),
+      Scrollable({ scrollBarPadding: '0.5rem' },
+        ImagePreview({ src, $metadata: $clientMetadata })
       )
     )
   )
 
-  function addPosition(size) {
-    return { x: 0, y: 0, ...size }
+  function handleCropChange(crop) {
+    setClientMetadata(x => ({ ...x, crop }))
   }
 
-  // function onDragEnd() {
-  //   console.log('done', $position.get())
-  // }
+  function handleHotspotChange(hotspot) {
+    setClientMetadata(x => ({ ...x, hotspot }))
+  }
+
+  function saveMetadata({ crop, hotspot }) {
+    const metadata = $serverMetadata.get()
+    if (metadata === connecting) return
+
+    const { width, height } = metadata
+    if (!crop) crop = { x: 0, y: 0, width, height }
+    if (!hotspot) hotspot = crop
+
+    const url = `http://localhost:8000/admin/api/2024-09-07/images/f65fc08d-a8df-4ef4-9135-838c6066b453-4608x2240.webp`
+
+    const params = new URLSearchParams({
+      w: String(width),
+      h: String(height),
+      crop: [crop.x, crop.y, crop.width, crop.height].join(','),
+      hotspot: [hotspot.x, hotspot.y, hotspot.width, hotspot.height].join(','),
+    })
+
+    console.log(`${url}?${params.toString()}`)
+  }
 }
 
-function HotspotAndCropOverlay({ imageSrc, crop, hotspot, displaySize }) {
-  const { corners, rectangle, $inset, $area } = useDragableRectangle(displaySize, crop)
+function ImageEditor({ src, $serverMetadata, onCropChange, onHotspotChange }) {
 
-  return [
-    CropOverlay({ imageSrc, corners, rectangle, $inset }),
-    HotspotOverlay({ imageSrc, hotspot, $bounds: $area }),
-  ]
-}
-
-function HotspotOverlay({ imageSrc, $bounds, hotspot }) {
-
-  const { center, handle, $ellipse } = useDraggableEllipse({ $bounds, initialEllipse: hotspot })
-
-  return [
-    Shadow(),
-    HotspotImage({ imageSrc, $ellipse }),
-    HotspotEllipse({ center, handle, $ellipse }),
-  ]
-}
-
-function HotspotImage({ imageSrc, $ellipse }) {
-  const $clipPath = ellipseAsClipPath($ellipse)
-
-  return img({ src: imageSrc, style: { clipPath: $clipPath } })
-}
-
-function ellipseAsClipPath($ellipse) {
-  return $ellipse.derive(({ xAxis, yAxis, centerX, centerY }) =>
-    `ellipse(${xAxis}px ${yAxis}px at ${centerX}px ${centerY}px)`
+  return (
+    derive($serverMetadata, metadata => metadata !== connecting && [
+      ImageCropAndHotspot({ src, metadata, onCropChange, onHotspotChange }),
+      pre(code(JSON.stringify(metadata, null, 2))),
+    ])
   )
 }
 
-HotspotEllipse.style = css`& {
-  pointer-events: none;
-  position: relative;
+ImagePreview.style = css`& {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 
   & > * {
-    pointer-events: auto;
-    position: absolute;
+    flex: 1 0 10%;
   }
 
-  & > * { cursor: move; }
-  & > .handle { cursor: nwse-resize; }
+  .r_3x4 {
+    aspect-ratio: 3 / 4;
+  }
+  .r_1x1 {
+    aspect-ratio: 1 / 1;
+  }
+  .r_16x9 {
+    aspect-ratio: 16 / 9;
+  }
+  .r_4x1 {
+    flex-basis: 100%;
+    aspect-ratio: 4 / 1;
+  }
 }`
-function HotspotEllipse({ center, handle, $ellipse }) {
+function ImagePreview({ src, $metadata }) {
+
+  const r_3x4 = useElementSize()
+  const r_1x1 = useElementSize()
+  const r_16x9 = useElementSize()
+  const r_4x1 = useElementSize()
+
+  const $r_3x4Src = useDebounced(useCombined(r_3x4.$size, $metadata)).derive(createSrc)
+  const $r_1x1Src = useDebounced(useCombined(r_1x1.$size, $metadata)).derive(createSrc)
+  const $r_16x9Src = useDebounced(useCombined(r_16x9.$size, $metadata)).derive(createSrc)
+  const $r_4x1Src = useDebounced(useCombined(r_4x1.$size, $metadata)).derive(createSrc)
+
   return (
     div(
-      HotspotEllipse.style,
-      HotspotArea({ onMouseDown: center.handleMouseDown, $ellipse }),
-      Handle({ handle, type: 'circle' })
+      ImagePreview.style,
+      img({ className: 'r_3x4', src: $r_3x4Src, ref: r_3x4.ref }),
+      img({ className: 'r_1x1', src: $r_1x1Src, ref: r_1x1.ref }),
+      img({ className: 'r_16x9', src: $r_16x9Src, ref: r_16x9.ref }),
+      img({ className: 'r_4x1', src: $r_4x1Src, ref: r_4x1.ref }),
     )
   )
-}
 
-HotspotArea.style = css`& {
-  overflow: visible;
-  width: 0;
-  height: 0;
+  function createSrc([size, { crop, hotspot }]) {
+    if (!size) return
 
-  &::after {
-    content: '';
-    display: block;
-    width: var(--width);
-    height: var(--height);
-    transform: translate(-50%, -50%);
-    clip-path: var(--clipPath);
+    const { width, height } = size
+
+    const params = new URLSearchParams({
+      w: String(width), h: String(height),
+      ...(crop && { crop: [crop.x, crop.y, crop.width, crop.height].join(',') }),
+      ...(hotspot && { hotspot: [hotspot.x, hotspot.y, hotspot.width, hotspot.height].join(',') }),
+    })
+    const url = `${src}?${params.toString()}`
+    console.log('setting source', url)
+    return url
   }
-}`
-function HotspotArea({ onMouseDown, $ellipse }) {
-  const $localEllipse = $ellipse.derive(({ xAxis, yAxis }) =>
-    ({ centerX: xAxis, centerY: yAxis, xAxis, yAxis })
-  )
-  const $clipPath = ellipseAsClipPath($localEllipse)
-
-  const style = {
-    top: $ellipse.derive(x => x.centerY),
-    left: $ellipse.derive(x => x.centerX),
-    '--width': $ellipse.derive(x => `${x.xAxis * 2}px`),
-    '--height': $ellipse.derive(x => `${x.yAxis * 2}px`),
-    '--clipPath': $clipPath,
-  }
-
-  return div({ className: 'HotspotArea', onMouseDown, style }, HotspotArea.style)
 }
 
-function CropOverlay({ imageSrc, corners, rectangle, $inset }) {
-  return [
-    Shadow(),
-    CropImage({ imageSrc, $inset }),
-    CropRectangle({ corners, rectangle, $inset })
-  ]
-}
+function useDebounced(signal) {
+  const [$debounced, setDebounced] = createSignal(signal.get)
 
-function CropImage({ imageSrc, $inset }) {
-  const $clipPath = $inset.derive(x => `inset(${x.top}px ${x.right}px ${x.bottom}px ${x.left}px)`)
+  const debouncedSet = debounce(setDebounced, 200)
+  const unsubscribe = signal.subscribe(debouncedSet)
+  useOnDestroy(unsubscribe)
 
-  return img({ src: imageSrc, style: { clipPath: $clipPath } })
-}
-
-function Shadow() {
-  return div(css`& { background-color: rgb(0 0 0 / 40%); pointer-events: none; }`)
-}
-
-CropRectangle.style = css`& {
-  position: relative;
-  pointer-events: none;
-
-  & > * {
-    position: absolute;
-    pointer-events: auto;
-  }
-
-  & > * { cursor: move; }
-  & > .tl, & > .br { cursor: nwse-resize; }
-  & > .tr, & > .bl { cursor: nesw-resize; }
-}`
-function CropRectangle({ corners, rectangle, $inset }) {
-  return (
-    div(
-      CropRectangle.style,
-      CropArea({ onMouseDown: rectangle.handleMouseDown, $inset }),
-      corners.map(handle => Handle({ handle })),
-    )
-  )
-}
-
-function CropArea({ onMouseDown, $inset }) {
-  const style = {
-    top: $inset.derive(x => x.top),
-    left: $inset.derive(x => x.left),
-    bottom: $inset.derive(x => x.bottom),
-    right: $inset.derive(x => x.right),
-  }
-
-  return div({ className: 'CropArea', onMouseDown, style })
-}
-
-Handle.style = css`& {
-  will-change: transform;
-
-  width: 0;
-  height: 0;
-  overflow: visible;
-
-  --corner-size: 20px;
-  --min-corner-size: calc(-1 * var(--corner-size));
-
-  &::after {
-    content: '';
-    display: block;
-    width: var(--corner-size);
-    height: var(--corner-size);
-    transform: translate(-50%, -50%);
-    background-color: turquoise;
-    border-radius: var(--borderRadius);
-  }
-}`
-/** @param {{ handle: any, type?: 'square' | 'circle' }} props */
-function Handle({ handle, type = 'square' }) {
-  const { id, handleMouseDown, $translate, $position } = handle
-  const [handleX, handleY] = $position.get()
-  const $transformStyle = $translate.derive(([x, y]) => `translate(${x}px,${y}px)`)
-  return (
-    div(
-      {
-        onMouseDown: handleMouseDown,
-        className: id,
-        style: {
-          transform: $transformStyle,
-          left: handleX,
-          top: handleY,
-          '--borderRadius': type === 'circle' ? '50%' : '0',
-        }
-      },
-      Handle.style
-    )
-  )
+  return $debounced
 }
 
 DocumentHeader.style = css`& {
@@ -599,6 +505,7 @@ function useImages() {
   }).derive(x => x?.data || [])
 }
 
+/** @returns {Signal<typeof connecting | { width, height, crop?, hotspot? }>} */
 function useImageMetadata({ id }) {
   return useEventSourceAsSignal({
     pathname: `${context.apiPath}/images/${id}/metadata`,

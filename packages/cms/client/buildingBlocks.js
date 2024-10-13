@@ -1,7 +1,7 @@
 import { arrowDown, arrowUp, chevronDown, chevronLeft, chevronRight, chevronUp, plus, trash } from '#cms/client/icons.js'
 import { tags, css, Tag } from '#ui/tags.js'
 import { pushState } from './machinery/history.js'
-import { useHasScrollbar } from './machinery/useHasScrollbar.js'
+import { useHasScrollbar } from './machinery/elementHooks.js'
 
 const { ul, li, button, a, div } = tags
 
