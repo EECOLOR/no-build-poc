@@ -106,28 +106,28 @@ export function useDragableRectangle(bounds, initialRectangle) {
         id: 'tl',
         getBounds() {
            const [x, y] = br.$position.get()
-           return [0, 0, x, y]
+           return [0, 0, x - 10, y - 10]
         }
       },
       {
         id: 'tr',
         getBounds() {
            const [x, y] = bl.$position.get()
-           return [x, 0, width, y]
+           return [x + 10, 0, width - 10, y - 10]
         }
       },
       {
         id: 'bl',
         getBounds() {
            const [x, y] = tr.$position.get()
-           return [0, y, x, height - y]
+           return [0, y + 10, x - 10, height - y - 10]
         }
       },
       {
         id: 'br',
         getBounds() {
            const [x, y] = tl.$position.get()
-           return [x, y, width - x, height - y]
+           return [x + 10, y + 10, width - x - 10, height - y - 10]
         }
       },
       {

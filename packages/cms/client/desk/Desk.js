@@ -392,7 +392,7 @@ function HotspotEllipse({ center, handle, $ellipse }) {
     div(
       HotspotEllipse.style,
       HotspotArea({ onMouseDown: center.handleMouseDown, $ellipse }),
-      Handle({ handle })
+      Handle({ handle, type: 'circle' })
     )
   )
 }
@@ -497,9 +497,11 @@ Handle.style = css`& {
     height: var(--corner-size);
     transform: translate(-50%, -50%);
     background-color: turquoise;
+    border-radius: var(--borderRadius);
   }
 }`
-function Handle({ handle }) {
+/** @param {{ handle: any, type?: 'square' | 'circle' }} props */
+function Handle({ handle, type = 'square' }) {
   const { id, handleMouseDown, $translate, $position } = handle
   const [handleX, handleY] = $position.get()
   const $transformStyle = $translate.derive(([x, y]) => `translate(${x}px,${y}px)`)
@@ -508,7 +510,12 @@ function Handle({ handle }) {
       {
         onMouseDown: handleMouseDown,
         className: id,
-        style: { transform: $transformStyle, left: handleX, top: handleY }
+        style: {
+          transform: $transformStyle,
+          left: handleX,
+          top: handleY,
+          '--borderRadius': type === 'circle' ? '50%' : '0',
+        }
       },
       Handle.style
     )

@@ -13,7 +13,7 @@ import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
  * } HtmlElementFor
  */
 
- export const render = createRenderer(
+export const render = createRenderer(
   /** @type {import('./renderer.js').RendererConstructor<Node>} */
   ({ renderValue }) => {
     return {
