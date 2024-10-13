@@ -15,6 +15,24 @@ export class Signal {
 
   /** @template X @param {(value: T, previous?: X) => X} f @returns {Signal<X>} */
   derive(f) { return null }
+
+  /** @returns {string} */
+  get stack() { return null }
+
+  // TODO: we probably need a destroy
+  /*
+    That would be tricky, let's say you have this:
+
+    $b = $a.derive(...).derive(...)
+
+    The middle signal would not be destroyed by a call to destroy unless we chain it, but that
+    would be problematic too:
+
+    $b = $a.derive(...)
+    $c = $b.derive(...)
+
+    If we destroy $c we don't want $b to be destroyed
+  */
 }
 Object.defineProperty(Signal, Symbol.hasInstance, { value: o => o?.constructor === Signal })
 
@@ -31,8 +49,8 @@ Object.defineProperty(Signal, Symbol.hasInstance, { value: o => o?.constructor =
 export function createSignal(initialValue) {
   let isInitialized = false
   let value = undefined
-  const listeners = []
-  const directListeners = []
+  const listeners = new Set()
+  const directListeners = new Set()
 
   const e = new Error()
 
@@ -91,11 +109,9 @@ export function createSignal(initialValue) {
   }
 
   function addListener(callback, target) {
-    target.push(callback)
+    target.add(callback)
     return function unsubscribe() {
-      const index = target.indexOf(callback)
-      if (index < 0) return
-      target.splice(index, 1)
+      target.delete(callback)
     }
   }
 }
@@ -109,50 +125,11 @@ export function createSignal(initialValue) {
 export function derived(signal, deriveValue) {
   const [newSignal, setValue] = createSignal(() => deriveValue(signal.get()))
 
-  let subscriptions = 0
-  let unsubscribe = null
-  const e = new Error()
+  signal.subscribeDirect(value => {
+    setValue(oldValue => deriveValue(value, oldValue))
+  })
 
-  const derivedSignal = {
-    constructor: Signal,
-
-    get: newSignal.get,
-    derive: f => derived(derivedSignal, f),
-
-    subscribe(callback) {
-      return addSubscription(callback, 'subscribe')
-    },
-    subscribeDirect(callback) {
-      return addSubscription(callback, 'subscribeDirect')
-    },
-
-    get stack() { return e.stack },
-  }
-
-  return derivedSignal
-
-  function connect() {
-    unsubscribe = signal.subscribeDirect(newValue =>
-      setValue(oldValue => deriveValue(newValue, oldValue))
-    )
-  }
-
-  function disconnect() {
-    unsubscribe()
-    unsubscribe = null
-  }
-
-  function addSubscription(callback, method) {
-    if (!subscriptions) connect()
-    subscriptions += 1
-    const unsubscribe = newSignal[method](callback)
-
-    return () => {
-      unsubscribe()
-      subscriptions -= 1
-      if (!subscriptions) disconnect()
-    }
-  }
+  return newSignal
 }
 
 /**
