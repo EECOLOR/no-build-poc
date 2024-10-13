@@ -143,7 +143,7 @@ export function createCms({ basePath, storagePath }) {
     const hotspot = params.hotspot
       ? rectangleFromArray(params.hotspot.split(','))
       : crop
-    const rectangle = determineImageRegion(crop, hotspot, width / height)
+    const rectangle = determineImageRegion2(crop, hotspot, width / height)
 
     return $image
       .extract({ left: rectangle.x, top: rectangle.y, width: rectangle.width, height: rectangle.height })
@@ -188,10 +188,10 @@ export function createCms({ basePath, storagePath }) {
 
     let width, height
     if (cropIsMoreWide) {
-      height = Math.max(crop.height, hotspot.height)
+      height = crop.height
       width = height * desiredRatio
     } else {
-      width = Math.max(crop.width, hotspot.width)
+      width = crop.width
       height = width / desiredRatio
     }
 
@@ -205,6 +205,46 @@ export function createCms({ basePath, storagePath }) {
 
     function clamp(min, max, value) {
       return Math.max(min, Math.min(value, max))
+    }
+  }
+
+  function determineImageRegion2(crop, hotspot, desiredRatio) {
+    const cropCenterX = crop.x + crop.width / 2
+    const cropCenterY = crop.y + crop.height / 2
+
+    let width, height
+    if (crop.width / crop.height > desiredRatio) {
+      height = crop.height
+      width = height * desiredRatio
+    } else {
+      width = crop.width
+      height = width / desiredRatio
+    }
+
+
+    const hotspotRight = hotspot.x + hotspot.width
+    const hotspotBottom = hotspot.y + hotspot.height
+
+    let x = cropCenterX - width / 2
+    let y = cropCenterY - height / 2
+    if (hotspot.x < x) {
+        x = Math.max(crop.x, hotspot.x)
+    } else if (hotspotRight > x + width) {
+        x = Math.min(crop.x + crop.width - width, hotspotRight - width)
+    }
+    if (hotspot.y < y) {
+        y = Math.max(crop.y, hotspot.y)
+    } else if (hotspotBottom > y + height) {
+        y = Math.min(crop.y + crop.height - height, hotspotBottom - height)
+    }
+
+    x = clamp(crop.x, crop.x + crop.width - width, x)
+    y = clamp(crop.y, crop.y + crop.height - height, y)
+
+    return rectangleFromArray([x, y, width, height].map(n => Math.round(n)))
+
+    function clamp(min, max, value) {
+        return Math.max(min, Math.min(max, value))
     }
   }
 

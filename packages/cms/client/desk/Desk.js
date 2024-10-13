@@ -375,9 +375,9 @@ ImagePreview.style = css`& {
   .r_16x9 {
     aspect-ratio: 16 / 9;
   }
-  .r_4x1 {
+  .r_2x1 {
     flex-basis: 100%;
-    aspect-ratio: 4 / 1;
+    aspect-ratio: 2 / 1;
   }
 }`
 function ImagePreview({ src, $metadata }) {
@@ -385,12 +385,12 @@ function ImagePreview({ src, $metadata }) {
   const r_3x4 = useElementSize()
   const r_1x1 = useElementSize()
   const r_16x9 = useElementSize()
-  const r_4x1 = useElementSize()
+  const r_2x1 = useElementSize()
 
   const $r_3x4Src = useDebounced(useCombined(r_3x4.$size, $metadata)).derive(createSrc)
   const $r_1x1Src = useDebounced(useCombined(r_1x1.$size, $metadata)).derive(createSrc)
   const $r_16x9Src = useDebounced(useCombined(r_16x9.$size, $metadata)).derive(createSrc)
-  const $r_4x1Src = useDebounced(useCombined(r_4x1.$size, $metadata)).derive(createSrc)
+  const $r_2x1Src = useDebounced(useCombined(r_2x1.$size, $metadata)).derive(createSrc)
 
   return (
     div(
@@ -398,7 +398,7 @@ function ImagePreview({ src, $metadata }) {
       img({ className: 'r_3x4', src: $r_3x4Src, ref: r_3x4.ref }),
       img({ className: 'r_1x1', src: $r_1x1Src, ref: r_1x1.ref }),
       img({ className: 'r_16x9', src: $r_16x9Src, ref: r_16x9.ref }),
-      img({ className: 'r_4x1', src: $r_4x1Src, ref: r_4x1.ref }),
+      img({ className: 'r_2x1', src: $r_2x1Src, ref: r_2x1.ref }),
     )
   )
 
