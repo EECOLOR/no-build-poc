@@ -32,9 +32,18 @@ export class Signal {
     $c = $b.derive(...)
 
     If we destroy $c we don't want $b to be destroyed
+
+    We could add the ability to track the creation of signals. Simlar to the `useOnDestroy`. That way,
+    the client renderer could call destroy on all signals created in the 'renderItem' function when the
+    UI element is destroyed.
   */
 }
 Object.defineProperty(Signal, Symbol.hasInstance, { value: o => o?.constructor === Signal })
+
+
+function defaultIsEqual(a, b) {
+  return a === b
+}
 
 /**
  * @template T
@@ -46,7 +55,7 @@ Object.defineProperty(Signal, Symbol.hasInstance, { value: o => o?.constructor =
  * @param {T | (() => T)} initialValue
  * @returns {[Signal<T>, setSignalValue<T>]}
  */
-export function createSignal(initialValue) {
+export function createSignal(initialValue, isEqual = defaultIsEqual) {
   let isInitialized = false
   let value = undefined
   const listeners = new Set()
@@ -86,7 +95,7 @@ export function createSignal(initialValue) {
         ? newValueOrFunction(oldValue)
         : newValueOrFunction
 
-      if (newValue === oldValue) return
+      if (isEqual(newValue, oldValue)) return
       value = newValue
 
       for (const callback of directListeners) {

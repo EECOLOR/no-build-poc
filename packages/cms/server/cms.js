@@ -59,6 +59,10 @@ export function createCms({ basePath, storagePath }) {
     if (req.method === 'POST')
       return handlePostImage(req, res, { searchParams })
 
+    if (req.method === 'PATCH')
+      if (filename && feature === 'metadata')
+        return handlePatchImageMtadata(req, res, { filename })
+
     return false
   }
 
@@ -71,8 +75,23 @@ export function createCms({ basePath, storagePath }) {
     addListener(res, target)
     startEventStream(res)
 
-    const metadata = getImageMetadataByFilename(filename)
+    const metadata = getImageMetadataByFilename({ filename })
     sendEvent(res, 'metadata', metadata)
+    return true
+  }
+
+  function handlePatchImageMtadata(req, res, { filename }) {
+    withRequestJsonBody(req, (body, error) => {
+      // TODO: error handling
+      // TODO: history
+      const existingMetadata = getImageMetadataByFilename({ filename })
+      const metadata = Object.assign(existingMetadata, body)
+
+      updateImageMetadataByFilename({ filename, metadata })
+      sendUpdatedImageMetadata(filename, metadata)
+      respondJson(res, 200, { success: true })
+    })
+
     return true
   }
 
@@ -143,10 +162,10 @@ export function createCms({ basePath, storagePath }) {
     const hotspot = params.hotspot
       ? rectangleFromArray(params.hotspot.split(','))
       : crop
-    const rectangle = determineImageRegion2(crop, hotspot, width / height)
+    const region = determineImageRegion(crop, hotspot, width / height)
 
     return $image
-      .extract({ left: rectangle.x, top: rectangle.y, width: rectangle.width, height: rectangle.height })
+      .extract({ left: region.x, top: region.y, width: region.width, height: region.height })
       .resize({ width, height })
       .toBuffer({ resolveWithObject: true })
   }
@@ -156,59 +175,7 @@ export function createCms({ basePath, storagePath }) {
     return { x, y, width, height }
   }
 
-  /**
-   * TODO: this function should be modified
-   * Note to self: use a pen and paper to figure out what would work best
-   */
-  /**
-   * Assumptions:
-   * - hotspot is within crop
-   * - hotspot maximum size is crop size
-   * - hotspot minimal position is crop position
-   *
-   * Result:
-   * A rectangle that:
-   * - is within crop
-   * - has the desired ratio
-   * - shows as much of the hotspot area as possible
-   * - has either the height or width of the crop
-   *
-   * @param {{ x: number, y: number, width: number, height: number }} crop
-   * @param {{ x: number, y: number, width: number, height: number }} hotspot
-   * @param {number} desiredRatio Calculated by width / height
-   *
-   * @returns {{ x: number, y: number, width: number, height: number }}
-   */
   function determineImageRegion(crop, hotspot, desiredRatio) {
-    const hotspotCenterX = hotspot.x + hotspot.width / 2
-    const hotspotCenterY = hotspot.y + hotspot.height / 2
-
-    const cropRatio = crop.width / crop.height
-    const cropIsMoreWide = cropRatio > desiredRatio
-
-    let width, height
-    if (cropIsMoreWide) {
-      height = crop.height
-      width = height * desiredRatio
-    } else {
-      width = crop.width
-      height = width / desiredRatio
-    }
-
-    const desiredX = hotspotCenterX - width / 2
-    const desiredY = hotspotCenterY - height / 2
-
-    const x = clamp(crop.x, crop.x + crop.width - width, desiredX)
-    const y = clamp(crop.y, crop.y + crop.height - height, desiredY)
-
-    return rectangleFromArray([x, y, width, height].map(x => Math.round(x)))
-
-    function clamp(min, max, value) {
-      return Math.max(min, Math.min(value, max))
-    }
-  }
-
-  function determineImageRegion2(crop, hotspot, desiredRatio) {
     const cropCenterX = crop.x + crop.width / 2
     const cropCenterY = crop.y + crop.height / 2
 
@@ -220,7 +187,6 @@ export function createCms({ basePath, storagePath }) {
       width = crop.width
       height = width / desiredRatio
     }
-
 
     const hotspotRight = hotspot.x + hotspot.width
     const hotspotBottom = hotspot.y + hotspot.height
@@ -253,8 +219,6 @@ export function createCms({ basePath, storagePath }) {
    * @param {import('node:http').ServerResponse} res
    */
   function handlePostImage(req, res, { searchParams }) {
-    console.log(req.headers['content-type'], searchParams)
-
     withRequestBufferBody(req, async (buffer, e) => {
       // TODO: error handling
       // TODO: scan for virus
@@ -607,6 +571,7 @@ export function createCms({ basePath, storagePath }) {
   }
 
   function getById({ id }) {
+    /** @type {any} */
     const result = database
       .prepare(`SELECT * FROM documents WHERE id = :id`)
       .get({ id })
@@ -664,7 +629,8 @@ export function createCms({ basePath, storagePath }) {
       .all()
     return result.map(x => ({ ...x, metadata: JSON.parse(x.metadata) }))
   }
-  function getImageMetadataByFilename(filename) {
+  function getImageMetadataByFilename({ filename }) {
+    /** @type {any} */
     const result = database
       .prepare(`SELECT * FROM images WHERE filename = :filename`)
       .get({ filename })
@@ -674,6 +640,11 @@ export function createCms({ basePath, storagePath }) {
 
     const { metadata } = result
     return JSON.parse(metadata)
+  }
+  function updateImageMetadataByFilename({ filename, metadata }) {
+    return database
+      .prepare(`UPDATE images SET metadata = :metadata WHERE filename = :filename`)
+      .run({ filename, metadata: JSON.stringify(metadata) })
   }
 }
 

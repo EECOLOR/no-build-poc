@@ -288,16 +288,12 @@ ImagePane.style = css`& {
 function ImagePane({ id, path }) {
   const src = `${context.apiPath}/images/${id}`
 
+  // TODO: we should ignore our own updates
+  // Seems this is a general pattern when we listen for live changes
   const $serverMetadata = useImageMetadata({ id })
   const [$clientMetadata, setClientMetadata] = createSignal({})
 
-  const $combinedMetadata = useCombined($serverMetadata, $clientMetadata)
-    .derive(([serverMetadata, clientMetadata]) =>
-      serverMetadata === connecting ? null : { ...serverMetadata, ...clientMetadata, }
-    )
-
-  const debouncedSaveMetadata = debounce(saveMetadata, 200)
-  const unsubscribe = $combinedMetadata.subscribe(debouncedSaveMetadata)
+  const unsubscribe = useDebounced($clientMetadata).subscribe(saveMetadata)
   useOnDestroy(unsubscribe)
 
   return (
@@ -307,8 +303,8 @@ function ImagePane({ id, path }) {
         ImageEditor({
           src,
           $serverMetadata,
-          onCropChange: handleCropChange,
-          onHotspotChange: handleHotspotChange,
+          onCropChange: crop => setClientMetadata(x => ({ ...x, crop })),
+          onHotspotChange: hotspot => setClientMetadata(x => ({ ...x, hotspot })),
         })
       ),
       Scrollable({ scrollBarPadding: '0.5rem' },
@@ -317,42 +313,23 @@ function ImagePane({ id, path }) {
     )
   )
 
-  function handleCropChange(crop) {
-    setClientMetadata(x => ({ ...x, crop }))
-  }
-
-  function handleHotspotChange(hotspot) {
-    setClientMetadata(x => ({ ...x, hotspot }))
-  }
-
-  function saveMetadata({ crop, hotspot }) {
-    const metadata = $serverMetadata.get()
-    if (metadata === connecting) return
-
-    const { width, height } = metadata
-    if (!crop) crop = { x: 0, y: 0, width, height }
-    if (!hotspot) hotspot = crop
-
-    const url = `http://localhost:8000/admin/api/2024-09-07/images/f65fc08d-a8df-4ef4-9135-838c6066b453-4608x2240.webp`
-
-    const params = new URLSearchParams({
-      w: String(width),
-      h: String(height),
-      crop: [crop.x, crop.y, crop.width, crop.height].join(','),
-      hotspot: [hotspot.x, hotspot.y, hotspot.width, hotspot.height].join(','),
-    })
-
-    console.log(`${url}?${params.toString()}`)
+  function saveMetadata(metadata) {
+    console.log('⎙ save', metadata)
+    fetch(`${context.apiPath}/images/${id}/metadata`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(metadata)
+    }) // TODO: error reporting
   }
 }
 
 function ImageEditor({ src, $serverMetadata, onCropChange, onHotspotChange }) {
-
   return (
-    derive($serverMetadata, metadata => metadata !== connecting && [
-      ImageCropAndHotspot({ src, metadata, onCropChange, onHotspotChange }),
-      pre(code(JSON.stringify(metadata, null, 2))),
-    ])
+    conditional($serverMetadata, metadata => metadata !== connecting,
+      _ => ImageCropAndHotspot({ src, $metadata: $serverMetadata, onCropChange, onHotspotChange }),
+    )
   )
 }
 
@@ -362,45 +339,26 @@ ImagePreview.style = css`& {
   flex-wrap: wrap;
   gap: 0.5rem;
 
-  & > * {
-    flex: 1 0 10%;
-  }
-
-  .r_3x4 {
-    aspect-ratio: 3 / 4;
-  }
-  .r_1x1 {
-    aspect-ratio: 1 / 1;
-  }
-  .r_16x9 {
-    aspect-ratio: 16 / 9;
-  }
-  .r_2x1 {
-    flex-basis: 100%;
-    aspect-ratio: 2 / 1;
-  }
+  & > * { flex-grow: 1; flex-basis:30%; }
+  & > :last-child { flex-basis: 100%; }
 }`
 function ImagePreview({ src, $metadata }) {
-
-  const r_3x4 = useElementSize()
-  const r_1x1 = useElementSize()
-  const r_16x9 = useElementSize()
-  const r_2x1 = useElementSize()
-
-  const $r_3x4Src = useDebounced(useCombined(r_3x4.$size, $metadata)).derive(createSrc)
-  const $r_1x1Src = useDebounced(useCombined(r_1x1.$size, $metadata)).derive(createSrc)
-  const $r_16x9Src = useDebounced(useCombined(r_16x9.$size, $metadata)).derive(createSrc)
-  const $r_2x1Src = useDebounced(useCombined(r_2x1.$size, $metadata)).derive(createSrc)
 
   return (
     div(
       ImagePreview.style,
-      img({ className: 'r_3x4', src: $r_3x4Src, ref: r_3x4.ref }),
-      img({ className: 'r_1x1', src: $r_1x1Src, ref: r_1x1.ref }),
-      img({ className: 'r_16x9', src: $r_16x9Src, ref: r_16x9.ref }),
-      img({ className: 'r_2x1', src: $r_2x1Src, ref: r_2x1.ref }),
+      PreviewImage({ src, aspectRatio: '3 / 4', $metadata }),
+      PreviewImage({ src, aspectRatio: '1 / 1', $metadata }),
+      PreviewImage({ src, aspectRatio: '16 / 9', $metadata }),
+      PreviewImage({ src, aspectRatio: '2 / 1', $metadata }),
     )
   )
+}
+
+function PreviewImage({ src, aspectRatio, $metadata }) {
+  const { ref, $size } = useElementSize()
+  const $src = useDebounced(useCombined($size, $metadata)).derive(createSrc)
+  return img({ src: $src, ref, style: { aspectRatio } })
 
   function createSrc([size, { crop, hotspot }]) {
     if (!size) return
@@ -412,16 +370,14 @@ function ImagePreview({ src, $metadata }) {
       ...(crop && { crop: [crop.x, crop.y, crop.width, crop.height].join(',') }),
       ...(hotspot && { hotspot: [hotspot.x, hotspot.y, hotspot.width, hotspot.height].join(',') }),
     })
-    const url = `${src}?${params.toString()}`
-    console.log('setting source', url)
-    return url
+    return `${src}?${params.toString()}`
   }
 }
 
-function useDebounced(signal) {
-  const [$debounced, setDebounced] = createSignal(signal.get)
+function useDebounced(signal, milliseconds = 200) {
+  const [$debounced, setDebounced] = createSignal(signal.get())
 
-  const debouncedSet = debounce(setDebounced, 200)
+  const debouncedSet = debounce(setDebounced, milliseconds)
   const unsubscribe = signal.subscribe(debouncedSet)
   useOnDestroy(unsubscribe)
 

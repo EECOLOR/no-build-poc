@@ -38,6 +38,10 @@ export function useElementSize() {
  * @typedef {[x, y, width, height]} Area
  */
 
+function pointsEqual([x1, y1], [x2, y2]) {
+  return x1 === x2 && y1 === y2
+}
+
 /**
  * @param {readonly [x, y]} initialPosition
  * @param {object} options
@@ -45,7 +49,7 @@ export function useElementSize() {
  * @param {any} [options.id]
  */
  export function useDrag([initialX, initialY], options = undefined) {
-  const [$position, setPosition] = createSignal([initialX, initialY])
+  const [$position, setPosition] = createSignal([initialX, initialY], pointsEqual)
   const $translate = $position.derive(([x, y]) => [x - initialX, y - initialY])
 
   let state = null

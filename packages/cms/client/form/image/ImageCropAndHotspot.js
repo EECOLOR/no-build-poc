@@ -1,11 +1,12 @@
-import { context } from '#cms/client/context.js'
 import { useDrag, useElementSize } from '#cms/client/machinery/elementHooks.js'
 import { useCombined } from '#cms/client/machinery/useCombined.js'
-import { derive, useOnDestroy } from '#ui/dynamic.js'
-import { createSignal, Signal } from '#ui/signal.js'
+import { conditional, derive, useOnDestroy } from '#ui/dynamic.js'
+import { Signal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
 
 const { div, img } = tags
+
+const connecting = Symbol('connecting')
 
 ImageCropAndHotspot.style = css`& {
   --handle-size: 1rem;
@@ -25,76 +26,117 @@ ImageCropAndHotspot.style = css`& {
     position: relative;
   }
 }`
-export function ImageCropAndHotspot({ src, metadata, onCropChange, onHotspotChange }) {
-  const crop = null // { x: 20, y: 40, width: 120, height: 100 }
-  const hotspot = null // { x: 40, y: 60, width: 80, height: 60 }
-
+export function ImageCropAndHotspot({ src, $metadata, onCropChange, onHotspotChange }) {
   const { ref, $size } = useElementSize()
+
+  const $displaySize = $size.derive(x => x?.width && x?.height ? x : connecting)
+
+  const { $crop, $hotspot, resizeToActualSize } = useDerivedLocalValues({ $metadata, $displaySize })
 
   return (
     div(
       ImageCropAndHotspot.style,
       img({ ref, src }),
-      derive($size, size => {
-        if (!size) return
-
-        const widthRatio = metadata.width / size.width
-        const heightRatio = metadata.height / size.height
-
-        // TODO: use size to adjust crop and hotspot (scaling)
-        return HotspotAndCropOverlay({
+      conditional($displaySize, displaySize => displaySize !== connecting, _ =>
+        HotspotAndCropOverlay({
           src,
-          displaySize: size,
-          crop: crop || addPosition(size),
-          hotspot: hotspot || crop || addPosition(size),
+          $displaySize,
+          $crop,
+          $hotspot,
           onCropChange(crop) {
-            onCropChange(correctRatio(crop, { widthRatio, heightRatio }))
+            onCropChange(resizeToActualSize(crop))
           },
           onHotspotChange(hotspot) {
-            onHotspotChange(correctRatio(hotspot, { widthRatio, heightRatio }))
+            onHotspotChange(resizeToActualSize(hotspot))
           },
         })
-      })
+      )
     )
   )
+}
+
+function useDerivedLocalValues({ $metadata, $displaySize }) {
+  const $ratio = useCombined($metadata, $displaySize)
+    .derive(([metadata, displaySize]) => {
+      if (displaySize === connecting) return connecting
+
+      return {
+        width: metadata.width / displaySize.width,
+        height: metadata.height / displaySize.height,
+      }
+    })
+
+  const $crop = $ratio
+    .derive(ratio => {
+      if (ratio === connecting) return connecting
+      const metadata = $metadata.get()
+      const displaySize = $displaySize.get()
+
+      return metadata.crop ? resizeToScreen(metadata.crop, ratio) : addPosition(displaySize)
+    })
+
+  const $hotspot = $crop
+    .derive(crop => {
+      if (crop === connecting) return connecting
+      const metadata = $metadata.get()
+      const ratio = $ratio.get()
+
+      return metadata.hotspot ? resizeToScreen(metadata.hotspot, ratio) : crop
+    })
+
+  return { $crop, $hotspot, resizeToActualSize }
 
   function addPosition(size) {
     return { x: 0, y: 0, ...size }
   }
 
-  function correctRatio({ x, y, width, height }, { widthRatio, heightRatio }) {
+  function resizeToActualSize({ x, y, width, height }) {
+    const ratio = $ratio.get()
+    if (ratio === connecting)
+      throw new Error(`Can not resize back to actual size when $ratio is connecting`)
+
+    return {
+      x: Math.round(x * ratio.width),
+      y: Math.round(y * ratio.height),
+      width: Math.round(width * ratio.width),
+      height: Math.round(height * ratio.height),
+    }
+  }
+
+  function resizeToScreen({ x, y, width, height }, ratio) {
     const result = {
-      x: Math.round(widthRatio * x),
-      y: Math.round(heightRatio * y),
-      width: Math.round(widthRatio * width),
-      height: Math.round(heightRatio * height),
+      x: Math.round(x / ratio.width),
+      y: Math.round(y / ratio.height),
+      width: Math.round(width / ratio.width),
+      height: Math.round(height / ratio.height),
     }
     return result
   }
 }
 
-function HotspotAndCropOverlay({ src, crop, hotspot, displaySize, onCropChange, onHotspotChange }) {
-  const { corners, rectangle, $inset, $area } = useDragableRectangle(displaySize, crop)
-
-  const unsubscribe = $area.subscribe(onCropChange)
-  useOnDestroy(unsubscribe)
-
-  return [
-    CropOverlay({ src, corners, rectangle, $inset }),
-    HotspotOverlay({ src, hotspot, $bounds: $area, onHotspotChange }),
-  ]
+function useSubscriptions(...subscriptions) {
+  useOnDestroy(() => {
+    for (const unsubscribe of subscriptions) unsubscribe()
+  })
 }
 
-function HotspotOverlay({ src, $bounds, hotspot, onHotspotChange }) {
+function HotspotAndCropOverlay({ src, $crop, $hotspot, $displaySize, onCropChange, onHotspotChange }) {
+  const { corners, rectangle, $inset, $area: $cropArea } =
+    useDragableRectangle({ $bounds: $displaySize, $initialRectangle: $crop })
+  const { center, handle, $ellipse, $area: $hotspotArea } =
+    useDraggableEllipse({ $bounds: $cropArea, $initialEllipse: $hotspot })
 
-  const { center, handle, $ellipse, $area } = useDraggableEllipse({ $bounds, initialEllipse: hotspot })
-
-  const unsubscribe = $area.subscribe(onHotspotChange)
-  useOnDestroy(unsubscribe)
+  useSubscriptions(
+    $cropArea.subscribe(onCropChange),
+    $hotspotArea.subscribe(onHotspotChange),
+   )
 
   return [
     Shadow(),
+    CropImage({ src, $inset }),
+    Shadow(),
     HotspotImage({ src, $ellipse }),
+    CropRectangle({ corners, rectangle, $inset }),
     HotspotEllipse({ center, handle, $ellipse }),
   ]
 }
@@ -162,14 +204,6 @@ function HotspotArea({ onMouseDown, $ellipse }) {
   }
 
   return div({ className: 'HotspotArea', onMouseDown, style }, HotspotArea.style)
-}
-
-function CropOverlay({ src, corners, rectangle, $inset }) {
-  return [
-    Shadow(),
-    CropImage({ src, $inset }),
-    CropRectangle({ corners, rectangle, $inset })
-  ]
 }
 
 function CropImage({ src, $inset }) {
@@ -256,13 +290,13 @@ function Handle({ handle, type = 'square' }) {
 }
 
 /**
- * @param {{ width: number, height: number }} bounds
- * @param {{ x: number, y: number, width: number, height: number }} initialRectangle
+ * @param {object} props
+ * @param {Signal<{ width: number, height: number }>} props.$bounds
+ * @param {Signal<{ x: number, y: number, width: number, height: number }>} props.$initialRectangle
  */
- function useDragableRectangle(bounds, initialRectangle) {
-  const { width, height } = bounds
+ function useDragableRectangle({ $bounds, $initialRectangle }) {
   /* TopLeft, TopRight, BottomLeft, BottomRight */
-  const [tlPos, trPos, blPos, brPos] = areaToCornerPositions(initialRectangle)
+  const [tlPos, trPos, blPos, brPos] = areaToCornerPositions($initialRectangle.get())
   const [tlOptions, trOptions, blOptions, brOptions, rectangleOptions] = getOptions()
   const corners = [
     useDrag(tlPos, tlOptions), useDrag(trPos, trOptions),
@@ -271,9 +305,9 @@ function Handle({ handle, type = 'square' }) {
   const [tl, tr, bl, br] = corners
   const rectangle = useDrag(tlPos, rectangleOptions)
 
-  useBindCornersAndRectangle({ tl, tr, bl, br, rectangle })
+  useRectangle({ tl, tr, bl, br, rectangle, $bounds, $initialRectangle })
 
-  const { $area, $inset } = useDerivedRectanglePositions({ tl, br, width, height })
+  const { $area, $inset } = useDerivedRectanglePositions({ tl, br, $bounds })
 
   return { corners, rectangle, $inset, $area }
 
@@ -290,6 +324,7 @@ function Handle({ handle, type = 'square' }) {
         id: 'tr',
         getBounds() {
            const [x, y] = bl.$position.get()
+           const { width } = $bounds.get()
            return [x + 10, 0, width - 10, y - 10]
         }
       },
@@ -297,6 +332,7 @@ function Handle({ handle, type = 'square' }) {
         id: 'bl',
         getBounds() {
            const [x, y] = tr.$position.get()
+           const { height } = $bounds.get()
            return [0, y + 10, x - 10, height - y - 10]
         }
       },
@@ -304,6 +340,7 @@ function Handle({ handle, type = 'square' }) {
         id: 'br',
         getBounds() {
            const [x, y] = tl.$position.get()
+           const { width, height } = $bounds.get()
            return [x + 10, y + 10, width - x - 10, height - y - 10]
         }
       },
@@ -312,6 +349,7 @@ function Handle({ handle, type = 'square' }) {
         getBounds() {
           const [minX, minY] = tl.$position.get()
           const [maxX, maxY] = br.$position.get()
+          const { width, height } = $bounds.get()
           return [0, 0, width - (maxX - minX), height - (maxY - minY)]
         }
       }
@@ -322,19 +360,19 @@ function Handle({ handle, type = 'square' }) {
 /**
  * @param {object} props
  * @param {Signal<{ x: number, y: number, width: number, height: number }>} props.$bounds
- * @param {{ x: number, y: number, width: number, height: number }} props.initialEllipse
+ * @param {Signal<{ x: number, y: number, width: number, height: number }>} props.$initialEllipse
  */
-function useDraggableEllipse({ $bounds, initialEllipse }) {
+function useDraggableEllipse({ $bounds, $initialEllipse }) {
 
-  const [centerPosition, handlePosition] = getPositions()
+  const [centerPosition, handlePosition] = getEllipsePositions($initialEllipse.get())
   const [centerOptions, handleOptions] = getOptions()
 
   const center = useDrag(centerPosition, centerOptions)
   const handle = useDrag(handlePosition, handleOptions)
 
-  const { $area, $ellipse } = useDerivedEllipsePositions({ center, handle })
+  const { $area, $ellipse } = useDerivedEllipsePositions({ center, handle, $bounds })
 
-  useBindCenterAndHandleAndBounds({ center, handle, $bounds })
+  useBindEllipse({ center, handle, $bounds, $initialEllipse })
 
   return { center, handle, $ellipse, $area }
 
@@ -365,28 +403,28 @@ function useDraggableEllipse({ $bounds, initialEllipse }) {
       }
     ]
   }
-
-  function getPositions() {
-    const { x, y, width, height } = initialEllipse
-    const [pointX, pointY] = findPointOnEllipse([width / 2, height / 2])
-    const [centerX, centerY] = [x + (width / 2), y + (height / 2)]
-
-    return /** @type const */ ([
-      [centerX, centerY],
-      [centerX + pointX, centerY + pointY]
-    ])
-  }
 }
 
-function useDerivedEllipsePositions({ center, handle }) {
-  const $area = useCombined(center.$position, handle.$position)
-    .derive(([[centerX, centerY], [handleX, handleY]]) => {
+function getEllipsePositions(initialEllipse) {
+  const { x, y, width, height } = initialEllipse
+  const [pointX, pointY] = findPointOnEllipse([width / 2, height / 2])
+  const [centerX, centerY] = [x + (width / 2), y + (height / 2)]
+
+  return /** @type const */ ([
+    [centerX, centerY],
+    [centerX + pointX, centerY + pointY]
+  ])
+}
+
+function useDerivedEllipsePositions({ center, handle, $bounds }) {
+  const $area = useCombined($bounds, center.$position, handle.$position)
+    .derive(([bounds, [centerX, centerY], [handleX, handleY]]) => {
       const [xAxis, yAxis] = findEllipseSemiAxes([handleX - centerX, handleY - centerY])
       return {
-        x: centerX - xAxis,
-        y: centerY - yAxis,
-        width: xAxis * 2,
-        height: yAxis * 2,
+        x: Math.max(bounds.x, centerX - xAxis),
+        y: Math.max(bounds.y, centerY - yAxis),
+        width: Math.min(bounds.width, xAxis * 2),
+        height: Math.min(bounds.height, yAxis * 2),
       }
     })
 
@@ -405,7 +443,7 @@ function pipe(...args) {
   return f(...newArgs)
 }
 
-function useBindCornersAndRectangle({ tl, tr, bl, br, rectangle }) {
+function useRectangle({ tl, tr, bl, br, rectangle, $bounds, $initialRectangle }) {
   const moveWithoutRecursion = createCallWithoutRecursion()
 
   const subscriptions = [
@@ -416,6 +454,19 @@ function useBindCornersAndRectangle({ tl, tr, bl, br, rectangle }) {
 
     bind(tl, { xAxis: rectangle, yAxis: rectangle }),
     bindRectangle({ rectangle, tl, tr, bl, br }),
+
+    $bounds.subscribeDirect(_ => rectangle.move(x => x)),
+    $initialRectangle.subscribeDirect(initialRectangle => {
+      moveWithoutRecursion(() => {
+        const [tlPos, trPos, blPos, brPos] = areaToCornerPositions(initialRectangle)
+        tl.move(tlPos)
+        tr.move(trPos)
+        bl.move(blPos)
+        br.move(brPos)
+
+        rectangle.move(tlPos)
+      })
+    }),
   ]
 
   useOnDestroy(() => {
@@ -448,7 +499,7 @@ function useBindCornersAndRectangle({ tl, tr, bl, br, rectangle }) {
   }
 }
 
-function useBindCenterAndHandleAndBounds({ center, handle, $bounds }) {
+function useBindEllipse({ center, handle, $bounds, $initialEllipse }) {
   const moveWithoutRecursion = createCallWithoutRecursion()
 
   const subscriptions = [
@@ -467,9 +518,14 @@ function useBindCenterAndHandleAndBounds({ center, handle, $bounds }) {
         center.move(x => x)
       })
     }),
-    $bounds.subscribeDirect(_ => {
-      center.move(x => x)
-    })
+    $bounds.subscribeDirect(_ => center.move(x => x)),
+    $initialEllipse.subscribeDirect(initialEllipse => {
+      moveWithoutRecursion(() => {
+        const [centerPosition, handlePosition] = getEllipsePositions(initialEllipse)
+        center.move(centerPosition)
+        handle.move(handlePosition)
+      })
+    }),
   ]
 
   useOnDestroy(() => {
@@ -489,7 +545,7 @@ function createCallWithoutRecursion() {
   }
 }
 
-function useDerivedRectanglePositions({ tl, br, width, height }) {
+function useDerivedRectanglePositions({ tl, br, $bounds }) {
   const $minMax = useCombined(tl.$position, br.$position)
 
   const $area = $minMax
@@ -497,9 +553,11 @@ function useDerivedRectanglePositions({ tl, br, width, height }) {
       ({ x: minX, y: minY, width: maxX - minX, height: maxY - minY })
     )
 
-  const $inset = $minMax.derive(([[minX, minY], [maxX, maxY]]) =>
-    ({ top: minY, left: minX, bottom: height - maxY, right: width - maxX })
-  )
+  const $inset = $minMax
+    .derive(([[minX, minY], [maxX, maxY]]) => {
+      const { width, height } = $bounds.get()
+      return { top: minY, left: minX, bottom: height - maxY, right: width - maxX }
+    })
 
   return { $area, $inset }
 }
@@ -507,10 +565,11 @@ function useDerivedRectanglePositions({ tl, br, width, height }) {
 function findEllipseSemiAxes([x, y]) {
   const major = Math.max(x, y)
   const minor = Math.min(x, y)
+  if (!major || !minor) return [0, 0]
   const ratio = major / minor
 
-  const semiMinorAxis = Math.sqrt((major ** 2 / ratio ** 2) + (minor ** 2))
-  const semiMajorAxis = ratio * semiMinorAxis
+  const semiMinorAxis = Math.round(Math.sqrt((major ** 2 / ratio ** 2) + (minor ** 2)))
+  const semiMajorAxis = Math.round(ratio * semiMinorAxis)
 
   return major === x
     ? [semiMajorAxis, semiMinorAxis]
@@ -523,8 +582,8 @@ function findPointOnEllipse([horizontalSemiAxis, verticalSemiAxis]) {
 
   const isHorizontalMajor = major === horizontalSemiAxis
 
-  const majorValue = major * Math.cos(Math.PI / 4)
-  const minorValue = minor * Math.sin(Math.PI / 4)
+  const majorValue = Math.round(major * Math.cos(Math.PI / 4))
+  const minorValue = Math.round(minor * Math.sin(Math.PI / 4))
 
   return isHorizontalMajor
     ? [majorValue, minorValue]
