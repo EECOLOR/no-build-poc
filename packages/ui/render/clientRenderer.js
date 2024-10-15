@@ -183,17 +183,22 @@ function bindSignalTo(signal, setValue) {
 }
 
 function swapNodesInDom(marker, newNodes, oldNodes) {
-  const { activeElement } = document
   writeToDom.outsideAnimationFrame(() => {
-    let oldNodesLength = oldNodes.length
-    while (oldNodesLength--) {
-      const oldNode = oldNodes[oldNodesLength]
+
+    for (const oldNode of oldNodes) {
       if (!newNodes.includes(oldNode))
         oldNode.remove()
     }
-    marker.after(...newNodes)
-    if (activeElement?.isConnected && activeElement instanceof HTMLElement)
-      activeElement.focus()
+
+    let current = marker
+    for (const i in newNodes) {
+      const newNode = newNodes[i]
+
+      if (current.nextSibling !== newNode)
+        current.after(newNode)
+
+      current = newNode
+    }
   })
 }
 
