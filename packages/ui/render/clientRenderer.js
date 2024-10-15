@@ -153,27 +153,33 @@ function handleTemplateAsChild(element, template) {
   shadowRoot.appendChild(template.content)
 }
 
+function setAttributeOrPropertyInDom(element, k, v) {
+  if (v === undefined) return
+  writeToDom.outsideAnimationFrame(setAttributeOrProperty.bind(null, element, k, v))
+}
+
 function setAttributeOrProperty(element, k, v) {
   if (v === undefined) return
-  writeToDom.outsideAnimationFrame(() => {
-    if (k in element) element[k] = v
-    else element.setAttribute(k, v)
-  })
+
+  if (k in element) element[k] = v
+  else element.setAttribute(k, v)
+}
+
+function setStyleOrPropertyInDom(style, k, v) {
+  writeToDom.outsideAnimationFrame(setStyleOrProperty.bind(null, style, k, v))
 }
 
 function setStyleOrProperty(style, k, v) {
-  writeToDom.outsideAnimationFrame(() => {
-    if (k.startsWith('--')) style.setProperty(k, v)
-    else style[k] = v
-  })
+  if (k.startsWith('--')) style.setProperty(k, v)
+  else style[k] = v
 }
 
 function bindSignalToStyle(style, k, signal) {
-  return bindSignalTo(signal, setStyleOrProperty.bind(null, style, k))
+  return bindSignalTo(signal, setStyleOrPropertyInDom.bind(null, style, k))
 }
 
 function bindSignalToAttribute(element, attribute, signal) {
-  return bindSignalTo(signal, setAttributeOrProperty.bind(null, element, attribute))
+  return bindSignalTo(signal, setAttributeOrPropertyInDom.bind(null, element, attribute))
 }
 
 function bindSignalTo(signal, setValue) {
