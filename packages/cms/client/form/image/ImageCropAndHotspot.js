@@ -1,5 +1,5 @@
 import { useDrag, useElementSize } from '#cms/client/machinery/elementHooks.js'
-import { useCombined } from '#cms/client/machinery/useCombined.js'
+import { useCombined, useSubscriptions } from '#cms/client/machinery/signalHooks.js'
 import { conditional, derive, useOnDestroy } from '#ui/dynamic.js'
 import { Signal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
@@ -112,12 +112,6 @@ function useDerivedLocalValues({ $metadata, $displaySize }) {
     }
     return result
   }
-}
-
-function useSubscriptions(...subscriptions) {
-  useOnDestroy(() => {
-    for (const unsubscribe of subscriptions) unsubscribe()
-  })
 }
 
 function HotspotAndCropOverlay({ src, $crop, $hotspot, $displaySize, onCropChange, onHotspotChange }) {

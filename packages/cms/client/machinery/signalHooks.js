@@ -23,3 +23,9 @@ export function useCombined(...signals) {
 
   return $combined
 }
+
+export function useSubscriptions(...subscriptions) {
+  useOnDestroy(() => {
+    for (const unsubscribe of subscriptions) unsubscribe()
+  })
+}

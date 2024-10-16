@@ -10,10 +10,10 @@ import { debounce } from '../machinery/debounce.js'
 import { useElementSize } from '../machinery/elementHooks.js'
 import { $pathname, pushState } from '../machinery/history.js'
 import { renderOnValue } from '../machinery/renderOnValue.js'
-import { useCombined } from '../machinery/useCombined.js'
+import { useCombined, useSubscriptions } from '../machinery/signalHooks.js'
 import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
 
-const { div, input, h1, img, pre, code } = tags
+const { div, input, h1, img } = tags
 
 const connecting = Symbol('connecting')
 
@@ -292,9 +292,16 @@ function ImagePane({ id, path }) {
   // Seems this is a general pattern when we listen for live changes
   const $serverMetadata = useImageMetadata({ id })
   const [$clientMetadata, setClientMetadata] = createSignal({})
+  const [$previewMetadata, setPreviewMetadata] = createSignal({})
 
-  const unsubscribe = useDebounced($clientMetadata).subscribe(saveMetadata)
-  useOnDestroy(unsubscribe)
+  useSubscriptions(
+    useCombined($serverMetadata, $clientMetadata)
+      .subscribe(([serverMetadata, clientMetadata]) => {
+        if (serverMetadata === connecting) return
+        setPreviewMetadata({ ...serverMetadata, ...clientMetadata })
+      }),
+    useDebounced($clientMetadata).subscribe(saveMetadata),
+  )
 
   return (
     div(
@@ -308,7 +315,7 @@ function ImagePane({ id, path }) {
         })
       ),
       Scrollable({ scrollBarPadding: '0.5rem' },
-        ImagePreview({ src, $metadata: $clientMetadata })
+        ImagePreview({ src, $metadata: $previewMetadata })
       )
     )
   )

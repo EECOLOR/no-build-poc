@@ -5,11 +5,11 @@ import { ButtonChevronDown, ButtonChevronUp, ButtonDelete, ButtonDown, ButtonUp 
 import { context } from '../context.js'
 import { debounce } from '../machinery/debounce.js'
 import { renderOnValue } from '../machinery/renderOnValue.js'
-import { useCombined } from '../machinery/useCombined.js'
+import { useCombined } from '../machinery/signalHooks.js'
 import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
 import { RichTextEditor } from './richTextEditor/RichTextEditor.js'
 
-const { div, h1, label, span, input, button, strong , img} = tags
+const { div, label, span, input, button, strong , img} = tags
 
 DocumentForm.style = css`& {
   min-width: 25rem;
