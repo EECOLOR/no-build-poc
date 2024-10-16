@@ -110,7 +110,7 @@ function useSynchronization({ synchronize }) {
       if (!sendable) return
 
       if (synchronizationRequest) {
-        synchronizationRequest.abort('New steps available')
+        synchronizationRequest.abort('Aborting: new steps available')
         synchronizationRequest = null
       }
 
@@ -223,7 +223,7 @@ function createSchema() {
         content: 'text*', // use this when you have a 'hole' (contentDOM)
 
         inline: false,
-        // TODO: parseDOM (only needed for a parser (and maybe also copy-paste))
+        // TODO: parseDOM (needed for copy-paste and a parser)
         toDOM() {
           const contentDOM = document.createElement('p')
 

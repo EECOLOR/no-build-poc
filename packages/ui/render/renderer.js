@@ -11,6 +11,7 @@ export const emptyValues = [false, undefined, null]
 /**
  * @template T
  * @typedef {{
+ *   renderRaw(raw: Raw, context: Context): Array<T>
  *   renderTag<tagName extends TagNames>(tag: Tag<tagName>, context: Context): T
  *   renderSignal<X>(signal: Signal<X>, context: Context): Array<T>
  *   renderDynamic<X>(loop: Dynamic<X>, context: Context): Array<T>
@@ -59,7 +60,7 @@ export function createRenderer(constructor) {
     return (
       emptyValues.includes(value) ? [] :
       Array.isArray(value) ? value.flatMap(x => renderValue(x, context)) :
-      value instanceof Raw ? [value.value] :
+      value instanceof Raw ? renderer.renderRaw(value, context) :
       value instanceof Tag ? [renderer.renderTag(value, context)] :
       value instanceof Component ? renderComponent(value, context) :
       value instanceof Signal ? renderer.renderSignal(value, context) :

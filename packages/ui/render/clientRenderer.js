@@ -17,6 +17,10 @@ export const render = createRenderer(
   /** @type {import('./renderer.js').RendererConstructor<Node>} */
   ({ renderValue }) => {
     return {
+      renderRaw(raw, context) {
+        const { value } = raw
+        return value instanceof Node ? [value] : renderValue(value, context)
+      },
       renderString(value) {
         return document.createTextNode(value)
       },
@@ -175,15 +179,16 @@ function setStyleOrProperty(style, k, v) {
 }
 
 function bindSignalToStyle(style, k, signal) {
+  setStyleOrProperty(style, k, signal.get())
   return bindSignalTo(signal, setStyleOrPropertyInDom.bind(null, style, k))
 }
 
 function bindSignalToAttribute(element, attribute, signal) {
+  setAttributeOrProperty(element, attribute, signal.get())
   return bindSignalTo(signal, setAttributeOrPropertyInDom.bind(null, element, attribute))
 }
 
 function bindSignalTo(signal, setValue) {
-  setValue(signal.get())
   const unsubscribe = signal.subscribeDirect(setValue)
   return unsubscribe
 }

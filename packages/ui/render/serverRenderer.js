@@ -8,6 +8,9 @@ export const render = createRenderer(
   /** @type {import('./renderer.js').RendererConstructor<string>} */
   ({ renderValue }) => {
     return {
+      renderRaw(raw, context) {
+        return [raw.value]
+      },
       renderString(value) {
         return escapeHtml(value)
       },

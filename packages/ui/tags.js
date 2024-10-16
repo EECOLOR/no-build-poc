@@ -95,5 +95,5 @@ export class Tag {
  * @returns {Tag<'style'>}
  */
 export function css(...args) {
-  return tags.style(`@scope to (*:has(> style) > *) { ${String.raw(...args)} }`)
+  return tags.style(raw(`@scope to (*:has(> style) > *) { ${String.raw(...args)} }`))
 }
