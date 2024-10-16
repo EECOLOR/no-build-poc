@@ -126,19 +126,10 @@ function HotspotAndCropOverlay({ src, $crop, $hotspot, $displaySize, onCropChang
    )
 
   return [
-    Shadow(),
-    CropImage({ src, $inset }),
-    Shadow(),
-    HotspotImage({ src, $ellipse }),
+    Shadow({ $hotspotEllipse: $ellipse, $cropArea }),
     CropRectangle({ corners, rectangle, $inset }),
     HotspotEllipse({ center, handle, $ellipse }),
   ]
-}
-
-function HotspotImage({ src, $ellipse }) {
-  const $clipPath = ellipseAsClipPath($ellipse)
-
-  return img({ src: src, style: { clipPath: $clipPath } })
 }
 
 function ellipseAsClipPath($ellipse) {
@@ -200,14 +191,28 @@ function HotspotArea({ onMouseDown, $ellipse }) {
   return div({ className: 'HotspotArea', onMouseDown, style }, HotspotArea.style)
 }
 
-function CropImage({ src, $inset }) {
-  const $clipPath = $inset.derive(x => `inset(${x.top}px ${x.right}px ${x.bottom}px ${x.left}px)`)
-
-  return img({ src: src, style: { clipPath: $clipPath } })
-}
-
-function Shadow() {
-  return div(css`& { background-color: rgb(0 0 0 / 40%); pointer-events: none; }`)
+Shadow.style = css`& {
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  background-color: rgb(0 0 0 / 70%);
+  mask-image:
+    radial-gradient(ellipse var(--ellipse), transparent 99%, black 100%),
+    linear-gradient(rgba(0 0 0 / 50%), rgba(0 0 0 / 50%));
+  mask-repeat: no-repeat, no-repeat;
+  mask-size: 100%, var(--rectangle-size);
+  mask-position: 0 0, var(--rectangle-position);
+  mask-composite: subtract;
+}`
+function Shadow({ $hotspotEllipse, $cropArea }) {
+  const style = {
+    '--ellipse': $hotspotEllipse.derive(ellipse =>
+      `${ellipse.xAxis}px ${ellipse.yAxis}px at ${ellipse.centerX}px ${ellipse.centerY}px`
+    ),
+    '--rectangle-size': $cropArea.derive(crop => `${crop.width}px ${crop.height}px`),
+    '--rectangle-position': $cropArea.derive(crop => `${crop.x}px ${crop.y}px`),
+  }
+  return div({ style }, Shadow.style)
 }
 
 CropRectangle.style = css`& {
