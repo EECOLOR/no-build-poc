@@ -382,9 +382,14 @@ function useDraggableEllipse({ $bounds, $initialEllipse }) {
         getBounds: () => pipe(
           $bounds.get(), center.$position.get(), handle.$position.get(),
           ({ x, y, width, height }, [centerX, centerY], [handleX, handleY]) => {
-            const [xAxis, yAxis] = findEllipseSemiAxes( [handleX - centerX, handleY - centerY])
+            const [xAxis, yAxis] = findEllipseSemiAxes([handleX - centerX, handleY - centerY])
 
-            return [x + xAxis, y + yAxis, width - (xAxis * 2), height - (yAxis * 2)]
+            const minX = x + Math.min(xAxis, width / 2)
+            const minY = y + Math.min(yAxis, height / 2)
+            const maxWidth = Math.max(0, width - (xAxis * 2))
+            const maxHeight = Math.max(0, height - (yAxis * 2))
+
+            return [minX, minY, maxWidth, maxHeight]
           }
         )
       },
