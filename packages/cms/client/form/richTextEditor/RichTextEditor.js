@@ -9,7 +9,7 @@ import { wrapInList, liftListItem, sinkListItem, splitListItem } from 'prosemirr
 import * as collab from 'prosemirror-collab'
 
 import { css, raw, tags } from '#ui/tags.js'
-import { Signal } from '#ui/signal.js'
+import { createSignal, Signal } from '#ui/signal.js'
 import { useOnDestroy } from '#ui/dynamic.js'
 import { render } from '#ui/render/clientRenderer.js'
 import { context } from '../../context.js'
@@ -70,6 +70,44 @@ export function RichTextEditor({ initialValue, $steps, synchronize }) {
       //   })
       tryToSynchronize(view)
     },
+    nodeViews: {
+      'custom2': node => {
+        const [$selected, setSelected] = createSignal(false)
+        const $outline = $selected.derive(x => x ? 'solid' : 'unset')
+
+        const { result, destroy } = render(
+          div({ style: { outline: $outline } },
+            css`& {
+              display: flex;
+              user-select: none;
+            }`,
+            Item({ title: 'ONE',  backgroundColor: 'red' }),
+            Item({ title: 'TWO',  backgroundColor: 'blue' }),
+            tags.span({ contentEditable: true }) // prevent bug with caret
+          )
+        )
+        return {
+          dom: result,
+          destroy,
+          selectNode() {
+            setSelected(true)
+          },
+          deselectNode() {
+            setSelected(false)
+          },
+          setSelection() {
+            console.log('set selection')
+          },
+          stopEvent() {
+            return false
+          },
+        }
+
+        function Item({ title, backgroundColor }) {
+          return div({ style: { color: 'white', padding: '0.2rem', backgroundColor } }, title)
+        }
+      }
+    }
   })
   const unsubscribe = $steps.subscribe(({ steps, clientIds }) => {
     view.dispatch(
@@ -168,7 +206,7 @@ RichTextEditor.stepFromJson = function stepFromJson(json) {
 
 function createSchema() {
   const content = '(paragraph | orderedList | unorderedList)+'
-  const docContent = `(paragraph | orderedList | unorderedList | heading | custom)+`
+  const docContent = `(paragraph | orderedList | unorderedList | heading | custom | custom2)+`
   return new Schema({
     nodes: {
       doc: {
@@ -246,6 +284,14 @@ function createSchema() {
             return div({ style: { color: 'white', padding: '0.2rem', backgroundColor } }, title)
           }
         }
+      },
+
+      custom2: {
+        atom: true,
+        inline: false,
+
+        toDOM(node) { return ['custom-custom2'] },
+        parseDOM: [{ tag: 'custom-custom2' }],
       }
     },
     marks: {
@@ -291,6 +337,7 @@ function createKeymaps({ schema }) {
       'Enter': splitListItem(schema.nodes.listItem),
 
       'Shift-Mod-5': inject(schema.nodes.custom),
+      'Shift-Mod-6': inject(schema.nodes.custom2),
     }),
     keymap(baseKeymap),
   ]
