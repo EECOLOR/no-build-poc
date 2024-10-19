@@ -9,14 +9,12 @@ import { wrapInList, liftListItem, sinkListItem, splitListItem } from 'prosemirr
 import * as collab from 'prosemirror-collab'
 
 import { css, raw, tags } from '#ui/tags.js'
-import { createSignal, Signal } from '#ui/signal.js'
+import { Signal } from '#ui/signal.js'
 import { useOnDestroy } from '#ui/dynamic.js'
-import { render } from '#ui/render/clientRenderer.js'
 import { context } from '../../context.js'
+import { nodeView, schemaPlugins } from './schema.js'
 
 const { div } = tags
-
-const schema = createSchema()
 
 /**
  * @typedef {(data: { clientId, steps: readonly Step[], version: number, value: Node }) => {
@@ -36,6 +34,9 @@ RichTextEditor.style = css`
       padding: revert;
     }
   }
+  .ProseMirror-hideselection *::selection {
+    background-color: transparent;
+  }
 `
 
 /**
@@ -43,9 +44,10 @@ RichTextEditor.style = css`
  *  initialValue: { value: Node, version: number },
  *  $steps: Signal<{ steps: Step[], clientIds: Array<number | string> }>,
  *  synchronize: Synchronize,
+ *  schema: Schema,
  * }} props
  */
-export function RichTextEditor({ initialValue, $steps, synchronize }) {
+export function RichTextEditor({ initialValue, $steps, synchronize, schema }) {
   // TODO: show the cursors of other people with an overlay using https://prosemirror.net/docs/ref/#view.EditorView.coordsAtPos
 
   const { tryToSynchronize } = useSynchronization({ synchronize })
@@ -54,6 +56,7 @@ export function RichTextEditor({ initialValue, $steps, synchronize }) {
     history(),
     ...createKeymaps({ schema }),
     collab.collab({ version: initialValue.version, clientID: context.clientId }),
+    ...schemaPlugins(schema),
   ]
   const view = new EditorView(null, {
     state: EditorState.create({ doc: initialValue.value, schema, plugins, }),
@@ -70,44 +73,11 @@ export function RichTextEditor({ initialValue, $steps, synchronize }) {
       //   })
       tryToSynchronize(view)
     },
-    nodeViews: {
-      'custom2': node => {
-        const [$selected, setSelected] = createSignal(false)
-        const $outline = $selected.derive(x => x ? 'solid' : 'unset')
-
-        const { result, destroy } = render(
-          div({ style: { outline: $outline } },
-            css`& {
-              display: flex;
-              user-select: none;
-            }`,
-            Item({ title: 'ONE',  backgroundColor: 'red' }),
-            Item({ title: 'TWO',  backgroundColor: 'blue' }),
-            tags.span({ contentEditable: true }) // prevent bug with caret
-          )
-        )
-        return {
-          dom: result,
-          destroy,
-          selectNode() {
-            setSelected(true)
-          },
-          deselectNode() {
-            setSelected(false)
-          },
-          setSelection() {
-            console.log('set selection')
-          },
-          stopEvent() {
-            return false
-          },
-        }
-
-        function Item({ title, backgroundColor }) {
-          return div({ style: { color: 'white', padding: '0.2rem', backgroundColor } }, title)
-        }
-      }
-    }
+    nodeViews: Object.fromEntries(
+      Object.entries(schema.nodes).map(([name, node]) =>
+        [name, node.spec[nodeView]]
+      )
+    )
   })
   const unsubscribe = $steps.subscribe(({ steps, clientIds }) => {
     view.dispatch(
@@ -189,131 +159,26 @@ RichTextEditor.isEqual = function isEqual(a, b) {
 RichTextEditor.toJson = function toJson(doc) {
   return doc.toJSON()
 }
-/** @returns {Node} */
-RichTextEditor.fromJson = function fromJson(json) {
+/**
+ * @param {Schema} schema
+ * @returns {Node}
+ */
+RichTextEditor.fromJson = function fromJson(schema, json) {
   if (!json) return json
-  return Node.fromJSON(schema, json)
+
+  const checkedContent = json.content.map(x =>
+    x.type in schema.nodes ? x : { type: 'unknown', attrs: { node: x } }
+  )
+  return Node.fromJSON(schema, { ...json, content: checkedContent })
 }
 /** @param {Step} step */
 RichTextEditor.stepToJson = function stepToJson(step) {
   return step.toJSON()
 }
 /** @returns {Step} */
-RichTextEditor.stepFromJson = function stepFromJson(json) {
+RichTextEditor.stepFromJson = function stepFromJson(schema, json) {
   if (!json) return json
   return Step.fromJSON(schema, json)
-}
-
-function createSchema() {
-  const content = '(paragraph | orderedList | unorderedList)+'
-  const docContent = `(paragraph | orderedList | unorderedList | heading | custom | custom2)+`
-  return new Schema({
-    nodes: {
-      doc: {
-        content: docContent,
-      },
-      paragraph: {
-        content: 'text*',
-        parseDOM: [{ tag: 'p' }],
-        toDOM() { return ['p', 0] },
-      },
-      heading: {
-        attrs: { level: { default: 1, validate: 'number' } },
-        content: 'text*',
-        defining: true,
-        parseDOM: [
-          { tag: 'h1', attrs: { level: 1 } },
-          { tag: 'h2', attrs: { level: 2 } },
-          { tag: 'h3', attrs: { level: 3 } },
-          { tag: 'h4', attrs: { level: 4 } },
-          { tag: 'h5', attrs: { level: 5 } },
-          { tag: 'h6', attrs: { level: 6 } }
-        ],
-        toDOM(node) { return [`h${node.attrs.level}`, 0] }
-      },
-      orderedList: {
-        attrs: { order: { default: 1, validate: 'number' }},
-        content: 'listItem+',
-        parseDOM: [{
-          tag: 'ol',
-          getAttrs(dom) {
-            return {order: dom.hasAttribute('start') ? parseInt(dom.getAttribute('start'), 10) : 1}
-          }
-        }],
-        toDOM(node) {
-          return node.attrs.order === 1 ? ['ol', 0] : ['ol', { start: node.attrs.order }, 0]
-        }
-      },
-      unorderedList: {
-        parseDOM: [{ tag: 'ul' }],
-        content: 'listItem+',
-        toDOM() { return ['ul', 0] }
-      },
-      listItem: {
-        content,
-        parseDOM: [{ tag: 'li' }],
-        toDOM() { return ['li', 0] }
-      },
-      text: {},
-
-      custom: {
-        // atom: true, // use this when you do not have a 'hole' (contentDOM)
-        content: 'text*', // use this when you have a 'hole' (contentDOM)
-
-        inline: false,
-        // TODO: parseDOM (needed for copy-paste and a parser)
-        toDOM() {
-          const contentDOM = document.createElement('p')
-
-          // TODO: should we call destroy here?
-          const { result, destroy } = render(
-            div({ style: { display: 'flex' }},
-              Item({ title: 'ONE',  backgroundColor: 'red' }),
-              Item({ title: 'TWO',  backgroundColor: 'blue' }),
-              Item({ title: raw(contentDOM),  backgroundColor: 'green' }),
-            )
-          )
-          // For atom like components (that can not be directly edited) simply return the result of render
-          // This is the more complex version where the content can be edited
-          return {
-            dom: result,
-            contentDOM
-          }
-
-          function Item({ title, backgroundColor }) {
-            return div({ style: { color: 'white', padding: '0.2rem', backgroundColor } }, title)
-          }
-        }
-      },
-
-      custom2: {
-        atom: true,
-        inline: false,
-
-        toDOM(node) { return ['custom-custom2'] },
-        parseDOM: [{ tag: 'custom-custom2' }],
-      }
-    },
-    marks: {
-      link: {
-        attrs: { href: { validate: 'string' } },
-        inclusive: false,
-        parseDOM: [{
-          tag: 'a[href]',
-          getAttrs(dom) { return { href: dom.getAttribute('href') } },
-        }],
-        toDOM(node) { return ['a', { href: node.attrs.href }, 0] },
-      },
-      em: {
-        parseDOM: [ { tag: 'i' }, { tag: 'em' }],
-        toDOM() { return ['em', 0] },
-      },
-      strong: {
-        parseDOM: [ { tag: 'strong' }, { tag: 'b' } ],
-        toDOM() { return ['strong', 0] }
-      },
-    }
-  })
 }
 
 /** @param {{ schema: ReturnType<typeof createSchema> }} props */
@@ -322,6 +187,8 @@ function createKeymaps({ schema }) {
     keymap({
       'Mod-z': undo,
       'Shift-Mod-z': redo,
+    }),
+    keymap({ // TODO: extract these from the schema
       'Mod-b': toggleMark(schema.marks.strong),
       'Mod-i': toggleMark(schema.marks.em),
       'Shift-Mod-7': chainCommands(
@@ -337,7 +204,7 @@ function createKeymaps({ schema }) {
       'Enter': splitListItem(schema.nodes.listItem),
 
       'Shift-Mod-5': inject(schema.nodes.custom),
-      'Shift-Mod-6': inject(schema.nodes.custom2),
+
     }),
     keymap(baseKeymap),
   ]

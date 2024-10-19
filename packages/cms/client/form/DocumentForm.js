@@ -91,6 +91,7 @@ function StringField({ document, field, $path }) {
 RichTextField.style = css`& {
 }`
 function RichTextField({ document, field, $path }) {
+  const { schema } = field
   const $richTextPathname = $path.derive(path => getRichTextPathname({ document, fieldPath: path }))
 
   const $events = useEventSourceAsSignal({
@@ -99,11 +100,11 @@ function RichTextField({ document, field, $path }) {
   })
   const $initialValue = $events.derive((value, previous) =>
     value?.event === 'initialValue'
-      ? { value: RichTextEditor.fromJson(value.data.value), version: value.data.version }
+      ? { value: RichTextEditor.fromJson(schema, value.data.value), version: value.data.version }
       : previous
   )
   const $steps = $events.derive((value, previous) =>
-    value?.event === 'steps' ? { steps: value.data.steps.map(RichTextEditor.stepFromJson), clientIds: value.data.clientIds } :
+    value?.event === 'steps' ? parseStepsData(value, schema) :
     previous ? previous :
     { steps: [], clientIds: [] }
   )
@@ -113,7 +114,7 @@ function RichTextField({ document, field, $path }) {
   return renderOnValue($initialValue, initialValue =>
     div(
       RichTextField.style,
-      RichTextEditor({ initialValue, $steps, synchronize }),
+      RichTextEditor({ initialValue, $steps, synchronize, schema }),
     )
   )
 
@@ -144,6 +145,13 @@ function RichTextField({ document, field, $path }) {
         controller.abort(reason)
       }
     }
+  }
+}
+
+function parseStepsData(value, schema) {
+  return {
+    steps: value.data.steps.map(step => RichTextEditor.stepFromJson(schema, step)),
+    clientIds: value.data.clientIds
   }
 }
 

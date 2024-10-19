@@ -1,3 +1,8 @@
+import { schema } from '#cms/client/form/richTextEditor/schema.js'
+import { css, tags } from '#ui/tags.js'
+
+const { div } = tags
+
 export function createCmsConfig() {
   return { deskStructure, documentSchemas, documentView }
 }
@@ -45,7 +50,13 @@ const documentSchemas = [
         ]
       }),
       field('heroImage', 'image'),
-      field('content', 'rich-text'),
+      field('content', 'rich-text', {
+        schema: schema({
+          nodes: {
+            custom: schema.customComponent('custom', Custom)
+          }
+        })
+      }),
       field('items', 'array', {
         of: [
           type('item', {
@@ -67,6 +78,24 @@ const documentSchemas = [
     preview: doc => ({ title: 'General settings' })
   })
 ]
+
+function Custom({ id, $selected }) {
+  return (
+    div({ style: { outline: $selected.derive(x => x ? 'solid' : 'unset') }, id },
+      css`& {
+        display: flex;
+        /* user-select: none; */
+      }`,
+      CustomItem({ title: 'ONE',  backgroundColor: 'red' }),
+      CustomItem({ title: 'TWO',  backgroundColor: 'blue' }),
+      // tags.span({ contentEditable: true }, ' ')//'\u200b' /* zero width whitespace */) // prevent bug with caret
+    )
+  )
+}
+
+function CustomItem({ title, backgroundColor }) {
+  return div({ style: { color: 'white', padding: '0.2rem', backgroundColor } }, title)
+}
 
 function pane(type, props) {
   return { type, ...props }
