@@ -79,7 +79,7 @@ function Field({ document, field, $path }) {
 }
 
 function StringField({ document, field, $path }) {
-  const [$value, setValue] = useFieldValue({ document, $path, initialValue: '' })
+  const [$value, setValue] = useFieldValue({ document, field, $path, initialValue: '' })
 
   return input({ type: 'text', value: $value, onInput: handleInput })
 
@@ -135,6 +135,7 @@ function RichTextField({ document, field, $path }) {
           documentVersion: document.$value.get().version,
           valueVersion: version,
           value: RichTextEditor.toJson(value),
+          fieldType: field.type,
         })
       }
     ).then(x => x.json())
@@ -171,6 +172,7 @@ function ObjectField({ document, field, $path }) {
 function ImageField({ document, field, $path }) {
   const [$value, setValue] = useFieldValue({
     document, $path, initialValue: null,
+    field,
     compareValues: (local, document) => local?.filename === document?.filename
   })
 
@@ -281,6 +283,8 @@ function ArrayField({ document, field, $path }) {
             document,
             field: field.of.find(x => x.type === item?._type || true),
             $arrayPath: $path,
+            onMove: handleMove,
+            onDelete: handleDelete,
           })
         }
       ),
@@ -302,9 +306,18 @@ function ArrayField({ document, field, $path }) {
   function handleAdd(type) {
     patch({
       document,
+      fieldType: field.type,
       path: `${$path.get()}/${$valueFromDocument.get().length}`,
       value: { _type: type, _key: crypto.randomUUID() }
     })
+  }
+
+  function handleMove({ from, to }) {
+    patch({ document, fieldType: field.type, from, path: to, op: 'move' })
+  }
+
+  function handleDelete({ path }) {
+    patch({ document, fieldType: field.type, path, op: 'remove' })
   }
 }
 
@@ -323,7 +336,7 @@ ArrayItem.style = css`& {
     flex-direction: column;
   }
 }`
-function ArrayItem({ $isFirst, $isLast, document, $arrayPath, $index, field }) {
+function ArrayItem({ $isFirst, $isLast, document, $arrayPath, $index, field, onMove, onDelete }) {
   const $arrayPathAndIndex = useCombined($arrayPath, $index)
   const $path = $arrayPathAndIndex.derive(([arrayPath, index]) => `${arrayPath}/${index}`)
   return (
@@ -347,13 +360,13 @@ function ArrayItem({ $isFirst, $isLast, document, $arrayPath, $index, field }) {
   }
 
   function handleDeleteClick() {
-    patch({ document, path: $path.get(), op: 'remove' })
+    onDelete({ path: $path.get() })
   }
 
   function move(toIndex) {
     const from = $path.get()
     const to = `${$arrayPath.get()}/${toIndex}`
-    patch({ document, from, path: to, op: 'move' })
+    onMove({ from, to })
   }
 }
 
@@ -362,7 +375,13 @@ function getRichTextPathname({ document, fieldPath }) {
   return `${context.apiPath}/documents/${document.schema.type}/${document.id}/rich-text?fieldPath=${fieldPath}`
 }
 
-function useFieldValue({ document, $path, initialValue, compareValues = (local, document) => local === document }) {
+function useFieldValue({
+  document,
+  field,
+  $path,
+  initialValue,
+  compareValues = (local, document) => local === document
+}) {
   const $documentAndPath = useCombined(document.$value, $path)
   const $valueFromDocument = $documentAndPath.derive(([doc, path]) => get(doc, path) || initialValue)
   let localValue = $valueFromDocument.get()
@@ -382,19 +401,19 @@ function useFieldValue({ document, $path, initialValue, compareValues = (local, 
     dirty = true
     localValue = value
 
-    patchDebounced({ document, path: $path.get(), value })
+    patchDebounced({ document, fieldType: field.type, path: $path.get(), value })
   }
 }
 
 /**
- * @param {{ document } & (
+ * @param {{ document, fieldType } & (
  *   { op?: 'replace', path: string, value: any } |
  *   { op: 'move', from: string, path: string } |
  *   { op: 'remove', path: string }
  * )} params
  */
 export function patch(params) {
-  const { document } = params
+  const { document, fieldType } = params
   const { op = 'replace', path, value, from } = /** @type {typeof params & { value?: any, from?: any }} */ (params)
   // TODO: add retries if the versions do not match
   fetch(`${context.apiPath}/documents/${document.schema.type}/${document.id}`, {
@@ -406,6 +425,7 @@ export function patch(params) {
       version: document.$value.get()?.version ?? 0,
       patch: { op, path, value, from },
       clientId: context.clientId,
+      fieldType,
     })
   }) // TODO: error reporting
 }

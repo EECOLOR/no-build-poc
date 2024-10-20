@@ -101,6 +101,7 @@ function Path({ fieldPath, schema }) {
   )
 }
 
+// TODO: Change this to the correct field type (based on schema)
 const itemRenderers = {
   'string': StringItem,
   'object': ObjectItem,
@@ -109,7 +110,7 @@ const itemRenderers = {
 }
 
 function HistoryItemBody({ historyItem, schema }) {
-  const renderer = itemRenderers[historyItem.details.type] || itemRenderers.default
+  const renderer = itemRenderers[historyItem.details.fieldType] || itemRenderers.default
   return renderer({ historyItem, schema })
 }
 

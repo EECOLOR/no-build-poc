@@ -82,7 +82,6 @@ function createUuidPlugin(schema) {
           return
 
         const { attributeName } = targetTypes.get(node.type)
-        console.log(node.attrs)
         if (nodeHasAttribute(node, attributeName))
           return
 
