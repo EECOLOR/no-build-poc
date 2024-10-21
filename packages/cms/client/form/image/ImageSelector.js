@@ -1,4 +1,4 @@
-import { Scrollable } from '#cms/client/buildingBlocks.js'
+import { scrollable } from '#cms/client/buildingBlocks.js'
 import { context } from '#cms/client/context.js'
 import { useImages } from '#cms/client/data.js'
 import { useRef } from '#cms/client/machinery/elementHooks.js'
@@ -68,7 +68,7 @@ function ImagesAndDetails({ onChoose }) {
   return (
     div(
       ImagesAndDetails.style,
-      Scrollable({ scrollBarPadding: '0.5rem' },
+      scrollable.div(
         Images({
           $selected,
           onSelect: image => setSelected(image),

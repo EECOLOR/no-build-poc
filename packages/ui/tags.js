@@ -29,7 +29,7 @@ export function raw(value) { return new Raw(value) }
  * @template {TagNames} tagName
  * @typedef {AllowSignalValueAndCustomProperty<
  *   Omit<JSX.IntrinsicElements[tagName], ForbiddenJsxProperties | ExcludeTagSpecific<tagName>>
- * > & { ref?: (element: Element) => void }} Attributes
+ * > & { ref?: (element: Element) => void } & { [k: `data-${string}`]: any }} Attributes
  */
 
 /**

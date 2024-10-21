@@ -183,6 +183,7 @@ function ImageField({ document, field, $path }) {
     div(
       renderOnValue(
         $value,
+        // TODO: change to an API endpoint that uses the current metadata (or simply fetch the metadata here)
         () => img({ src: $value.derive(value => `${context.apiPath}/images/${value}`) })
       ),
 

@@ -1,6 +1,12 @@
 import { useOnDestroy } from '#ui/dynamic.js'
 import { createSignal } from '#ui/signal.js'
 
+export function combineRefs(...refs) {
+  return function ref(element) {
+    for (const ref of refs) ref?.(element)
+  }
+}
+
 export function useHasScrollbar() {
   const { $size, ref } = useElementSize()
   const $hasScrollbar = $size.derive(size => Boolean(size) && size.height <= size.element.scrollHeight)

@@ -1,7 +1,7 @@
 import { conditional, derive, loop, useOnDestroy } from '#ui/dynamic.js'
 import { createSignal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
-import { ButtonAdd, ButtonChevronLeft, ButtonChevronRight, ButtonDelete, Link, List, Scrollable } from '../buildingBlocks.js'
+import { ButtonAdd, ButtonChevronLeft, ButtonChevronRight, ButtonDelete, Link, List, scrollable } from '../buildingBlocks.js'
 import { context, getSchema } from '../context.js'
 import { connecting, useDocument, useDocuments, useImageMetadata, useImages } from '../data.js'
 import { DocumentForm, patch } from '../form/DocumentForm.js'
@@ -103,7 +103,7 @@ function ListPane({ items, path }) {
   return (
     div({ className: 'list' },
       ListPane.style,
-      List({ scrollBarPadding: '0.5rem', renderItems: renderItem =>
+      List({ renderItems: renderItem =>
         items.map(item =>
           renderItem(
             ListItem({
@@ -146,7 +146,7 @@ function DocumentListPane({ schemaType, path }) {
     div({ className: 'list' },
       DocumentListPane.style,
       DocumentListHeader({ schema, onFilterChange: handleFilterChange, onAddClick: handleAddClick }),
-      List({ scrollBarPadding: '0.5rem', renderItems: renderItem =>
+      List({ renderItems: renderItem =>
         loop($filteredDocuments, x => x._id + hack(x), document => // TODO: document should probably be a signal, if the id does not change, nothing will be re-rendered
           renderItem(
             ListItem({
@@ -217,7 +217,7 @@ function DocumentPane({ id, schemaType }) {
       conditional($document, doc => doc !== connecting, _ => [
         DocumentHeader({ document, $showHistory, onShowHistoryClick: _ => setShowHistory(x => !x) }),
         div(
-          Scrollable({ scrollBarPadding: '0.5rem' },
+          scrollable.div(
             DocumentForm({ document }),
           ),
           renderOnValue($showHistory,
@@ -243,7 +243,7 @@ function ImagesPane({ path }) {
   return (
     div({ className: 'list' },
       ImagesPane.style,
-      List({ scrollBarPadding: '0.5rem', renderItems: renderItem =>
+      List({ renderItems: renderItem =>
         loop(
           $images,
           image => image.filename,
@@ -305,7 +305,7 @@ function ImagePane({ id: filename, path }) {
   return (
     div(
       ImagePane.style,
-      Scrollable({ scrollBarPadding: '0.5rem' },
+      scrollable.div(
         ImageEditor({
           src,
           $serverMetadata,
@@ -313,7 +313,7 @@ function ImagePane({ id: filename, path }) {
           onHotspotChange: hotspot => setClientMetadata(x => ({ ...x, hotspot })),
         })
       ),
-      Scrollable({ scrollBarPadding: '0.5rem' },
+      scrollable.div(
         ImagePreview({ filename, $metadata: $previewMetadata })
       )
     )

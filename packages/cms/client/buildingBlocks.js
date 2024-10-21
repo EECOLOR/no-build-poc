@@ -1,7 +1,8 @@
 import { arrowDown, arrowUp, chevronDown, chevronLeft, chevronRight, chevronUp, plus, trash } from '#cms/client/icons.js'
 import { tags, css, Tag } from '#ui/tags.js'
 import { pushState } from './machinery/history.js'
-import { useHasScrollbar } from './machinery/elementHooks.js'
+import { combineRefs, useHasScrollbar } from './machinery/elementHooks.js'
+import { separatePropsAndChildren } from '#ui/utils.js'
 
 const { ul, li, button, a, div } = tags
 
@@ -16,34 +17,40 @@ List.style = css`& {
     list-style-type: none;
   }
 }`
-export function List({ gap = undefined, scrollBarPadding, renderItems }) {
-
-  return Scrollable({ scrollBarPadding },
-    ul({ style: { ...(gap && { '--gap': gap }) } },
-      List.style,
-      renderItems((...args) =>
-        li(...args)
-      )
+export function List({ gap = undefined, renderItems }) {
+  return scrollable.ul({ style: { ...(gap && { '--gap': gap }) } },
+    List.style,
+    renderItems((...args) =>
+      li(...args)
     )
   )
 }
 
+/** @type {typeof tags} */
+export const scrollable = new Proxy(tags, {
+  get(target, p) {
+    return Scrollable.bind(null, target[p])
+  }
+})
+
 Scrollable.styles = css`& {
   overflow-y: auto;
 
-  &.hasScrollbar {
-    padding-right: var(--scrollBarPadding);
+  &[data-has-scrollbar=true] {
+    padding-right: var(--scrollbarPadding, 0.5rem);
   }
 }`
-export function Scrollable({ scrollBarPadding }, ...children) {
-  const { ref, $hasScrollbar } = useHasScrollbar()
+function Scrollable(element, ...params) {
+  const { props, children } = separatePropsAndChildren(params)
+  const { ref: scrollbarRef, $hasScrollbar } = useHasScrollbar()
+  const combinedRef = combineRefs(scrollbarRef, props?.ref)
 
   return (
-    div(
+    element(
       {
-        ref,
-        className: $hasScrollbar.derive(hasScrollbar => hasScrollbar ? 'hasScrollbar' : ''),
-        style: { ...(scrollBarPadding && { '--scrollBarPadding': scrollBarPadding }) }
+        ref: combinedRef,
+        'data-has-scrollbar': $hasScrollbar,
+        ...props,
       },
       Scrollable.styles,
       ...children,
