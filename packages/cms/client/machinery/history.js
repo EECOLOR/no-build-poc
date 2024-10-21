@@ -12,7 +12,7 @@ export const $pathname = $pathnameSignal
 
 export function pushState(state, unused, pathname = undefined) {
   window.history.pushState(state, unused, pathname)
-  setPathname(pathname)
+  setPathname(window.location.pathname)
 }
 
 

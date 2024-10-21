@@ -47,7 +47,7 @@ RichTextEditor.style = css`
  *  schema: Schema,
  * }} props
  */
-export function RichTextEditor({ initialValue, $steps, synchronize, schema }) {
+export function RichTextEditor({ id, initialValue, $steps, synchronize, schema }) {
   // TODO: show the cursors of other people with an overlay using https://prosemirror.net/docs/ref/#view.EditorView.coordsAtPos
 
   const { tryToSynchronize } = useSynchronization({ synchronize })
@@ -59,6 +59,7 @@ export function RichTextEditor({ initialValue, $steps, synchronize, schema }) {
     ...schemaPlugins(schema),
   ]
   const view = new EditorView(null, {
+    attributes: { id },
     state: EditorState.create({ doc: initialValue.value, schema, plugins, }),
     dispatchTransaction(transaction) {
       const newState = view.state.apply(transaction)

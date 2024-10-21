@@ -1,15 +1,17 @@
 import { conditional, derive, loop } from '#ui/dynamic.js'
 import { createSignal } from '#ui/signal.js'
 import { tags, css } from '#ui/tags.js'
+import { createUniqueId } from '#ui/utils.js'
 import { ButtonChevronDown, ButtonChevronUp, ButtonDelete, ButtonDown, ButtonUp } from '../buildingBlocks.js'
 import { context } from '../context.js'
 import { debounce } from '../machinery/debounce.js'
 import { renderOnValue } from '../machinery/renderOnValue.js'
 import { useCombined } from '../machinery/signalHooks.js'
 import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
+import { ImageSelector } from './image/ImageSelector.js'
 import { RichTextEditor } from './richTextEditor/RichTextEditor.js'
 
-const { div, label, span, input, button, strong , img} = tags
+const { div, label, span, input, button, strong, img, form } = tags
 
 DocumentForm.style = css`& {
   min-width: 25rem;
@@ -69,19 +71,21 @@ function Field({ document, field, $path }) {
   if (!renderer)
     return div({ style: { backgroundColor: 'lightcoral' } }, `Unknown field type '${field.type}'`)
 
+  const id = createUniqueId()
+
   return (
-    label(
+    div(
       Field.style,
-      span(field.title),
-      renderer({ document, field, $path })
+      label({ htmlFor: id }, span(field.title)),
+      renderer({ document, field, $path, id })
     )
   )
 }
 
-function StringField({ document, field, $path }) {
+function StringField({ document, field, $path, id }) {
   const [$value, setValue] = useFieldValue({ document, field, $path, initialValue: '' })
 
-  return input({ type: 'text', value: $value, onInput: handleInput })
+  return input({ id, type: 'text', value: $value, onInput: handleInput })
 
   function handleInput(e) {
     setValue(e.currentTarget.value)
@@ -90,7 +94,7 @@ function StringField({ document, field, $path }) {
 
 RichTextField.style = css`& {
 }`
-function RichTextField({ document, field, $path }) {
+function RichTextField({ document, field, $path, id }) {
   const { schema } = field
   const $richTextPathname = $path.derive(path => getRichTextPathname({ document, fieldPath: path }))
 
@@ -114,7 +118,7 @@ function RichTextField({ document, field, $path }) {
   return renderOnValue($initialValue, initialValue =>
     div(
       RichTextField.style,
-      RichTextEditor({ initialValue, $steps, synchronize, schema }),
+      RichTextEditor({ id, initialValue, $steps, synchronize, schema }),
     )
   )
 
@@ -160,11 +164,11 @@ ObjectField.style = css`& {
   padding-left: 0.5rem;
   border-left: 1px solid lightgrey;
 }`
-function ObjectField({ document, field, $path }) {
+function ObjectField({ document, field, $path, id }) {
   return (
     div(
       ObjectField.style,
-      Object({ document, field, $path })
+      Object({ document, field, $path, id })
     )
   )
 }
@@ -187,8 +191,9 @@ function ImageField({ document, field, $path }) {
       input({
         type: 'file',
         onChange: handleFileChange,
-        accept:'image/jpeg,image/png,image/webp,image/bmp'
-      })
+        accept:'image/jpeg,image/png,image/webp,image/bmp',
+        onClick: () => console.trace('click'),
+      }),
     )
   )
 
@@ -217,12 +222,12 @@ function ImageField({ document, field, $path }) {
   }
 }
 
-function Object({ document, field, $path }) {
+function Object({ document, field, $path, id }) {
   const [$expanded, setExpanded] = createSignal(true)
 
   return (
     div(
-      ObjectTitle({ title: field.title, $expanded, onExpandClick: _ => setExpanded(x => !x) }),
+      ObjectTitle({ id, title: field.title, $expanded, onExpandClick: _ => setExpanded(x => !x) }),
       renderOnValue($expanded,
         _ => ObjectFields({ document, fields: field.fields, $path })
       )
@@ -235,15 +240,15 @@ ObjectTitle.style = css`& {
   justify-content: space-between;
   align-items: center;
 }`
-function ObjectTitle({ title, $expanded, onExpandClick }) {
+function ObjectTitle({ id, title, $expanded, onExpandClick }) {
   const $Button = $expanded.derive(x => x ? ButtonChevronUp : ButtonChevronDown)
 
   return strong(
     ObjectTitle.style,
     title,
     derive($Button, Button =>
-      Button({ onClick: onExpandClick })
-    )
+      Button({ id, onClick: onExpandClick })
+    ),
   )
 }
 

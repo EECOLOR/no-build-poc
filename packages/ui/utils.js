@@ -7,3 +7,8 @@ export function separatePropsAndChildren(params) {
     children: hasProps ? children : params
   }
 }
+
+let counter = 0
+export function createUniqueId() {
+  return `id-${counter++}`
+}
