@@ -43,18 +43,18 @@ export function raw(value) { return new Raw(value) }
 
 /**
  * @template T
- * @typedef {T extends (Tag<any> | Signal<any> | Component<any> | Dynamic<any> | Raw | string | number | boolean | null | undefined | Children<T>) ? T : never} Child
+ * @typedef {T extends (Tag<any> | Signal<any> | Component<any> | Dynamic<any> | Raw | string | number | boolean | null | undefined) ? T : never} Child
+ */
+
+/**
+ * @typedef {Record<string, {}>} PlainObject
  */
 
 /** @template T @typedef {Array<Child<any>>} Children */
 /** @typedef {keyof JSX.IntrinsicElements} TagNames */
 /**
  * @template T @template {TagNames} tagName
- * @typedef {(
- *   T extends Child<T> ? Child<T> :
- *   T extends Attributes<tagName> ? Attributes<tagName> :
- *   never
- * )} ChildOrAttributes
+ * @typedef {T extends PlainObject ? Attributes<tagName> : Child<T>} ChildOrAttributes
  */
 
 export const tags = new Proxy(

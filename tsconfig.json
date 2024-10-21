@@ -9,9 +9,9 @@
     "./packages/**/*",
   ],
   "compilerOptions": {
-    "module": "es2022",
+    "module": "NodeNext",
     "moduleResolution": "nodenext",
-    "target": "es2022",
+    "target": "es2023",
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "lib": [
