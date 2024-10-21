@@ -177,49 +177,22 @@ function ImageField({ document, field, $path }) {
   const [$value, setValue] = useFieldValue({
     document, $path, initialValue: null,
     field,
-    compareValues: (local, document) => local?.filename === document?.filename
   })
 
   return (
     div(
-      conditional(
+      renderOnValue(
         $value,
-        value => value?.filename,
-        value =>
-          img({ src: `${context.apiPath}/images/${value.filename}` })
+        () => img({ src: $value.derive(value => `${context.apiPath}/images/${value}`) })
       ),
-      input({
-        type: 'file',
-        onChange: handleFileChange,
-        accept:'image/jpeg,image/png,image/webp,image/bmp',
-        onClick: () => console.trace('click'),
+
+      ImageSelector({
+        onSelect(image) {
+          setValue(image.filename)
+        }
       }),
     )
   )
-
-  async function handleFileChange(e) {
-    /** @type {Array<File>} */
-    const [file] = e.currentTarget.files
-    if (!file)
-      return
-
-    // TODO: prevent large files from being uploaded
-
-    const response = await fetch(`${context.apiPath}/images?${new URLSearchParams({ name: file.name })}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': file.type,
-        'Content-Length': String(file.size),
-      },
-      body: file,
-    }) // TODO: error handling
-
-    if (!response.ok) {
-      throw new Error(`Image upload failed [${response.status}]\n${await response.text()}`)
-    }
-
-    setValue(await response.json())
-  }
 }
 
 function Object({ document, field, $path, id }) {
@@ -344,10 +317,12 @@ ArrayItem.style = css`& {
 function ArrayItem({ $isFirst, $isLast, document, $arrayPath, $index, field, onMove, onDelete }) {
   const $arrayPathAndIndex = useCombined($arrayPath, $index)
   const $path = $arrayPathAndIndex.derive(([arrayPath, index]) => `${arrayPath}/${index}`)
+  const id = createUniqueId()
+
   return (
     div(
       ArrayItem.style,
-      Object({ document, field, $path }),
+      Object({ document, field, $path, id }),
       div({ className: 'buttonContainer' },
         ButtonUp({ disabled: $isFirst, onClick: handleUpClick }),
         ButtonDown({ disabled: $isLast, onClick: handleDownClick }),

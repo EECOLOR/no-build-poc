@@ -81,6 +81,7 @@ export function createImagesHandler({ imagesPath, databaseActions }) {
     })
   }
 
+  // TODO: move this method to a separate package (front-end should be able to use it without a dependency on the CMS)
   /**
    * @param {import('node:http').IncomingMessage} req
    * @param {import('node:http').ServerResponse} res

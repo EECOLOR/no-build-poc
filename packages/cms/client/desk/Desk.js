@@ -1,9 +1,11 @@
 import { conditional, derive, loop, useOnDestroy } from '#ui/dynamic.js'
-import { createSignal, Signal } from '#ui/signal.js'
+import { createSignal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
 import { ButtonAdd, ButtonChevronLeft, ButtonChevronRight, ButtonDelete, Link, List, Scrollable } from '../buildingBlocks.js'
 import { context, getSchema } from '../context.js'
+import { connecting, useDocument, useDocuments, useImageMetadata, useImages } from '../data.js'
 import { DocumentForm, patch } from '../form/DocumentForm.js'
+import { createImageSrc } from '../form/image/createImgSrc.js'
 import { ImageCropAndHotspot } from '../form/image/ImageCropAndHotspot.js'
 import { DocumentHistory } from '../history/DocumentHistory.js'
 import { debounce } from '../machinery/debounce.js'
@@ -11,11 +13,8 @@ import { useElementSize } from '../machinery/elementHooks.js'
 import { $pathname, pushState } from '../machinery/history.js'
 import { renderOnValue } from '../machinery/renderOnValue.js'
 import { useCombined, useSubscriptions } from '../machinery/signalHooks.js'
-import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
 
 const { div, input, h1, img } = tags
-
-const connecting = Symbol('connecting')
 
 Desk.style = css`& {
   display: flex;
@@ -285,12 +284,12 @@ ImagePane.style = css`& {
     width: 50%;
   }
 }`
-function ImagePane({ id, path }) {
-  const src = `${context.apiPath}/images/${id}`
+function ImagePane({ id: filename, path }) {
+  const src = `${context.apiPath}/images/${filename}`
 
   // TODO: we should ignore our own updates
   // Seems this is a general pattern when we listen for live changes
-  const $serverMetadata = useImageMetadata({ id })
+  const $serverMetadata = useImageMetadata({ filename })
   const [$clientMetadata, setClientMetadata] = createSignal({})
   const [$previewMetadata, setPreviewMetadata] = createSignal({})
 
@@ -315,14 +314,14 @@ function ImagePane({ id, path }) {
         })
       ),
       Scrollable({ scrollBarPadding: '0.5rem' },
-        ImagePreview({ src, $metadata: $previewMetadata })
+        ImagePreview({ filename, $metadata: $previewMetadata })
       )
     )
   )
 
   function saveMetadata(metadata) {
     console.log('⎙ save', metadata)
-    fetch(`${context.apiPath}/images/${id}/metadata`, {
+    fetch(`${context.apiPath}/images/${filename}/metadata`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -349,36 +348,25 @@ ImagePreview.style = css`& {
   & > * { flex-grow: 1; flex-basis:30%; }
   & > :last-child { flex-basis: 100%; }
 }`
-function ImagePreview({ src, $metadata }) {
+function ImagePreview({ filename, $metadata }) {
 
   return (
     div(
       ImagePreview.style,
-      PreviewImage({ src, aspectRatio: '3 / 4', $metadata }),
-      PreviewImage({ src, aspectRatio: '1 / 1', $metadata }),
-      PreviewImage({ src, aspectRatio: '16 / 9', $metadata }),
-      PreviewImage({ src, aspectRatio: '2 / 1', $metadata }),
+      PreviewImage({ filename, aspectRatio: '3 / 4', $metadata }),
+      PreviewImage({ filename, aspectRatio: '1 / 1', $metadata }),
+      PreviewImage({ filename, aspectRatio: '16 / 9', $metadata }),
+      PreviewImage({ filename, aspectRatio: '2 / 1', $metadata }),
     )
   )
 }
 
-function PreviewImage({ src, aspectRatio, $metadata }) {
+function PreviewImage({ filename, aspectRatio, $metadata }) {
   const { ref, $size } = useElementSize()
-  const $src = useDebounced(useCombined($size, $metadata)).derive(createSrc)
+  const $src = useDebounced(useCombined($size, $metadata)).derive(([size, metadata]) =>
+    createImageSrc(filename, { ...metadata, ...size })
+  )
   return img({ src: $src, ref, style: { aspectRatio } })
-
-  function createSrc([size, { crop, hotspot }]) {
-    if (!size) return
-
-    const { width, height } = size
-
-    const params = new URLSearchParams({
-      w: String(width), h: String(height),
-      ...(crop && { crop: [crop.x, crop.y, crop.width, crop.height].join(',') }),
-      ...(hotspot && { hotspot: [hotspot.x, hotspot.y, hotspot.width, hotspot.height].join(',') }),
-    })
-    return `${src}?${params.toString()}`
-  }
 }
 
 function useDebounced(signal, milliseconds = 200) {
@@ -418,7 +406,7 @@ function DocumentHeader({ document, $showHistory, onShowHistoryClick }) {
   )
 
   function handleDeleteClick() {
-    patch({ document, path: '', op: 'remove',  })
+    patch({ document, path: '', op: 'remove', fieldType: 'document' })
   }
 }
 
@@ -444,37 +432,6 @@ function ListItem({ href, title }) {
     title,
     ButtonChevronRight({ disabled: true })
   )
-}
-
-function useDocument({ id, schemaType }) {
-  return useEventSourceAsSignal({
-    pathname: `${context.apiPath}/documents/${schemaType}/${id}`,
-    events: ['document'],
-    initialValue: connecting,
-  }).derive(x => typeof x === 'symbol' ? x : x && x.data)
-}
-
-function useDocuments({ schemaType }) {
-  return useEventSourceAsSignal({
-    pathname: `${context.apiPath}/documents/${schemaType}`,
-    events: ['documents'],
-  }).derive(x => x?.data || [])
-}
-
-function useImages() {
-  return useEventSourceAsSignal({
-    pathname: `${context.apiPath}/images`,
-    events: ['images'],
-  }).derive(x => x?.data || [])
-}
-
-/** @returns {Signal<typeof connecting | { width, height, crop?, hotspot? }>} */
-function useImageMetadata({ id }) {
-  return useEventSourceAsSignal({
-    pathname: `${context.apiPath}/images/${id}/metadata`,
-    events: ['metadata'],
-    initialValue: connecting,
-  }).derive(x => typeof x === 'symbol' ? x : x && x.data)
 }
 
 /** @returns {Array<{ pane: any, path: Array<string> }>} */

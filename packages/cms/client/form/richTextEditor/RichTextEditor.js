@@ -41,6 +41,7 @@ RichTextEditor.style = css`
 
 /**
  * @param {{
+ *  id: string,
  *  initialValue: { value: Node, version: number },
  *  $steps: Signal<{ steps: Step[], clientIds: Array<number | string> }>,
  *  synchronize: Synchronize,
@@ -182,7 +183,7 @@ RichTextEditor.stepFromJson = function stepFromJson(schema, json) {
   return Step.fromJSON(schema, json)
 }
 
-/** @param {{ schema: ReturnType<typeof createSchema> }} props */
+// TODO: we don't know the schema here, so these need to be added to the schema and picked up from there
 function createKeymaps({ schema }) {
   return [
     keymap({

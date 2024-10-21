@@ -30,6 +30,28 @@ export function useElementSize() {
 }
 
 /**
+ * @template {HTMLElement} T
+ * @typedef {((element: T) => void) & { current: null | T}} Ref
+ */
+
+/**
+ * @template {keyof HTMLElementTagNameMap} T
+ * @param {T} [hint]
+ * @return {Ref<HTMLElementTagNameMap[T]>}
+ */
+export function useRef(hint) {
+  ref.current = null
+
+  return ref
+
+  function ref(element) {
+    ref.current = element
+  }
+}
+
+// TODO: move features to separate files. No need to introduce drag if it is not being used
+
+/**
  * @typedef {number} x
  * @typedef {number} y
  * @typedef {number} width
