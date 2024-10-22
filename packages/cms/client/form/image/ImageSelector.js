@@ -13,7 +13,6 @@ const { button, dialog, div, img, pre, input } = tags
 const newImage = Symbol('new image')
 
 export function ImageSelector({ onSelect }) {
-
   const ref = useRef('dialog')
 
   return (
@@ -179,5 +178,7 @@ function ImageItem({ image, $selected, onClick }) {
 
 function Image({ image, ...imgProps }) {
   const { filename, metadata } = image
-  return img({ src: createImageSrc(filename, metadata), ...imgProps })
+  const { crop, hotspot } = metadata
+  const { width, height } = crop || metadata
+  return img({ loading: 'lazy', src: createImageSrc(filename, { width, height, crop, hotspot }), ...imgProps })
 }

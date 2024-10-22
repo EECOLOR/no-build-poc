@@ -1,13 +1,15 @@
-import { conditional, derive, loop } from '#ui/dynamic.js'
+import { derive, loop } from '#ui/dynamic.js'
 import { createSignal } from '#ui/signal.js'
 import { tags, css } from '#ui/tags.js'
 import { createUniqueId } from '#ui/utils.js'
 import { ButtonChevronDown, ButtonChevronUp, ButtonDelete, ButtonDown, ButtonUp } from '../buildingBlocks.js'
 import { context } from '../context.js'
+import { connecting, useImageMetadata } from '../data.js'
 import { debounce } from '../machinery/debounce.js'
 import { renderOnValue } from '../machinery/renderOnValue.js'
-import { useCombined } from '../machinery/signalHooks.js'
+import { useCombined, useDynamicSignalHook } from '../machinery/signalHooks.js'
 import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
+import { createImageSrc } from './image/createImgSrc.js'
 import { ImageSelector } from './image/ImageSelector.js'
 import { RichTextEditor } from './richTextEditor/RichTextEditor.js'
 
@@ -179,21 +181,34 @@ function ImageField({ document, field, $path }) {
     field,
   })
 
+  const $metadata = useDynamicSignalHook($value, filename =>
+    filename && useImageMetadata({ filename })
+  )
+
+  const $imgSrc = useCombined($value, $metadata)
+    .derive(([filename, metadata]) => {
+      if (!filename || metadata === connecting)
+        return
+
+      const { crop, hotspot } = metadata
+
+      const ratio = crop.height / crop.width
+      const width = Math.round(remToPx(25))
+      const height = Math.round(ratio * width)
+
+      return createImageSrc(filename, { width, height, crop, hotspot })
+    })
+
   return (
     div(
-      renderOnValue(
-        $value,
-        // TODO: change to an API endpoint that uses the current metadata (or simply fetch the metadata here)
-        () => img({ src: $value.derive(value => `${context.apiPath}/images/${value}`) })
-      ),
-
-      ImageSelector({
-        onSelect(image) {
-          setValue(image.filename)
-        }
-      }),
+      renderOnValue($imgSrc, () => img({ src: $imgSrc })),
+      ImageSelector({ onSelect: image => setValue(image.filename) }),
     )
   )
+
+  function remToPx(rem) {
+    return rem * parseFloat(getComputedStyle(window.document.documentElement).fontSize)
+  }
 }
 
 function Object({ document, field, $path, id }) {

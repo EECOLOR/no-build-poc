@@ -2,12 +2,20 @@ import { Signal } from './signal.js';
 
 const onDestroyCallbacks = []
 
+/**
+ * @param {() => void} callback
+ */
 export function useOnDestroy(callback) {
   const target = onDestroyCallbacks[onDestroyCallbacks.length - 1]
   if (!target) throw new Error(`useOnDestroy called while not capturing. You most likely are rendering a signal from within another signal, instead of 'signal.derive' use 'derive' or any other method form '#ui/dynamic.js'.`)
   target.push(callback)
 }
 
+/**
+ * @template X
+ * @param {() => X} f
+ * @returns {[X, Array<() => void>]}
+ */
 export function withOnDestroyCapture(f) {
   onDestroyCallbacks.push([])
   const result = f()
