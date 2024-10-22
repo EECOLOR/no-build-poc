@@ -38,6 +38,7 @@ export function useSubscriptions(...subscriptions) {
    * @returns {Signal<Y>}
    */
 export function useDynamicSignalHook(signal, constructSignalHook) {
+  // TODO: check this code, it seems to leave an additional connection open (could also be the fact that we opened too many connections and just reached the threshold)
   let capturedOnDestroyCallbacks = []
   let hookSignal = createSignalHook(signal.get())
   const [$result, setResult] = createSignal(() => hookSignal?.get())

@@ -2,7 +2,7 @@ import { derive, loop } from '#ui/dynamic.js'
 import { createSignal } from '#ui/signal.js'
 import { tags, css } from '#ui/tags.js'
 import { createUniqueId } from '#ui/utils.js'
-import { ButtonChevronDown, ButtonChevronUp, ButtonDelete, ButtonDown, ButtonUp } from '../buildingBlocks.js'
+import { Button, ButtonChevronDown, ButtonChevronUp, ButtonDelete, ButtonDown, ButtonUp } from '../buildingBlocks.js'
 import { context } from '../context.js'
 import { connecting, useImageMetadata } from '../data.js'
 import { debounce } from '../machinery/debounce.js'
@@ -163,7 +163,7 @@ function parseStepsData(value, schema) {
 }
 
 ObjectField.style = css`& {
-  padding-left: 0.5rem;
+  padding-left: var(--default-padding);
   border-left: 1px solid lightgrey;
 }`
 function ObjectField({ document, field, $path, id }) {
@@ -175,17 +175,34 @@ function ObjectField({ document, field, $path, id }) {
   )
 }
 
+ImageField.style = css`& {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}`
 function ImageField({ document, field, $path }) {
   const [$value, setValue] = useFieldValue({
     document, $path, initialValue: null,
     field,
   })
 
-  const $metadata = useDynamicSignalHook($value, filename =>
+  const $imgSrc = useImgSrc({ $filename: $value, sizeInRem: 25 })
+
+  return (
+    div(
+      ImageField.style,
+      renderOnValue($imgSrc, () => img({ src: $imgSrc })),
+      ImageSelector({ onSelect: image => setValue(image.filename) }),
+    )
+  )
+}
+
+function useImgSrc({ $filename, sizeInRem }) {
+  const $metadata = useDynamicSignalHook($filename, filename =>
     filename && useImageMetadata({ filename })
   )
 
-  const $imgSrc = useCombined($value, $metadata)
+  const $imgSrc = useCombined($filename, $metadata)
     .derive(([filename, metadata]) => {
       if (!filename || metadata === connecting)
         return
@@ -193,18 +210,13 @@ function ImageField({ document, field, $path }) {
       const { crop, hotspot } = metadata
 
       const ratio = crop.height / crop.width
-      const width = Math.round(remToPx(25))
+      const width = Math.round(remToPx(sizeInRem))
       const height = Math.round(ratio * width)
 
       return createImageSrc(filename, { width, height, crop, hotspot })
     })
 
-  return (
-    div(
-      renderOnValue($imgSrc, () => img({ src: $imgSrc })),
-      ImageSelector({ onSelect: image => setValue(image.filename) }),
-    )
-  )
+  return $imgSrc
 
   function remToPx(rem) {
     return rem * parseFloat(getComputedStyle(window.document.documentElement).fontSize)
@@ -245,7 +257,7 @@ ArrayField.style = css`& {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  padding-left: 0.5rem;
+  padding-left: var(--default-padding);
   border-left: 1px solid lightgray;
 
   .buttonContainer {
@@ -284,14 +296,7 @@ function ArrayField({ document, field, $path }) {
       ),
       div({ className: 'buttonContainer'},
         field.of.map(objectType =>
-          button({ type: 'button', onClick: _ => handleAdd(objectType.type) },
-            css`& {
-              border: 1px solid black;
-              border-radius: 5px;
-              padding: 0.2rem;
-            }`,
-            `Add ${objectType.title}`
-          )
+          Button({ label: `Add ${objectType.title}`, onClick: _ => handleAdd(objectType.type) })
         )
       )
     )

@@ -17,12 +17,14 @@ import { useCombined, useSubscriptions } from '../machinery/signalHooks.js'
 const { div, input, h1, img } = tags
 
 Desk.style = css`& {
+  --default-padding: 0.5rem;
+
   display: flex;
   flex-direction: column;
   height: 100%;
 
   & > * {
-    padding: 0.5rem;
+    padding: var(--default-padding);
   }
 
   & > :not(:first-child, :last-child) {
@@ -97,7 +99,7 @@ function Pane({ pane, path }) {
 
 ListPane.style = css`& {
   height: 100%;
-  padding: 0.5rem;
+  padding: var(--default-padding);
 }`
 function ListPane({ items, path }) {
   return (
@@ -121,7 +123,7 @@ DocumentListPane.style = css`& {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 0.5rem;
+  padding: var(--default-padding);
 
   & > :not(:first-child, :last-child) {
     margin-bottom: 0.5rem;
@@ -195,7 +197,7 @@ DocumentPane.style = css`& {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  padding: 0.5rem;
+  padding: var(--default-padding);
   max-width: fit-content;
 
   & > div {
@@ -231,7 +233,7 @@ function DocumentPane({ id, schemaType }) {
 
 ImagesPane.style = css`& {
   height: 100%;
-  padding: 0.5rem;
+  padding: var(--default-padding);
 
   & > * {
     height: 100%;
@@ -262,7 +264,7 @@ function ImageItem({ image, path }) {
         css`& {
           max-height: 5rem;
           width: 5rem;
-          padding: 1rem;
+          padding: calc(var(--default-padding * 2));
 
           & > img {
             max-height: 100%;
@@ -275,7 +277,7 @@ function ImageItem({ image, path }) {
 }
 
 ImagePane.style = css`& {
-  padding: 0.5rem;
+  padding: var(--default-padding);
   display: flex;
   gap: 1rem;
 

@@ -66,6 +66,9 @@ export const ButtonChevronUp = createIconButton(chevronUp)
 export const ButtonChevronDown = createIconButton(chevronDown)
 export const ButtonChevronRight = createIconButton(chevronRight)
 export const ButtonChevronLeft = createIconButton(chevronLeft)
+export const ButtonClose = createIconButton(plus, { cssTransform: 'rotate(45deg)' })
+
+export const IconAdd = createIcon(plus)
 
 export function Link({ href, className = undefined }, ...children) {
   return a({ className, href, onClick: linkClick(href) }, ...children)
@@ -93,22 +96,57 @@ function shouldNavigate(e) {
   )
 }
 
-/** @returns {(props: import('#ui/tags.js').Attributes<'button'>) => Tag<'button'>} */
-function createIconButton(icon) {
-  return props => button(
-    { type: 'button', ...props },
-    css`& {
-      width: 1.5rem;
-      height: 1.5rem;
-      padding: 0.25rem;
+Button.style = css`& {
+  padding: 0.25rem;
+}`
+/**
+ * @param {props} import('#ui/tags.js').Attributes<'button'>
+ * @returns {Tag<'button'>}
+ */
+export function Button({ label, ...props }) {
+  return button({ type: 'button', ...props }, Button.style, label)
+}
+
+function createIconStyle(icon, { cssTransform = '' } = {}) {
+  return css`& {
+    --width: 1.5rem;
+    --height: 1.5rem;
+    padding: 0.25rem;
+
+    /* lock the width and height independent of the context */
+    width: var(--width);
+    height: var(--height);
+    min-width: var(--width);
+    max-width: var(--width);
+    min-height: var(--height);
+    max-height: var(--height);
+
+    &::before {
+      content: '';
+      display: block;
+      width: 100%;
+      height: 100%;
+
       background-origin: content-box;
       background-image: url('data:image/svg+xml;utf8,${icon}');
       background-position: center;
       background-repeat: no-repeat;
 
-      &:disabled {
-        opacity: 0.5;
-      }
-    }`,
-  )
+      ${cssTransform && `transform: ${cssTransform};`}
+    }
+
+    &:disabled {
+      opacity: 0.5;
+    }
+  }`
+}
+
+/** @returns {(props?: import('#ui/tags.js').Attributes<'div'>) => Tag<'div'>} */
+function createIcon(icon, { cssTransform = '' } = {}) {
+  return props => div(props, createIconStyle(icon, { cssTransform }))
+}
+
+/** @returns {(props: import('#ui/tags.js').Attributes<'button'>) => Tag<'button'>} */
+function createIconButton(icon, { cssTransform = '' } = {}) {
+  return props => button({ type: 'button', ...props }, createIconStyle(icon, { cssTransform }))
 }

@@ -1,4 +1,4 @@
-import { scrollable } from '#cms/client/buildingBlocks.js'
+import { Button, ButtonClose, IconAdd, scrollable } from '#cms/client/buildingBlocks.js'
 import { context } from '#cms/client/context.js'
 import { useImages } from '#cms/client/data.js'
 import { useRef } from '#cms/client/machinery/elementHooks.js'
@@ -17,7 +17,7 @@ export function ImageSelector({ onSelect }) {
 
   return (
     div(
-      button({ type: 'button', ref, onClick: () => ref.current.showModal() }, 'Select image'),
+      Button({ label: 'Select image', ref, onClick: () => ref.current.showModal() }),
       ImageSelectorDialog({ ref, onChoose: handleChoose, onCloseClick: handleCloseClick }),
     )
   )
@@ -34,10 +34,14 @@ export function ImageSelector({ onSelect }) {
 
 ImageSelectorDialog.style = css`& {
   &[open] {
+    padding: var(--default-padding);
     margin: auto;
     display: flex;
     flex-direction: column;
     align-items: end;
+    gap: 0.5rem;
+    box-shadow: 4px 4px 8px rgb(0 0 0 / 50%);
+    height: 100%;
   }
 
   &::backdrop {
@@ -48,7 +52,7 @@ function ImageSelectorDialog({ ref, onChoose, onCloseClick }) {
   return (
     dialog({ ref },
       ImageSelectorDialog.style,
-      button({ type: 'button', onClick: onCloseClick }, 'X'),
+      ButtonClose({ onClick: onCloseClick }),
       ImagesAndDetails({ onChoose }),
     )
   )
@@ -56,8 +60,14 @@ function ImageSelectorDialog({ ref, onChoose, onCloseClick }) {
 
 ImagesAndDetails.style = css`&{
   display: flex;
+  min-height: 0;
+
+  & > * {
+    height: 100%;
+  }
 
   & > .Details {
+    min-width: 30%;
     width: 30%;
   }
 }`
@@ -65,15 +75,13 @@ function ImagesAndDetails({ onChoose }) {
   const [$selected, setSelected] = createSignal(null)
 
   return (
-    div(
+    div({ className: 'ImagesAndDetails '},
       ImagesAndDetails.style,
-      scrollable.div(
-        Images({
-          $selected,
-          onSelect: image => setSelected(image),
-          onNewClick: () => setSelected(newImage)
-        }),
-      ),
+      Images({
+        $selected,
+        onSelect: image => setSelected(image),
+        onNewClick: () => setSelected(newImage)
+      }),
       renderOnValue($selected, () =>
         Details({ $selected, onSelect: image => setSelected(image), onChoose })
       )
@@ -81,26 +89,40 @@ function ImagesAndDetails({ onChoose }) {
   )
 }
 
+Details.style = css`& {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: var(--default-padding);
+
+  & > * {
+    flex-shrink: 0;
+  }
+
+  & > .Image {
+    align-self: center;
+  }
+}`
 function Details({ $selected, onSelect, onChoose }) {
   return (
-    div({ className: 'Details' },
+    scrollable.div({ className: 'Details' },
+      Details.style,
       conditional($selected, x => x === newImage,
-        () => input({
-          type: 'file',
-          onChange: handleFileChange,
-          accept:'image/jpeg,image/png,image/webp,image/bmp',
-        }),
+        () => SelectFile({ onChange: handleFileChange }),
       ),
-      conditional($selected, x => x !== newImage,
-        () => button({ onClick: () => onChoose($selected.get()) }, 'Select this image'),
-      ),
-      derive($selected, image => image !== newImage && Image({ image })),
-      pre(
-        css`& { overflow-x: scroll; }`,
-        $selected.derive(x => JSON.stringify(x, null, 2))
-      )
+      derive($selected, image => image !== newImage && [
+        Image({ image }),
+        $selected.derive(sizeString),
+        Button({ label: 'Select this image', onClick: () => onChoose($selected.get()) }),
+      ]),
     )
   )
+
+  function sizeString({ metadata }) {
+    const { width, height } = metadata.crop || metadata
+    return `${width} x ${height}`
+  }
 
   async function handleFileChange(e) {
     /** @type {Array<File>} */
@@ -127,7 +149,17 @@ function Details({ $selected, onSelect, onChoose }) {
   }
 }
 
-Images.style = css`&{
+function SelectFile({ onChange }) {
+  return (
+    input({
+      type: 'file',
+      onChange,
+      accept:'image/jpeg,image/png,image/webp,image/bmp',
+    })
+  )
+}
+
+Images.style = css`& {
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
@@ -142,9 +174,12 @@ function Images({ $selected, onSelect, onNewClick }) {
   const $images = useImages()
 
   return (
-    div(
+    scrollable.div(
       Images.style,
-      button({ onClick: onNewClick }, 'Upload new image'),
+      Button({
+        label: AddLabel(),
+        onClick: onNewClick
+      }),
       loop($images, x => x.filename, image =>
         ImageItem({
           image,
@@ -153,6 +188,21 @@ function Images({ $selected, onSelect, onNewClick }) {
         })
       )
     )
+  )
+}
+
+AddLabel.styles = css`& {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  justify-content: center;
+  align-items: center;
+}`
+function AddLabel() {
+  return div(
+    AddLabel.styles,
+    IconAdd(),
+    'Upload new image'
   )
 }
 
@@ -180,5 +230,10 @@ function Image({ image, ...imgProps }) {
   const { filename, metadata } = image
   const { crop, hotspot } = metadata
   const { width, height } = crop || metadata
-  return img({ loading: 'lazy', src: createImageSrc(filename, { width, height, crop, hotspot }), ...imgProps })
+  return img({
+    className: 'Image',
+    loading: 'lazy',
+    src: createImageSrc(filename, { width, height, crop, hotspot }),
+    ...imgProps
+  })
 }
