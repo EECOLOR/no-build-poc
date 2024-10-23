@@ -209,7 +209,7 @@ function useImgSrc({ $filename, sizeInRem }) {
 
       const { crop, hotspot } = metadata
 
-      const ratio = crop.height / crop.width
+      const ratio = crop ? crop.height / crop.width : metadata.height / metadata.width
       const width = Math.round(remToPx(sizeInRem))
       const height = Math.round(ratio * width)
 
