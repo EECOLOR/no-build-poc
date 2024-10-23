@@ -23,7 +23,7 @@ export function createImagesHandler({ imagesPath, databaseActions }) {
 
       return (
         metadataHandler.canHandleRequest(method, pathSegments) ||
-        (!filename && !feature && ['GET', 'POST'].includes(method)) ||
+        (!filename && !feature && ['HEAD', 'DELETE', 'POST'].includes(method)) ||
         (filename && !feature && method === 'GET')
       )
     }
@@ -35,21 +35,25 @@ export function createImagesHandler({ imagesPath, databaseActions }) {
    * @param {Array<string>} pathSegments
    */
   function handleRequest(req, res, pathSegments, searchParams) {
-    const { method } = req
+    const { method, headers } = req
     const [filename, feature] = pathSegments
+    const connectId = headers['x-connect-id']
 
     if (metadataHandler.canHandleRequest(method, pathSegments))
       metadataHandler.handleRequest(req, res, pathSegments, searchParams)
-    else if (!filename && method === 'GET')
-      handleListImages(req, res)
+    else if (!filename && method === 'HEAD')
+      ok(res, imagesEventStream.subscribe(connectId, ['images']))
+    else if (!filename && method === 'DELETE')
+      ok(res, imagesEventStream.unsubscribe(connectId, ['images']))
     else if (!filename && method === 'POST')
       handlePostImage(req, res, { searchParams })
     else if (filename && method === 'GET')
       handleGetImage(req, res, { filename, searchParams })
   }
 
-  function handleListImages(req, res) {
-    imagesEventStream.subscribe(res, ['images'])
+  function ok(res, _) {
+    res.writeHead(204, { 'Content-Length': 0, 'Connection': 'close' })
+    res.end()
   }
 
   /**

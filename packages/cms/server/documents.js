@@ -6,8 +6,8 @@ import { respondJson } from './machinery/response.js'
 
 /** @typedef {ReturnType<typeof createDocumentsHandler>['patchDocument']} PatchDocument */
 
-/** @param {{ databaseActions: import('./database.js').Actions }} params */
-export function createDocumentsHandler({ databaseActions }) {
+/** @param {{ databaseActions: import('./database.js').Actions, streams: import('./machinery/eventStreams.js').Streams }} params */
+export function createDocumentsHandler({ databaseActions, streams }) {
 
   const {
     documentsEventStreams,
@@ -20,7 +20,7 @@ export function createDocumentsHandler({ databaseActions }) {
   } = databaseActions.documents
 
   const historyHandler = createHistoryHandler({ databaseActions })
-  const richTextHandler = createRichTextHandler({ databaseActions, patchDocument })
+  const richTextHandler = createRichTextHandler({ databaseActions, streams, patchDocument })
 
   return {
     handleRequest,
@@ -30,8 +30,8 @@ export function createDocumentsHandler({ databaseActions }) {
       return (
         historyHandler.canHandleRequest(method, pathSegments)  ||
         richTextHandler.canHandleRequest(method, pathSegments) ||
-        (id && !feature && ['GET', 'PATCH'].includes(method)) ||
-        (!id && !feature && method === 'GET')
+        (id && !feature && ['HEAD', 'DELETE', 'PATCH'].includes(method)) ||
+        (!id && !feature && ['HEAD', 'DELETE'].includes(method))
       )
     },
 
@@ -44,28 +44,29 @@ export function createDocumentsHandler({ databaseActions }) {
    * @param {Array<string>} pathSegments
    */
   function handleRequest(req, res, pathSegments, searchParams) {
-    const { method } = req
+    const { method, headers } = req
     const [type, id, feature] = pathSegments
+    const connectId = headers['x-connect-id']
 
     if (historyHandler.canHandleRequest(method, pathSegments))
       historyHandler.handleRequest(req, res, pathSegments, searchParams)
     else if (richTextHandler.canHandleRequest(method, pathSegments))
       richTextHandler.handleRequest(req, res, pathSegments, searchParams)
-    else if (id && method === 'GET')
-      handleGetDocument(req, res, { type, id })
+    else if (id && method === 'HEAD')
+      ok(res, documentEventStreams.subscribe(connectId, ['documents', type, id]))
+    else if (id && method === 'DELETE')
+      ok(res, documentEventStreams.unsubscribe(connectId, ['documents', type, id]))
     else if (id && method === 'PATCH')
       handlePatchDocument(req, res, { type, id })
-    else if (!id && method === 'GET')
-      handleGetDocumentList(req, res, { type })
+    else if (!id && method === 'HEAD')
+      ok(res, documentsEventStreams.subscribe(connectId, ['documents', type]))
+    else if (!id && method === 'DELETE')
+      ok(res, documentsEventStreams.unsubscribe(connectId, ['documents', type]))
   }
 
-
-  function handleGetDocumentList(req, res, { type }) {
-    documentsEventStreams.subscribe(res, [type])
-  }
-
-  function handleGetDocument(req, res, { type, id }) {
-    documentEventStreams.subscribe(res, [type, id])
+  function ok(res, _) {
+    res.writeHead(204, { 'Content-Length': 0, 'Connection': 'close' })
+    res.end()
   }
 
   function handlePatchDocument(req, res, { type, id }) {

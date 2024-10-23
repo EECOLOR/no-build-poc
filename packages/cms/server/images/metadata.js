@@ -17,18 +17,21 @@ export function createMetadataHandler({ databaseActions }) {
       const [filename, feature] = pathSegments
 
       return (
-        (feature === 'metadata' && filename && method === 'GET') ||
+        (feature === 'metadata' && filename && ['GET', 'HEAD'].includes(method)) ||
         (feature === 'metadata' && filename && method === 'PATCH')
       )
     }
   }
 
   function handleRequest(req, res, pathSegments, searchParams) {
-    const { method } = req
+    const { method, headers } = req
     const [filename, feature] = pathSegments
+    const connectId = headers['x-connect-id']
 
-    if (feature === 'metadata' && filename && method === 'GET')
-      handleGetImageMetadata(req, res, { filename })
+    if (feature === 'metadata' && filename && method === 'HEAD')
+      metadataEventStream.subscribe(connectId, ['images', filename, 'metadata'])
+    if (feature === 'metadata' && filename && method === 'DELETE')
+      metadataEventStream.unsubscribe(connectId, ['images', filename, 'metadata'])
     else if (feature === 'metadata' && filename && method === 'PATCH')
       handlePatchImageMtadata(req, res, { filename })
   }
@@ -38,7 +41,7 @@ export function createMetadataHandler({ databaseActions }) {
    * @param {import('node:http').ServerResponse} res
    */
   function handleGetImageMetadata(req, res, { filename }) {
-    metadataEventStream.subscribe(res, [filename])
+
   }
 
   function handlePatchImageMtadata(req, res, { filename }) {
