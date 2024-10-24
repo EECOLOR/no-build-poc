@@ -14,23 +14,27 @@ export function createHistoryHandler({ databaseActions }) {
   return {
     handleRequest,
     canHandleRequest(method, pathSegments) {
-      const [type, id, feature] = pathSegments
+      const [type, id, feature, subscription] = pathSegments
 
-      return feature === 'history' && ['HEAD', 'DELETE'].includes(method)
+      return subscription === 'subscription' && ['HEAD', 'DELETE'].includes(method)
     },
     updateDocumentHistory,
   }
 
   function handleRequest(req, res, pathSegments, searchParams) {
     const { method, headers } = req
-    const [type, id, feature] = pathSegments
-    console.log(headers)
+    const [type, id, feature, subscription] = pathSegments
     const connectId = headers['x-connect-id']
 
-    if (feature === 'history' && method === 'HEAD')
-      ok(res, historyEventStreams.subscribe(connectId, ['documents', type, id, 'history']))
-    else if (feature === 'history' && method === 'DELETE')
-      ok(res, historyEventStreams.unsubscribe(connectId, ['documents', type, id, 'history']))
+    if (subscription === 'subscription')
+      ok(res, handleSubscription(method, connectId, [type, id]))
+  }
+
+  function handleSubscription(method, connectId, args) {
+    if (method === 'HEAD')
+      historyEventStreams.subscribe(connectId, args)
+    else if (method === 'DELETE')
+      historyEventStreams.unsubscribe(connectId, args)
   }
 
   function ok(res, _) {

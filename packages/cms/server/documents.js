@@ -25,13 +25,14 @@ export function createDocumentsHandler({ databaseActions, streams }) {
   return {
     handleRequest,
     canHandleRequest(method, pathSegments) {
-      const [type, id, feature] = pathSegments
+      const [type, id] = pathSegments
+      const [subscription] = pathSegments.slice(-1)
 
       return (
         historyHandler.canHandleRequest(method, pathSegments)  ||
         richTextHandler.canHandleRequest(method, pathSegments) ||
-        (id && !feature && ['HEAD', 'DELETE', 'PATCH'].includes(method)) ||
-        (!id && !feature && ['HEAD', 'DELETE'].includes(method))
+        (id && ['PATCH'].includes(method)) ||
+        (subscription === 'subscription' && ['HEAD', 'DELETE'].includes(method))
       )
     },
 
@@ -45,23 +46,27 @@ export function createDocumentsHandler({ databaseActions, streams }) {
    */
   function handleRequest(req, res, pathSegments, searchParams) {
     const { method, headers } = req
-    const [type, id, feature] = pathSegments
+    const [type, id] = pathSegments
+    const [subscription] = pathSegments.slice(-1)
     const connectId = headers['x-connect-id']
 
     if (historyHandler.canHandleRequest(method, pathSegments))
       historyHandler.handleRequest(req, res, pathSegments, searchParams)
     else if (richTextHandler.canHandleRequest(method, pathSegments))
       richTextHandler.handleRequest(req, res, pathSegments, searchParams)
-    else if (id && method === 'HEAD')
-      ok(res, documentEventStreams.subscribe(connectId, ['documents', type, id]))
-    else if (id && method === 'DELETE')
-      ok(res, documentEventStreams.unsubscribe(connectId, ['documents', type, id]))
     else if (id && method === 'PATCH')
       handlePatchDocument(req, res, { type, id })
-    else if (!id && method === 'HEAD')
-      ok(res, documentsEventStreams.subscribe(connectId, ['documents', type]))
-    else if (!id && method === 'DELETE')
-      ok(res, documentsEventStreams.unsubscribe(connectId, ['documents', type]))
+    else if (id !== 'subscription' && subscription === 'subscription')
+      ok(res, handleSubscription(documentEventStreams, method, connectId, [type, id]))
+    else if (subscription === 'subscription')
+      ok(res, handleSubscription(documentsEventStreams, method, connectId, [type]))
+  }
+
+  function handleSubscription(eventStreams, method, connectId, args) {
+    if (method === 'HEAD')
+      eventStreams.subscribe(connectId, args)
+    else if (method === 'DELETE')
+      eventStreams.unsubscribe(connectId, args)
   }
 
   function ok(res, _) {

@@ -15,7 +15,8 @@ export function createRichTextHandler({ databaseActions, streams, patchDocument 
   const { getDocumentById } = databaseActions.documents
 
   const eventStreamCollection = createCustomEventStreamCollection({
-    createInitialValue(documents, type, id, richText, encodedFieldPath) {
+    getPathSegments: ([type, id, encodedFieldPath]) => ['documents', type, id, 'rich-text', encodedFieldPath],
+    createInitialValue(type, id, encodedFieldPath) {
       const fieldPath = decodeURIComponent(encodedFieldPath)
       return {
         value: getAt(getDocumentById({ id }), fieldPath),
@@ -31,24 +32,32 @@ export function createRichTextHandler({ databaseActions, streams, patchDocument 
   return {
     handleRequest,
     canHandleRequest(method, pathSegments) {
-      const [type, id, feature] = pathSegments
+      const [type, id, feature, encodedFieldPath, subscription] = pathSegments
 
-      return feature === 'rich-text' && ['HEAD', 'DELETE', 'POST'].includes(method)
+      return (
+        feature === 'rich-text' && ['POST'].includes(method) ||
+        subscription === 'subscription' && ['HEAD', 'DELETE'].includes(method)
+      )
     }
   }
 
   function handleRequest(req, res, pathSegments, searchParams) {
     const { method, headers } = req
-    const [type, id, feature, encodedFieldPath] = pathSegments
+    const [type, id, feature, encodedFieldPath, subscription] = pathSegments
     const connectId = headers['x-connect-id']
 
 
-    if (feature === 'rich-text' && method === 'HEAD')
-      ok(res, eventStreamCollection.subscribe(connectId, ['documents', type, id, 'rich-text', encodedFieldPath]))
-    if (feature === 'rich-text' && method === 'DELETE')
-      ok(res, eventStreamCollection.unsubscribe(connectId, ['documents', type, id, 'rich-text', encodedFieldPath]))
+    if (subscription === 'subscription')
+      ok(res, handleSubscription(method, connectId, [type, id, encodedFieldPath]))
     else if (feature === 'rich-text' && method === 'POST')
       handlePostRichText(req, res, { type, id, encodedFieldPath })
+  }
+
+  function handleSubscription(method, connectId, args) {
+    if (method === 'HEAD')
+      eventStreamCollection.subscribe(connectId, args)
+    else if (method === 'DELETE')
+      eventStreamCollection.unsubscribe(connectId, args)
   }
 
   function ok(res, _) {
@@ -63,7 +72,7 @@ export function createRichTextHandler({ databaseActions, streams, patchDocument 
       // TODO: error handling
       const { clientId, steps, documentVersion, value, valueVersion, fieldType } = body
 
-      const stored = eventStreamCollection.getValue('documents', type, id, 'rich-text', encodedFieldPath)
+      const stored = eventStreamCollection.getValue(type, id, encodedFieldPath)
       if (stored.version !== valueVersion)
         return respondJson(res, 400, { success: false, reason: 'Version mismatch' })
 
@@ -81,7 +90,7 @@ export function createRichTextHandler({ databaseActions, streams, patchDocument 
 
       eventStreamCollection.notify(
         { steps, clientIds: steps.map(_ => clientId) },
-        [type, id, fieldPath]
+        [type, id, encodedFieldPath]
       )
       respondJson(res, 200, result)
     })

@@ -14,10 +14,10 @@ export function createMetadataHandler({ databaseActions }) {
   return {
     handleRequest,
     canHandleRequest(method, pathSegments) {
-      const [filename, feature] = pathSegments
+      const [filename, feature, subscription] = pathSegments
 
       return (
-        (feature === 'metadata' && filename && ['GET', 'HEAD'].includes(method)) ||
+        (feature === 'metadata' && filename && subscription === 'subscription' && ['GET', 'HEAD'].includes(method)) ||
         (feature === 'metadata' && filename && method === 'PATCH')
       )
     }
@@ -25,23 +25,25 @@ export function createMetadataHandler({ databaseActions }) {
 
   function handleRequest(req, res, pathSegments, searchParams) {
     const { method, headers } = req
-    const [filename, feature] = pathSegments
+    const [filename, feature, subscription] = pathSegments
     const connectId = headers['x-connect-id']
 
-    if (feature === 'metadata' && filename && method === 'HEAD')
-      metadataEventStream.subscribe(connectId, ['images', filename, 'metadata'])
-    if (feature === 'metadata' && filename && method === 'DELETE')
-      metadataEventStream.unsubscribe(connectId, ['images', filename, 'metadata'])
+    if (feature === 'metadata' && filename && subscription === 'subscription')
+      ok(res, handleSubscription(metadataEventStream, method, connectId, [filename]))
     else if (feature === 'metadata' && filename && method === 'PATCH')
       handlePatchImageMtadata(req, res, { filename })
   }
 
-  /**
-   * @param {import('node:http').IncomingMessage} req
-   * @param {import('node:http').ServerResponse} res
-   */
-  function handleGetImageMetadata(req, res, { filename }) {
+  function handleSubscription(eventStreams, method, connectId, args) {
+    if (method === 'HEAD')
+      eventStreams.subscribe(connectId, args)
+    else if (method === 'DELETE')
+      eventStreams.unsubscribe(connectId, args)
+  }
 
+  function ok(res, _) {
+    res.writeHead(204, { 'Content-Length': 0, 'Connection': 'close' })
+    res.end()
   }
 
   function handlePatchImageMtadata(req, res, { filename }) {

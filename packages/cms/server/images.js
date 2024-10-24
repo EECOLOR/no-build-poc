@@ -19,12 +19,14 @@ export function createImagesHandler({ imagesPath, databaseActions }) {
   return {
     handleRequest,
     canHandleRequest(method, pathSegments) {
-      const [filename, feature] = pathSegments
+      const [filename] = pathSegments
+      const [subscription] = pathSegments.slice(-1)
 
       return (
         metadataHandler.canHandleRequest(method, pathSegments) ||
-        (!filename && !feature && ['HEAD', 'DELETE', 'POST'].includes(method)) ||
-        (filename && !feature && method === 'GET')
+        (!filename && ['POST'].includes(method)) ||
+        (filename && method === 'GET') ||
+        (subscription === 'subscription' && ['HEAD', 'DELETE'].includes(method))
       )
     }
   }
@@ -36,19 +38,25 @@ export function createImagesHandler({ imagesPath, databaseActions }) {
    */
   function handleRequest(req, res, pathSegments, searchParams) {
     const { method, headers } = req
-    const [filename, feature] = pathSegments
+    const [filename] = pathSegments
+    const [subscription] = pathSegments.slice(-1)
     const connectId = headers['x-connect-id']
 
     if (metadataHandler.canHandleRequest(method, pathSegments))
       metadataHandler.handleRequest(req, res, pathSegments, searchParams)
-    else if (!filename && method === 'HEAD')
-      ok(res, imagesEventStream.subscribe(connectId, ['images']))
-    else if (!filename && method === 'DELETE')
-      ok(res, imagesEventStream.unsubscribe(connectId, ['images']))
+    else if (subscription === 'subscription')
+      ok(res, handleSubscription(method, connectId, []))
     else if (!filename && method === 'POST')
       handlePostImage(req, res, { searchParams })
     else if (filename && method === 'GET')
       handleGetImage(req, res, { filename, searchParams })
+  }
+
+  function handleSubscription(method, connectId, args) {
+    if (method === 'HEAD')
+      imagesEventStream.subscribe(connectId, args)
+    else if (method === 'DELETE')
+      imagesEventStream.unsubscribe(connectId, args)
   }
 
   function ok(res, _) {

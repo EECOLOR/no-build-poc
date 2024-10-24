@@ -49,20 +49,22 @@ export function createDatabase(file) {
 /** @param {{ database: DatabaseSync, streams: Streams }} params */
 function createDocumentActions({ database, streams }) {
   const documentsEventStreams = createEventStreamCollection({
+    getPathSegments: ([type]) => ['documents', type],
     eventName: 'documents',
     /** @param {string} type */
-    getData(documents, type) {
+    getData(type) {
       return listDocumentsByType({ type })
     },
     streams,
   })
   const documentEventStreams = createEventStreamCollection({
+    getPathSegments: ([type, id]) => ['documents', type, id],
     eventName: 'document',
     /**
      * @param {string} type
      * @param {string} id
      */
-    getData(documents, type, id) {
+    getData(type, id) {
       return getDocumentById({ id })
     },
     streams,
@@ -131,16 +133,17 @@ function createDocumentActions({ database, streams }) {
   }
 
   function notify(type, id) {
-    documentEventStreams.notify('documents', type, id)
-    documentsEventStreams.notify('documents', type)
+    documentEventStreams.notify(type, id)
+    documentsEventStreams.notify(type)
   }
 }
 
 /** @param {{ database: DatabaseSync, streams: Streams }} params */
 function createHistoryActions({ database, streams }) {
   const historyEventStreams = createEventStreamCollection({
+    getPathSegments: ([type, documentId]) => ['documents', type, documentId, 'history'],
     eventName: 'history',
-    getData(documents, type, documentId, history) {
+    getData(type, documentId) {
       return listHistoryByDocumentId({ documentId })
     },
     streams,
@@ -243,22 +246,24 @@ function createHistoryActions({ database, streams }) {
   }
 
   function notify(type, documentId) {
-    historyEventStreams.notify('documents', type, documentId, 'history')
+    historyEventStreams.notify(type, documentId)
   }
 }
 
 /** @param {{ database: DatabaseSync, streams: Streams }} params */
 function createImageActions({ database, streams }) {
   const imagesEventStream = createEventStreamCollection({
+    getPathSegments: () => ['images'],
     eventName: 'images',
-    getData(images) {
+    getData() {
       return listImages()
     },
     streams,
   })
   const metadataEventStream = createEventStreamCollection({
+    getPathSegments: ([filename]) => ['images', filename, 'metadata'],
     eventName: 'metadata',
-    getData(images, filename, metadata) {
+    getData(filename) {
       return getImageMetadataByFilename({ filename })
     },
     streams,
@@ -314,8 +319,8 @@ function createImageActions({ database, streams }) {
       .run({ filename, metadata: JSON.stringify(metadata) })
 
     if (result.changes) {
-      imagesEventStream.notify('images')
-      metadataEventStream.notify('images', filename, 'metadata')
+      imagesEventStream.notify()
+      metadataEventStream.notify(filename)
     }
 
     return result

@@ -29,10 +29,11 @@ export function createCms({ basePath, storagePath }) {
   }
 
   function handleRequest(req, res) {
-    const { method } = req
+    const { method, headers } = req
     const { searchParams, pathname } = new URL(`fake://fake.local${req.url}`)
     const [version, category, ...pathSegments] = pathname.replace(apiPath, '').split('/')
-    console.log(method, version, category, pathSegments.join('/'))
+    const connectId = headers['x-connect-id']
+    console.log(method, version, category, pathSegments.join('/'), { connectId })
 
     if (category === 'documents' && documentsHandler.canHandleRequest(method, pathSegments))
       documentsHandler.handleRequest(req, res, pathSegments, searchParams)
