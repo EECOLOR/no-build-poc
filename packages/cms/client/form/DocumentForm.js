@@ -104,6 +104,7 @@ function RichTextField({ document, field, $path, id }) {
     pathnameSignal: $richTextPathname,
     events: ['initialValue', 'steps'],
   })
+
   const $initialValue = $events.derive((value, previous) =>
     value?.event === 'initialValue'
       ? { value: RichTextEditor.fromJson(schema, value.data.value), version: value.data.version }
@@ -127,7 +128,7 @@ function RichTextField({ document, field, $path, id }) {
   function synchronize({ clientId, steps, version, value }) {
     const controller = new AbortController()
     const result = fetch(
-      $richTextPathname.get(),
+      `${context.apiPath}/${$richTextPathname.get()}`,
       {
         method: 'POST',
         headers: {
@@ -373,7 +374,7 @@ function ArrayItem({ $isFirst, $isLast, document, $arrayPath, $index, field, onM
 
 function getRichTextPathname({ document, fieldPath }) {
   // instead of using path as an id for prosemirror document handing, we should probably use a unique id for each document, that would prevent problems handling stuff nested in arrays
-  return `${context.apiPath}/documents/${document.schema.type}/${document.id}/rich-text?fieldPath=${fieldPath}`
+  return `documents/${document.schema.type}/${document.id}/rich-text/${encodeURIComponent(fieldPath)}`
 }
 
 function useFieldValue({

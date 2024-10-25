@@ -2,12 +2,12 @@ import { createHistoryHandler } from './documents/history.js'
 import { createRichTextHandler } from './documents/rich-text.js'
 import { deleteAt, getAt, setAt } from './documents/utils.js'
 import { withRequestJsonBody } from './machinery/request.js'
-import { respondJson } from './machinery/response.js'
+import { handleSubscription, respondJson } from './machinery/response.js'
 
 /** @typedef {ReturnType<typeof createDocumentsHandler>['patchDocument']} PatchDocument */
 
-/** @param {{ databaseActions: import('./database.js').Actions }} params */
-export function createDocumentsHandler({ databaseActions }) {
+/** @param {{ databaseActions: import('./database.js').Actions, streams: import('./machinery/eventStreams.js').Streams }} params */
+export function createDocumentsHandler({ databaseActions, streams }) {
 
   const {
     documentsEventStreams,
@@ -20,18 +20,19 @@ export function createDocumentsHandler({ databaseActions }) {
   } = databaseActions.documents
 
   const historyHandler = createHistoryHandler({ databaseActions })
-  const richTextHandler = createRichTextHandler({ databaseActions, patchDocument })
+  const richTextHandler = createRichTextHandler({ databaseActions, streams, patchDocument })
 
   return {
     handleRequest,
     canHandleRequest(method, pathSegments) {
-      const [type, id, feature] = pathSegments
+      const [type, id] = pathSegments
+      const [subscription] = pathSegments.slice(-1)
 
       return (
         historyHandler.canHandleRequest(method, pathSegments)  ||
         richTextHandler.canHandleRequest(method, pathSegments) ||
-        (id && !feature && ['GET', 'PATCH'].includes(method)) ||
-        (!id && !feature && method === 'GET')
+        (id && ['PATCH'].includes(method)) ||
+        (subscription === 'subscription' && ['HEAD', 'DELETE'].includes(method))
       )
     },
 
@@ -43,29 +44,21 @@ export function createDocumentsHandler({ databaseActions }) {
    * @param {import('node:http').ServerResponse} res
    * @param {Array<string>} pathSegments
    */
-  function handleRequest(req, res, pathSegments, searchParams) {
+  function handleRequest(req, res, pathSegments, searchParams, connectId) {
     const { method } = req
-    const [type, id, feature] = pathSegments
+    const [type, id] = pathSegments
+    const [subscription] = pathSegments.slice(-1)
 
     if (historyHandler.canHandleRequest(method, pathSegments))
-      historyHandler.handleRequest(req, res, pathSegments, searchParams)
+      historyHandler.handleRequest(req, res, pathSegments, searchParams, connectId)
     else if (richTextHandler.canHandleRequest(method, pathSegments))
-      richTextHandler.handleRequest(req, res, pathSegments, searchParams)
-    else if (id && method === 'GET')
-      handleGetDocument(req, res, { type, id })
+      richTextHandler.handleRequest(req, res, pathSegments, searchParams, connectId)
     else if (id && method === 'PATCH')
       handlePatchDocument(req, res, { type, id })
-    else if (!id && method === 'GET')
-      handleGetDocumentList(req, res, { type })
-  }
-
-
-  function handleGetDocumentList(req, res, { type }) {
-    documentsEventStreams.subscribe(res, [type])
-  }
-
-  function handleGetDocument(req, res, { type, id }) {
-    documentEventStreams.subscribe(res, [type, id])
+    else if (id !== 'subscription' && subscription === 'subscription')
+      handleSubscription(res, documentEventStreams, method, connectId, [type, id])
+    else if (subscription === 'subscription')
+      handleSubscription(res, documentsEventStreams, method, connectId, [type])
   }
 
   function handlePatchDocument(req, res, { type, id }) {

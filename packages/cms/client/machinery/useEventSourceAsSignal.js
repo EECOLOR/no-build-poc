@@ -1,5 +1,6 @@
 import { useOnDestroy } from '#ui/dynamic.js'
 import { createSignal, Signal } from '#ui/signal.js'
+import { context } from '../context.js'
 
 /**
  * @template T
@@ -16,27 +17,28 @@ export function useEventSourceAsSignal(params) {
   const [$signal, setValue] = createSignal(initialValue)
 
   const pathname = pathIsSignal ? params.pathnameSignal.get() : params.pathname
-  let eventSource = createEventSource(pathname, events, setValue)
+  let unsubscribeEvents = subscribeToEvents(pathname, events, setValue)
 
-  const unsubscribe = pathIsSignal && params.pathnameSignal.subscribe(pathname => {
-    eventSource.close()
-    eventSource = createEventSource(pathname, events, setValue)
+  const unsubscribeSignal = pathIsSignal && params.pathnameSignal.subscribe(pathname => {
+    unsubscribeEvents()
+    unsubscribeEvents = subscribeToEvents(pathname, events, setValue)
   })
 
   useOnDestroy(() => {
-    if (unsubscribe) unsubscribe()
-    eventSource.close()
+    if (unsubscribeSignal) unsubscribeSignal()
+    unsubscribeEvents()
   })
 
   return $signal
 }
 
-function createEventSource(pathname, events, callback) {
-  const eventSource = new EventSource(pathname)
-  for (const event of events) {
-    eventSource.addEventListener(event, e => {
-      callback({ event, data: JSON.parse(e.data) })
-    })
+function subscribeToEvents(pathname, events, callback) {
+  const subscriptions = []
+  for (const event of events)
+    subscriptions.push(context.events.subscribe(pathname, event, callback))
+
+  return function unsubscribe() {
+    for (const unsubscribe of subscriptions)
+      unsubscribe()
   }
-  return eventSource
 }

@@ -44,10 +44,8 @@ export function useDynamicSignalHook(signal, constructSignalHook) {
   const [$result, setResult] = createSignal(() => hookSignal?.get())
   let hookSignalUnsubscribe = hookSignal?.subscribe(setResult)
 
-
   const unsubscribe = signal.subscribe(x => {
-    console.log({x})
-    hookSignalUnsubscribe?.()
+    if (hookSignalUnsubscribe) hookSignalUnsubscribe()
     hookSignal = createSignalHook(x)
     setResult(hookSignal?.get())
     hookSignalUnsubscribe = hookSignal?.subscribe(setResult)
@@ -55,7 +53,7 @@ export function useDynamicSignalHook(signal, constructSignalHook) {
 
   useOnDestroy(() => {
     unsubscribe()
-    hookSignalUnsubscribe?.()
+    if (hookSignalUnsubscribe) hookSignalUnsubscribe()
     callCapturedOnDestroyCallbacks()
   })
 
@@ -63,7 +61,6 @@ export function useDynamicSignalHook(signal, constructSignalHook) {
 
   /** @param {X} value */
   function createSignalHook(value) {
-    console.log('createSignalHook', { value })
     callCapturedOnDestroyCallbacks()
     const [result, callbacks] = withOnDestroyCapture(() => constructSignalHook(value))
     capturedOnDestroyCallbacks = callbacks

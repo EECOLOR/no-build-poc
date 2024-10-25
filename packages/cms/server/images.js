@@ -3,7 +3,7 @@ import { withRequestBufferBody } from './machinery/request.js'
 import sharp from 'sharp'
 import fs from 'node:fs'
 import path from 'node:path'
-import { notFound, respondJson, sendImage } from './machinery/response.js'
+import { handleSubscription, notFound, respondJson, sendImage } from './machinery/response.js'
 
 /** @param {{ imagesPath: string, databaseActions: import('./database.js').Actions }} params */
 export function createImagesHandler({ imagesPath, databaseActions }) {
@@ -19,12 +19,14 @@ export function createImagesHandler({ imagesPath, databaseActions }) {
   return {
     handleRequest,
     canHandleRequest(method, pathSegments) {
-      const [filename, feature] = pathSegments
+      const [filename] = pathSegments
+      const [subscription] = pathSegments.slice(-1)
 
       return (
         metadataHandler.canHandleRequest(method, pathSegments) ||
-        (!filename && !feature && ['GET', 'POST'].includes(method)) ||
-        (filename && !feature && method === 'GET')
+        (!filename && ['POST'].includes(method)) ||
+        (filename && method === 'GET') ||
+        (subscription === 'subscription' && ['HEAD', 'DELETE'].includes(method))
       )
     }
   }
@@ -34,22 +36,19 @@ export function createImagesHandler({ imagesPath, databaseActions }) {
    * @param {import('node:http').ServerResponse} res
    * @param {Array<string>} pathSegments
    */
-  function handleRequest(req, res, pathSegments, searchParams) {
+  function handleRequest(req, res, pathSegments, searchParams, connectId) {
     const { method } = req
-    const [filename, feature] = pathSegments
+    const [filename] = pathSegments
+    const [subscription] = pathSegments.slice(-1)
 
     if (metadataHandler.canHandleRequest(method, pathSegments))
-      metadataHandler.handleRequest(req, res, pathSegments, searchParams)
-    else if (!filename && method === 'GET')
-      handleListImages(req, res)
+      metadataHandler.handleRequest(req, res, pathSegments, searchParams, connectId)
+    else if (subscription === 'subscription')
+      handleSubscription(res, imagesEventStream, method, connectId, [])
     else if (!filename && method === 'POST')
       handlePostImage(req, res, { searchParams })
     else if (filename && method === 'GET')
       handleGetImage(req, res, { filename, searchParams })
-  }
-
-  function handleListImages(req, res) {
-    imagesEventStream.subscribe(res, ['images'])
   }
 
   /**
@@ -130,8 +129,8 @@ async function handleModifiedImage(image, params) {
   const $image = sharp(image)
   const metadata = await $image.metadata()
 
-  const width = parseInt(params.w, 10)
-  const height = parseInt(params.h, 10)
+  const width = parseInt(params.w, 10) || metadata.width
+  const height = parseInt(params.h, 10) || metadata.height
   const crop = params.crop
     ? rectangleFromArray(params.crop?.split(','))
     : { x: 0, y: 0, width: metadata.width, height: metadata.height }

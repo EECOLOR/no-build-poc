@@ -1,21 +1,78 @@
+/** @typedef {ReturnType<typeof createStreams>} Streams */
+
+export function createStreams() {
+
+  const streams = {}
+
+  return {
+    connect(res) {
+      const connectId = crypto.randomUUID()
+      res.addListener('close', _ => cleanup(connectId))
+      res.addListener('error', _ => cleanup(connectId))
+
+      streams[connectId] = { res, cleanupCallbacks: new Set() }
+
+      startEventStream(res)
+      sendEvent(res, 'connect', connectId)
+    },
+    addListener(connectId, listeners, cleanup) {
+      listeners.add(connectId)
+
+      streams[connectId].cleanupCallbacks.add(remove)
+
+      function remove() {
+        listeners.delete(connectId)
+        if (!listeners.size) cleanup()
+      }
+    },
+    removeListener(connectId, listeners, cleanup) {
+      listeners.delete(connectId)
+      if (!listeners.size) cleanup()
+    },
+    sendEvent(connectId, event, data) {
+      sendEvent(streams[connectId].res, event, data)
+    },
+  }
+
+  function cleanup(connectId) {
+    if (!streams[connectId]) return
+
+    for (const cleanup of streams[connectId].cleanupCallbacks)
+      cleanup()
+
+    delete streams[connectId]
+  }
+}
 
 /**
- * @template {readonly [string, ...string[]]} X
+ * @template {readonly string[]} X
  * @template Y
- * @param {{ getData(...args: X): Y, eventName: string }} props
+ * @param {{
+ *   getChannel(args: X): string
+ *   getData(...args: X): Y,
+ *   eventName: string,
+ *   streams: Streams
+ * }} props
  */
- export function createEventStreamCollection({ getData, eventName }) {
+ export function createEventStreamCollection({ getChannel, getData, eventName, streams }) {
   const collection = createCustomEventStreamCollection({
+    getChannel,
     createInitialValue: noValue,
     notifyEvent: eventName,
     subscribeEvent: eventName,
     getSubscribeData,
+    streams,
   })
 
   return {
     /** @param {X} args */
-    subscribe(res, args) {
-      collection.subscribe(res, args)
+    subscribe(connectId, args) {
+      collection.subscribe(connectId, args)
+    },
+
+    /** @param {X} args */
+    unsubscribe(connectId, args) {
+      collection.unsubscribe(connectId, args)
     },
 
     /** @param {X} args */
@@ -36,32 +93,46 @@
 }
 
 /**
- * @template {readonly [string, ...string[]]} X
+ * @template {readonly string[]} X
  * @template Y
  * @param {{
+ *   getChannel(args: X): string
  *   createInitialValue(...args: X): Y
  *   subscribeEvent: string
  *   getSubscribeData(value: Y, args: X): any
  *   notifyEvent: string
+ *   streams: Streams
  * }} props
  */
 export function createCustomEventStreamCollection({
+  getChannel,
   createInitialValue,
   subscribeEvent,
   getSubscribeData,
   notifyEvent,
+  streams,
 }) {
   const collection = {}
 
   return {
     /** @param {X} args */
-    subscribe(res, args) {
+    subscribe(connectId, args) {
       const { value, listeners } = createOrGetAt(() => createValue(...args), collection, args)
-      addListener(res, listeners, function cleanup() {
+      streams.addListener(connectId, listeners, function cleanup() {
         deleteAt(collection, args)
       })
-      startEventStream(res)
-      sendEvent(res, subscribeEvent, getSubscribeData(value, args))
+      streams.sendEvent(connectId, event(subscribeEvent, args), getSubscribeData(value, args))
+    },
+
+    /** @param {X} args */
+    unsubscribe(connectId, args) {
+      const info = getAt(collection, args)
+      if (!info)
+        return
+
+      streams.removeListener(connectId, info.listeners, function cleanup() {
+        deleteAt(collection, args)
+      })
     },
 
     /** @param {X} args */
@@ -70,14 +141,19 @@ export function createCustomEventStreamCollection({
       if (!info)
         return
 
-      for (const res of info.listeners)
-        sendEvent(res, notifyEvent, data)
+      for (const connectId of info.listeners)
+        streams.sendEvent(connectId, event(notifyEvent, args), data)
     },
 
     /** @param {X} args */
     getValue(...args) {
       return getAt(collection, args)?.value
     }
+  }
+
+  /** @param {X} args */
+  function event(base, args) {
+    return `${base}-${getChannel(args)}`
   }
 
   /** @param {X} args */
@@ -97,17 +173,6 @@ function startEventStream(res) {
   })
 }
 
-function addListener(res, target, cleanup = undefined) {
-  target.add(res)
-  res.addListener('close', remove)
-  res.addListener('error', remove)
-
-  function remove() {
-    target.delete(res)
-    if (cleanup && !target.size) cleanup()
-  }
-}
-
 function sendEvent(res, event, data) {
   res.write(
     `event: ${event}\n` +
@@ -117,6 +182,7 @@ function sendEvent(res, event, data) {
 }
 
 function createOrGetAt(createValue, o, keys) {
+  if (!keys.length) keys = ['default']
   return keys.reduce(
     (result, key, i) => {
       if (key in result)
@@ -130,10 +196,12 @@ function createOrGetAt(createValue, o, keys) {
 }
 
 function getAt(o, keys) {
+  if (!keys.length) keys = ['default']
   return keys.reduce((result, key) => result && result[key], o)
 }
 
 function deleteAt(o, keys) {
+  if (!keys.length) keys = ['default']
   let target = o
   for (const [i, key] of keys.entries()) {
     if (!target) return

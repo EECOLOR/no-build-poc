@@ -2,12 +2,13 @@ import { DatabaseSync } from 'node:sqlite'
 import { createEventStreamCollection } from './machinery/eventStreams.js'
 
 /** @typedef {ReturnType<typeof createDatabaseActions>} Actions */
+/** @typedef {import('./machinery/eventStreams.js').Streams} Streams */
 
-export function createDatabaseActions({ database }) {
+export function createDatabaseActions({ database, streams }) {
   return {
-    documents: createDocumentActions({ database }),
-    history: createHistoryActions({ database }),
-    images: createImageActions({ database }),
+    documents: createDocumentActions({ database, streams }),
+    history: createHistoryActions({ database, streams }),
+    images: createImageActions({ database, streams }),
   }
 }
 
@@ -45,16 +46,19 @@ export function createDatabase(file) {
   return database
 }
 
-/** @param {{ database: DatabaseSync }} params */
-function createDocumentActions({ database }) {
+/** @param {{ database: DatabaseSync, streams: Streams }} params */
+function createDocumentActions({ database, streams }) {
   const documentsEventStreams = createEventStreamCollection({
+    getChannel: ([type]) => `documents/${type}`,
     eventName: 'documents',
     /** @param {string} type */
     getData(type) {
       return listDocumentsByType({ type })
-    }
+    },
+    streams,
   })
   const documentEventStreams = createEventStreamCollection({
+    getChannel: ([type, id]) => `documents/${type}/${id}`,
     eventName: 'document',
     /**
      * @param {string} type
@@ -62,7 +66,8 @@ function createDocumentActions({ database }) {
      */
     getData(type, id) {
       return getDocumentById({ id })
-    }
+    },
+    streams,
   })
   return {
     documentsEventStreams,
@@ -133,13 +138,15 @@ function createDocumentActions({ database }) {
   }
 }
 
-/** @param {{ database: DatabaseSync }} params */
-function createHistoryActions({ database }) {
+/** @param {{ database: DatabaseSync, streams: Streams }} params */
+function createHistoryActions({ database, streams }) {
   const historyEventStreams = createEventStreamCollection({
+    getChannel: ([type, documentId]) => `documents/${type}/${documentId}/history`,
     eventName: 'history',
     getData(type, documentId) {
       return listHistoryByDocumentId({ documentId })
     },
+    streams,
   })
 
   return {
@@ -243,19 +250,23 @@ function createHistoryActions({ database }) {
   }
 }
 
-/** @param {{ database: DatabaseSync }} params */
-function createImageActions({ database }) {
+/** @param {{ database: DatabaseSync, streams: Streams }} params */
+function createImageActions({ database, streams }) {
   const imagesEventStream = createEventStreamCollection({
+    getChannel: () => `images`,
     eventName: 'images',
     getData() {
       return listImages()
-    }
+    },
+    streams,
   })
   const metadataEventStream = createEventStreamCollection({
+    getChannel: ([filename]) => `images/${filename}/metadata`,
     eventName: 'metadata',
     getData(filename) {
       return getImageMetadataByFilename({ filename })
-    }
+    },
+    streams,
   })
 
   return {
@@ -308,7 +319,7 @@ function createImageActions({ database }) {
       .run({ filename, metadata: JSON.stringify(metadata) })
 
     if (result.changes) {
-      imagesEventStream.notify('images')
+      imagesEventStream.notify()
       metadataEventStream.notify(filename)
     }
 
