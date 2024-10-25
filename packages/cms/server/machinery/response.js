@@ -14,3 +14,17 @@ export function sendImage(res, image) {
   res.write(image)
   res.end()
 }
+
+export function handleSubscription(res, eventStreams, method, connectId, args) {
+  if (method === 'HEAD')
+    eventStreams.subscribe(connectId, args)
+  else if (method === 'DELETE')
+    eventStreams.unsubscribe(connectId, args)
+
+  noContent(res)
+}
+
+function noContent(res) {
+  res.writeHead(204, { 'Content-Length': 0, 'Connection': 'close' })
+  res.end()
+}
