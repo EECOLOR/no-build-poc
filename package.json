@@ -7,23 +7,32 @@
   "imports": {
     "#config": "./packages/config/index.js",
     "#server": "./packages/server/index.js",
-    "#server/*": "./packages/server/*",
-    "#dependency-analysis/*": "./packages/dependency-analysis/*",
-    "#import-universal/*": "./packages/import-universal/*",
     "#import-root-slash/*": "./packages/import-root-slash/*",
-    "#import-css/*": "./packages/import-css/*",
-    "#import-client-only/*": "./packages/import-client-only/*",
-    "#browser-code-analyser": "./packages/browser-code-analyser/index.js",
+    "#import-browser/*": "./packages/import-browser/*",
+    "#islands": "./packages/islands/index.js",
+    "#islands/*": "./packages/islands/*",
     "#utils": "./packages/utils/index.js",
     "#utils/*": "./packages/utils/*",
     "#ui/*": "./packages/ui/*",
-    "#routing/*": "./packages/routing/*"
+    "#cms/*": "./packages/cms/*"
   },
   "dependencies": {
+    "diff": "^7.0.0",
     "firebase": "^10.12.2",
+    "prosemirror-collab": "^1.3.1",
+    "prosemirror-commands": "^1.6.0",
+    "prosemirror-history": "^1.4.1",
+    "prosemirror-keymap": "^1.2.2",
+    "prosemirror-model": "^1.22.3",
+    "prosemirror-schema-list": "^1.4.1",
+    "prosemirror-state": "^1.4.3",
+    "prosemirror-view": "^1.34.2",
+    "sharp": "^0.33.5",
     "three": "^0.166.0"
   },
   "devDependencies": {
-    "esbuild": "^0.21.5"
+    "@types/diff": "^5.2.2",
+    "@types/node": "^22.5.5",
+    "@types/react": "^18.3.11"
   }
 }

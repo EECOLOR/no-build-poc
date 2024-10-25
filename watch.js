@@ -1,10 +1,15 @@
-import { spawnChildProcess } from '#utils/child-process.js'
-import { config } from '#dependency-analysis/watch-config.js'
+import { spawn } from 'node:child_process'
 
-spawnChildProcess({
-  command: 'node',
-  parameter: config.importHooks
-    .flatMap(hook => ['--import', hook])
-    .concat('--watch', '--watch-preserve-output', './index.js'),
-  messageHandlers: config.messageHandlers,
-})
+spawn(
+  'node',
+  [
+    '--import', '#import-root-slash/register-hooks.js',
+    '--import', '#import-browser/register-hooks.js',
+    '--watch',
+    '--watch-preserve-output',
+    '--experimental-sqlite',
+    '--experimental-import-meta-resolve',
+    './index.js'
+  ],
+  { stdio: ['inherit', 'inherit', 'inherit', 'ipc'] },
+)

@@ -1,5 +1,6 @@
 import { Component } from './component.js'
-import { separatePropsAndChildren } from '#utils'
+import { Dynamic } from './dynamic.js'
+import { separatePropsAndChildren } from './utils.js'
 
 export class Raw { constructor(value) { this.value = value } }
 export function raw(value) { return new Raw(value) }
@@ -15,14 +16,20 @@ export function raw(value) { return new Raw(value) }
 
 /**
  * @template {object} T
- * @typedef {{ [key in keyof T]: (T[key] | Signal<T[key]>)}} AllowSignalValue
+ * @template {keyof T} key
+ * @typedef {key extends 'style' ? ({ [k: `--${string}`]: string } & { [k in keyof T[key]]: T[key][k] | Signal<T[key][k]> }) : T[key]} AllowCustomPropertiesInStyles
+ */
+
+/**
+ * @template {object} T
+ * @typedef {{ [key in keyof T]: (AllowCustomPropertiesInStyles<T, key> | Signal<T[key]>)}} AllowSignalValueAndCustomProperty
  */
 
 /**
  * @template {TagNames} tagName
- * @typedef {AllowSignalValue<
+ * @typedef {AllowSignalValueAndCustomProperty<
  *   Omit<JSX.IntrinsicElements[tagName], ForbiddenJsxProperties | ExcludeTagSpecific<tagName>>
- * >} Attributes
+ * > & { ref?: (element: Element) => void } & { [k: `data-${string}`]: any }} Attributes
  */
 
 /**
@@ -36,18 +43,18 @@ export function raw(value) { return new Raw(value) }
 
 /**
  * @template T
- * @typedef {T extends (Tag<any> | Signal<any> | Component<any> | Raw | string | number | boolean | null | undefined | Children<T>) ? T : never} Child
+ * @typedef {T extends (Tag<any> | Signal<any> | Component<any> | Dynamic<any> | Raw | string | number | boolean | null | undefined) ? T : never} Child
+ */
+
+/**
+ * @typedef {Record<string, {}>} PlainObject
  */
 
 /** @template T @typedef {Array<Child<any>>} Children */
 /** @typedef {keyof JSX.IntrinsicElements} TagNames */
 /**
  * @template T @template {TagNames} tagName
- * @typedef {(
- *   T extends Child<T> ? Child<T> :
- *   T extends Attributes<tagName> ? Attributes<tagName> :
- *   never
- * )} ChildOrAttributes
+ * @typedef {T extends PlainObject ? Attributes<tagName> : Child<T>} ChildOrAttributes
  */
 
 export const tags = new Proxy(
@@ -81,4 +88,12 @@ export class Tag {
     this.attributes = attributes
     this.children = children
   }
+}
+
+/**
+ * @param {Parameters<typeof String.raw>} args
+ * @returns {Tag<'style'>}
+ */
+export function css(...args) {
+  return tags.style(raw(`@scope to (*:has(> style) > *) { ${String.raw(...args)} }`))
 }

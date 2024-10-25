@@ -8,11 +8,15 @@ export const render = createRenderer(
   /** @type {import('./renderer.js').RendererConstructor<string>} */
   ({ renderValue }) => {
     return {
+      renderRaw(raw, context) {
+        return [raw.value]
+      },
       renderString(value) {
         return escapeHtml(value)
       },
       renderSignal(signal, context) {
-        const result = [].concat(emptyComment(), signal.get(), emptyComment())
+        const value = signal.get()
+        const result = [].concat(emptyComment(), value, emptyComment())
         return renderValue(result, context)
       },
       renderTag({ tagName, attributes, children }, context) {
@@ -21,7 +25,12 @@ export const render = createRenderer(
           renderValue(children, context).join('') +
           `</${tagName}>`
         )
-      }
+      },
+      renderDynamic(dynamic, context) {
+        const value = dynamic.signal.get().map(dynamic.renderItem)
+        const result = [].concat(emptyComment(), value, emptyComment())
+        return renderValue(result, context)
+      },
     }
   }
 )
@@ -36,6 +45,7 @@ function renderServerAttributes(attributes) {
       if (k.startsWith('on')) return []
       if (k === 'className') k = 'class'
       if (k === 'style') v = renderStyles(v)
+      if (k === 'ref') return []
       const value = v instanceof Signal ? v.get() : v
       return `${k}="${escapeHtml(String(value))}"`
     })
