@@ -1,7 +1,5 @@
 /** @typedef {ReturnType<typeof createStreams>} Streams */
 
-// TODO: this is too complicated and contains bugs. It was done this way as an experiment to keep most of the original code
-
 export function createStreams() {
 
   const streams = {}
@@ -50,15 +48,15 @@ export function createStreams() {
  * @template {readonly string[]} X
  * @template Y
  * @param {{
- *   getPathSegments(args: X): readonly string[]
+ *   getChannel(args: X): string
  *   getData(...args: X): Y,
  *   eventName: string,
  *   streams: Streams
  * }} props
  */
- export function createEventStreamCollection({ getPathSegments, getData, eventName, streams }) {
+ export function createEventStreamCollection({ getChannel, getData, eventName, streams }) {
   const collection = createCustomEventStreamCollection({
-    getPathSegments,
+    getChannel,
     createInitialValue: noValue,
     notifyEvent: eventName,
     subscribeEvent: eventName,
@@ -98,7 +96,7 @@ export function createStreams() {
  * @template {readonly string[]} X
  * @template Y
  * @param {{
- *   getPathSegments(args: X): readonly string[]
+ *   getChannel(args: X): string
  *   createInitialValue(...args: X): Y
  *   subscribeEvent: string
  *   getSubscribeData(value: Y, args: X): any
@@ -107,7 +105,7 @@ export function createStreams() {
  * }} props
  */
 export function createCustomEventStreamCollection({
-  getPathSegments,
+  getChannel,
   createInitialValue,
   subscribeEvent,
   getSubscribeData,
@@ -155,7 +153,7 @@ export function createCustomEventStreamCollection({
 
   /** @param {X} args */
   function event(base, args) {
-    return `${base}-${getPathSegments(args).join('/')}`
+    return `${base}-${getChannel(args)}`
   }
 
   /** @param {X} args */
@@ -184,7 +182,6 @@ function sendEvent(res, event, data) {
 }
 
 function createOrGetAt(createValue, o, keys) {
-  // TODO: fix this
   if (!keys.length) keys = ['default']
   return keys.reduce(
     (result, key, i) => {
@@ -199,13 +196,11 @@ function createOrGetAt(createValue, o, keys) {
 }
 
 function getAt(o, keys) {
-  // TODO: fix this
   if (!keys.length) keys = ['default']
   return keys.reduce((result, key) => result && result[key], o)
 }
 
 function deleteAt(o, keys) {
-  // TODO: fix this
   if (!keys.length) keys = ['default']
   let target = o
   for (const [i, key] of keys.entries()) {

@@ -5,7 +5,7 @@
  *   basePath: any
  *   clientId: string
  *   apiPath: string
- *   events: import('./machinery/useEventSourceAsSignal.js').MessageBroker
+ *   events: import('./machinery/messageBroker.js').MessageBroker
  * }} Context
  */
 

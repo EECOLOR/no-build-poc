@@ -1,7 +1,7 @@
 import { tags } from '#ui/tags.js'
 import { setContext } from './context.js'
 import { Desk } from './desk/Desk.js'
-import { createMessageBroker } from './machinery/useEventSourceAsSignal.js'
+import { createMessageBroker } from './machinery/messageBroker.js'
 
 const { div } = tags
 
@@ -13,17 +13,15 @@ export function Cms({ basePath, deskStructure, documentSchemas, documentView, ap
     return div('Loading...')
 
   const clientId = window.crypto.randomUUID()
+  const apiPathWithVersion = `${apiPath}/${apiVersion}`
   let events
   setContext({
     documentSchemas,
     documentView,
     basePath,
     clientId,
-    apiPath: `${apiPath}/${apiVersion}`,
-    get events() {
-      if (!events) events = createMessageBroker({ onError })
-      return events
-    }
+    apiPath: apiPathWithVersion,
+    events: createMessageBroker({ apiPath: apiPathWithVersion, onError }),
   })
 
   return Desk({ deskStructure })

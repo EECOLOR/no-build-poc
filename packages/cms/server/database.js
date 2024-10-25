@@ -49,7 +49,7 @@ export function createDatabase(file) {
 /** @param {{ database: DatabaseSync, streams: Streams }} params */
 function createDocumentActions({ database, streams }) {
   const documentsEventStreams = createEventStreamCollection({
-    getPathSegments: ([type]) => ['documents', type],
+    getChannel: ([type]) => `documents/${type}`,
     eventName: 'documents',
     /** @param {string} type */
     getData(type) {
@@ -58,7 +58,7 @@ function createDocumentActions({ database, streams }) {
     streams,
   })
   const documentEventStreams = createEventStreamCollection({
-    getPathSegments: ([type, id]) => ['documents', type, id],
+    getChannel: ([type, id]) => `documents/${type}/${id}`,
     eventName: 'document',
     /**
      * @param {string} type
@@ -141,7 +141,7 @@ function createDocumentActions({ database, streams }) {
 /** @param {{ database: DatabaseSync, streams: Streams }} params */
 function createHistoryActions({ database, streams }) {
   const historyEventStreams = createEventStreamCollection({
-    getPathSegments: ([type, documentId]) => ['documents', type, documentId, 'history'],
+    getChannel: ([type, documentId]) => `documents/${type}/${documentId}/history`,
     eventName: 'history',
     getData(type, documentId) {
       return listHistoryByDocumentId({ documentId })
@@ -253,7 +253,7 @@ function createHistoryActions({ database, streams }) {
 /** @param {{ database: DatabaseSync, streams: Streams }} params */
 function createImageActions({ database, streams }) {
   const imagesEventStream = createEventStreamCollection({
-    getPathSegments: () => ['images'],
+    getChannel: () => `images`,
     eventName: 'images',
     getData() {
       return listImages()
@@ -261,7 +261,7 @@ function createImageActions({ database, streams }) {
     streams,
   })
   const metadataEventStream = createEventStreamCollection({
-    getPathSegments: ([filename]) => ['images', filename, 'metadata'],
+    getChannel: ([filename]) => `images/${filename}/metadata`,
     eventName: 'metadata',
     getData(filename) {
       return getImageMetadataByFilename({ filename })

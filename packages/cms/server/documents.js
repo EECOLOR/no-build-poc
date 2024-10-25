@@ -2,7 +2,7 @@ import { createHistoryHandler } from './documents/history.js'
 import { createRichTextHandler } from './documents/rich-text.js'
 import { deleteAt, getAt, setAt } from './documents/utils.js'
 import { withRequestJsonBody } from './machinery/request.js'
-import { respondJson } from './machinery/response.js'
+import { handleSubscription, respondJson } from './machinery/response.js'
 
 /** @typedef {ReturnType<typeof createDocumentsHandler>['patchDocument']} PatchDocument */
 
@@ -44,34 +44,21 @@ export function createDocumentsHandler({ databaseActions, streams }) {
    * @param {import('node:http').ServerResponse} res
    * @param {Array<string>} pathSegments
    */
-  function handleRequest(req, res, pathSegments, searchParams) {
-    const { method, headers } = req
+  function handleRequest(req, res, pathSegments, searchParams, connectId) {
+    const { method } = req
     const [type, id] = pathSegments
     const [subscription] = pathSegments.slice(-1)
-    const connectId = headers['x-connect-id']
 
     if (historyHandler.canHandleRequest(method, pathSegments))
-      historyHandler.handleRequest(req, res, pathSegments, searchParams)
+      historyHandler.handleRequest(req, res, pathSegments, searchParams, connectId)
     else if (richTextHandler.canHandleRequest(method, pathSegments))
-      richTextHandler.handleRequest(req, res, pathSegments, searchParams)
+      richTextHandler.handleRequest(req, res, pathSegments, searchParams, connectId)
     else if (id && method === 'PATCH')
       handlePatchDocument(req, res, { type, id })
     else if (id !== 'subscription' && subscription === 'subscription')
-      ok(res, handleSubscription(documentEventStreams, method, connectId, [type, id]))
+      handleSubscription(res, documentEventStreams, method, connectId, [type, id])
     else if (subscription === 'subscription')
-      ok(res, handleSubscription(documentsEventStreams, method, connectId, [type]))
-  }
-
-  function handleSubscription(eventStreams, method, connectId, args) {
-    if (method === 'HEAD')
-      eventStreams.subscribe(connectId, args)
-    else if (method === 'DELETE')
-      eventStreams.unsubscribe(connectId, args)
-  }
-
-  function ok(res, _) {
-    res.writeHead(204, { 'Content-Length': 0, 'Connection': 'close' })
-    res.end()
+      handleSubscription(res, documentsEventStreams, method, connectId, [type])
   }
 
   function handlePatchDocument(req, res, { type, id }) {

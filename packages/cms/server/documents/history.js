@@ -1,4 +1,5 @@
 import { diffChars } from 'diff'
+import { handleSubscription } from '../machinery/response.js'
 
 /** @param {{ databaseActions: import('../database.js').Actions }} params */
 export function createHistoryHandler({ databaseActions }) {
@@ -21,25 +22,12 @@ export function createHistoryHandler({ databaseActions }) {
     updateDocumentHistory,
   }
 
-  function handleRequest(req, res, pathSegments, searchParams) {
+  function handleRequest(req, res, pathSegments, searchParams, connectId) {
     const { method, headers } = req
     const [type, id, feature, subscription] = pathSegments
-    const connectId = headers['x-connect-id']
 
     if (subscription === 'subscription')
-      ok(res, handleSubscription(method, connectId, [type, id]))
-  }
-
-  function handleSubscription(method, connectId, args) {
-    if (method === 'HEAD')
-      historyEventStreams.subscribe(connectId, args)
-    else if (method === 'DELETE')
-      historyEventStreams.unsubscribe(connectId, args)
-  }
-
-  function ok(res, _) {
-    res.writeHead(204, { 'Content-Length': 0, 'Connection': 'close' })
-    res.end()
+      handleSubscription(res, historyEventStreams, method, connectId, [type, id])
   }
 
   /**
@@ -74,7 +62,7 @@ export function createHistoryHandler({ databaseActions }) {
         steps: newDetails.steps && previous.steps.concat(newDetails.steps),
         patches: previous.patches.concat(newDetails.patch),
         difference: newDetails.fieldType === 'string'
-          ? diffChars(previous.oldValue, newDetails.newValue)
+          ? diffChars(previous.oldValue || '', newDetails.newValue)
           : []
       }
 

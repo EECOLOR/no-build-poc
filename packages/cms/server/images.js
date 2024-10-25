@@ -3,7 +3,7 @@ import { withRequestBufferBody } from './machinery/request.js'
 import sharp from 'sharp'
 import fs from 'node:fs'
 import path from 'node:path'
-import { notFound, respondJson, sendImage } from './machinery/response.js'
+import { handleSubscription, notFound, respondJson, sendImage } from './machinery/response.js'
 
 /** @param {{ imagesPath: string, databaseActions: import('./database.js').Actions }} params */
 export function createImagesHandler({ imagesPath, databaseActions }) {
@@ -36,32 +36,19 @@ export function createImagesHandler({ imagesPath, databaseActions }) {
    * @param {import('node:http').ServerResponse} res
    * @param {Array<string>} pathSegments
    */
-  function handleRequest(req, res, pathSegments, searchParams) {
-    const { method, headers } = req
+  function handleRequest(req, res, pathSegments, searchParams, connectId) {
+    const { method } = req
     const [filename] = pathSegments
     const [subscription] = pathSegments.slice(-1)
-    const connectId = headers['x-connect-id']
 
     if (metadataHandler.canHandleRequest(method, pathSegments))
-      metadataHandler.handleRequest(req, res, pathSegments, searchParams)
+      metadataHandler.handleRequest(req, res, pathSegments, searchParams, connectId)
     else if (subscription === 'subscription')
-      ok(res, handleSubscription(method, connectId, []))
+      handleSubscription(res, imagesEventStream, method, connectId, [])
     else if (!filename && method === 'POST')
       handlePostImage(req, res, { searchParams })
     else if (filename && method === 'GET')
       handleGetImage(req, res, { filename, searchParams })
-  }
-
-  function handleSubscription(method, connectId, args) {
-    if (method === 'HEAD')
-      imagesEventStream.subscribe(connectId, args)
-    else if (method === 'DELETE')
-      imagesEventStream.unsubscribe(connectId, args)
-  }
-
-  function ok(res, _) {
-    res.writeHead(204, { 'Content-Length': 0, 'Connection': 'close' })
-    res.end()
   }
 
   /**
@@ -142,8 +129,8 @@ async function handleModifiedImage(image, params) {
   const $image = sharp(image)
   const metadata = await $image.metadata()
 
-  const width = parseInt(params.w, 10)
-  const height = parseInt(params.h, 10)
+  const width = parseInt(params.w, 10) || metadata.width
+  const height = parseInt(params.h, 10) || metadata.height
   const crop = params.crop
     ? rectangleFromArray(params.crop?.split(','))
     : { x: 0, y: 0, width: metadata.width, height: metadata.height }

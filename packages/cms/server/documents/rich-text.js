@@ -1,6 +1,6 @@
 import { createCustomEventStreamCollection } from '../machinery/eventStreams.js'
 import { withRequestJsonBody } from '../machinery/request.js'
-import { respondJson } from '../machinery/response.js'
+import { handleSubscription, respondJson } from '../machinery/response.js'
 import { getAt } from './utils.js'
 
 /**
@@ -15,7 +15,7 @@ export function createRichTextHandler({ databaseActions, streams, patchDocument 
   const { getDocumentById } = databaseActions.documents
 
   const eventStreamCollection = createCustomEventStreamCollection({
-    getPathSegments: ([type, id, encodedFieldPath]) => ['documents', type, id, 'rich-text', encodedFieldPath],
+    getChannel: ([type, id, encodedFieldPath]) => `documents/${type}/${id}/rich-text/${encodedFieldPath}`,
     createInitialValue(type, id, encodedFieldPath) {
       const fieldPath = decodeURIComponent(encodedFieldPath)
       return {
@@ -41,28 +41,14 @@ export function createRichTextHandler({ databaseActions, streams, patchDocument 
     }
   }
 
-  function handleRequest(req, res, pathSegments, searchParams) {
+  function handleRequest(req, res, pathSegments, searchParams, connectId) {
     const { method, headers } = req
     const [type, id, feature, encodedFieldPath, subscription] = pathSegments
-    const connectId = headers['x-connect-id']
-
 
     if (subscription === 'subscription')
-      ok(res, handleSubscription(method, connectId, [type, id, encodedFieldPath]))
+      handleSubscription(res, eventStreamCollection, method, connectId, [type, id, encodedFieldPath])
     else if (feature === 'rich-text' && method === 'POST')
       handlePostRichText(req, res, { type, id, encodedFieldPath })
-  }
-
-  function handleSubscription(method, connectId, args) {
-    if (method === 'HEAD')
-      eventStreamCollection.subscribe(connectId, args)
-    else if (method === 'DELETE')
-      eventStreamCollection.unsubscribe(connectId, args)
-  }
-
-  function ok(res, _) {
-    res.writeHead(204, { 'Content-Length': 0, 'Connection': 'close' })
-    res.end()
   }
 
   /** @param {import('node:http').ServerResponse} res */

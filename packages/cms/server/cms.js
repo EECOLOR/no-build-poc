@@ -33,12 +33,13 @@ export function createCms({ basePath, storagePath }) {
     const { searchParams, pathname } = new URL(`fake://fake.local${req.url}`)
     const [version, category, ...pathSegments] = pathname.replace(apiPath, '').split('/')
     const connectId = headers['x-connect-id']
+
     console.log(method, version, category, pathSegments.join('/'), { connectId })
 
     if (category === 'documents' && documentsHandler.canHandleRequest(method, pathSegments))
-      documentsHandler.handleRequest(req, res, pathSegments, searchParams)
+      documentsHandler.handleRequest(req, res, pathSegments, searchParams, connectId)
     else if (category === 'images' && imagesHandler.canHandleRequest(method, pathSegments))
-      imagesHandler.handleRequest(req, res, pathSegments, searchParams)
+      imagesHandler.handleRequest(req, res, pathSegments, searchParams, connectId)
     else if (category === 'events' && method === 'GET')
       streams.connect(res)
     else {
