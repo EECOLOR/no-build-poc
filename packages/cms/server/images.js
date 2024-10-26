@@ -3,7 +3,8 @@ import { withRequestBufferBody } from './machinery/request.js'
 import sharp from 'sharp'
 import fs from 'node:fs'
 import path from 'node:path'
-import { handleSubscription, notFound, respondJson, sendImage } from './machinery/response.js'
+import { notFound, respondJson, sendImage } from './machinery/response.js'
+import { handleSubscription } from './machinery/eventStreams.js'
 
 /** @param {{ imagesPath: string, databaseActions: import('./database.js').Actions }} params */
 export function createImagesHandler({ imagesPath, databaseActions }) {

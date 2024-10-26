@@ -48,6 +48,12 @@ body {
   line-height: 1.5;
 }
 
+hr {
+  border: none;
+  flex-basis: 1px;
+  background-color: lightgray;
+}
+
 :where(button) {
   background-color: unset;
   border: none;

@@ -1,8 +1,9 @@
 import { createHistoryHandler } from './documents/history.js'
 import { createRichTextHandler } from './documents/rich-text.js'
 import { deleteAt, getAt, setAt } from './documents/utils.js'
+import { handleSubscription } from './machinery/eventStreams.js'
 import { withRequestJsonBody } from './machinery/request.js'
-import { handleSubscription, respondJson } from './machinery/response.js'
+import { respondJson } from './machinery/response.js'
 
 /** @typedef {ReturnType<typeof createDocumentsHandler>['patchDocument']} PatchDocument */
 

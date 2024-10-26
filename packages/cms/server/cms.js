@@ -4,7 +4,7 @@ import { createDatabase, createDatabaseActions } from './database.js'
 import { createDocumentsHandler } from './documents.js'
 import { createImagesHandler } from './images.js'
 import { notFound } from './machinery/response.js'
-import { createStreams } from './machinery/eventStreams.js'
+import { createStreams, sendEvent, startEventStream } from './machinery/eventStreams.js'
 
 export function createCms({ basePath, storagePath }) {
   const imagesPath = path.join(storagePath, 'images')
@@ -42,8 +42,15 @@ export function createCms({ basePath, storagePath }) {
       imagesHandler.handleRequest(req, res, pathSegments, searchParams, connectId)
     else if (category === 'events' && method === 'GET')
       streams.connect(res)
+    else if (category === 'connect' && method === 'GET')
+      handleConnect(res)
     else {
       notFound(res)
     }
   }
+}
+
+function handleConnect(res) {
+  startEventStream(res)
+  sendEvent(res, 'connect', null)
 }

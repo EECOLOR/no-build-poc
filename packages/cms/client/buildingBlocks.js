@@ -3,6 +3,7 @@ import { tags, css, Tag } from '#ui/tags.js'
 import { pushState } from './machinery/history.js'
 import { combineRefs, useHasScrollbar } from './machinery/elementHooks.js'
 import { separatePropsAndChildren } from '#ui/utils.js'
+import { Signal } from '#ui/signal.js'
 
 const { ul, li, button, a, div } = tags
 
@@ -17,8 +18,8 @@ List.style = css`& {
     list-style-type: none;
   }
 }`
-export function List({ gap = undefined, renderItems }) {
-  return scrollable.ul({ style: { ...(gap && { '--gap': gap }) } },
+export function List({ className = undefined, gap = undefined, renderItems }) {
+  return scrollable.ul({ className, style: { ...(gap && { '--gap': gap }) } },
     List.style,
     renderItems((...args) =>
       li(...args)
@@ -81,10 +82,11 @@ function linkClick(to) {
 
     e.preventDefault()
 
-    if (window.location.pathname === to)
+    const newPathname = to instanceof Signal ? to.get() : to
+    if (window.location.pathname === newPathname)
       return
 
-    pushState(null, undefined, to)
+    pushState(null, undefined, newPathname)
   }
 }
 

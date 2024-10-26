@@ -1,5 +1,5 @@
 import { diffChars } from 'diff'
-import { handleSubscription } from '../machinery/response.js'
+import { handleSubscription } from '../machinery/eventStreams.js'
 
 /** @param {{ databaseActions: import('../database.js').Actions }} params */
 export function createHistoryHandler({ databaseActions }) {

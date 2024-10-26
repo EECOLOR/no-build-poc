@@ -1,5 +1,7 @@
 /** @typedef {ReturnType<typeof createStreams>} Streams */
 
+import { noContent, notFound } from './response.js'
+
 export function createStreams() {
 
   const streams = {}
@@ -32,6 +34,9 @@ export function createStreams() {
     sendEvent(connectId, event, data) {
       sendEvent(streams[connectId].res, event, data)
     },
+    isValid(connectId) {
+      return Boolean(streams[connectId])
+    },
   }
 
   function cleanup(connectId) {
@@ -43,6 +48,16 @@ export function createStreams() {
     delete streams[connectId]
   }
 }
+
+/**
+ * @template {readonly string[]} X
+ * @typedef {{
+ *   subscribe(connectId: string, args: X): void
+ *   unsubscribe(connectId: string, args: X): void
+ *   notify(...args: X): void
+ *   isValid(connectId: string): boolean
+ * }} StreamCollection
+ */
 
 /**
  * @template {readonly string[]} X
@@ -78,7 +93,11 @@ export function createStreams() {
     /** @param {X} args */
     notify(...args) {
       collection.notify(getData(...args), args)
-    }
+    },
+
+    isValid(connectId) {
+      return collection.isValid(connectId)
+    },
   }
 
   /** @param {X} args */
@@ -90,6 +109,21 @@ export function createStreams() {
   function getSubscribeData(_, args) {
     return getData(...args)
   }
+}
+
+/**
+ * @template {readonly string[]} T
+ * @param {StreamCollection<T>} eventStreams */
+export function handleSubscription(res, eventStreams, method, connectId, args) {
+  if (!eventStreams.isValid(connectId))
+    return notFound(res)
+
+  if (method === 'HEAD')
+    eventStreams.subscribe(connectId, args)
+  else if (method === 'DELETE')
+    eventStreams.unsubscribe(connectId, args)
+
+  noContent(res)
 }
 
 /**
@@ -145,10 +179,14 @@ export function createCustomEventStreamCollection({
         streams.sendEvent(connectId, event(notifyEvent, args), data)
     },
 
+    isValid(connectId) {
+      return streams.isValid(connectId)
+    },
+
     /** @param {X} args */
     getValue(...args) {
       return getAt(collection, args)?.value
-    }
+    },
   }
 
   /** @param {X} args */
@@ -165,7 +203,7 @@ export function createCustomEventStreamCollection({
   }
 }
 
-function startEventStream(res) {
+export function startEventStream(res) {
   res.writeHead(200, {
     'X-Accel-Buffering': 'no',
     'Content-Type': 'text/event-stream',
@@ -173,7 +211,7 @@ function startEventStream(res) {
   })
 }
 
-function sendEvent(res, event, data) {
+export function sendEvent(res, event, data) {
   res.write(
     `event: ${event}\n` +
     `data: ${JSON.stringify(data)}\n` +

@@ -6,6 +6,14 @@ import { clientConfig, clientConfigId } from './clientConfig.js'
 
 const { script } = tags
 
+/**
+ * @template {any[]} X
+ * @template Y
+ * @param {string} path
+ * @param {(...params: X) => Y} Component
+ * @param  {X} params
+ * @returns
+ */
 export function Island(path, Component, ...params) {
   const { props } = separatePropsAndChildren(params)
   return [

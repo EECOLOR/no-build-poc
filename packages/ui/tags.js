@@ -43,7 +43,7 @@ export function raw(value) { return new Raw(value) }
 
 /**
  * @template T
- * @typedef {T extends (Tag<any> | Signal<any> | Component<any> | Dynamic<any> | Raw | string | number | boolean | null | undefined) ? T : never} Child
+ * @typedef {T extends (Tag<any> | Signal<any> | Component<any> | Dynamic<any> | Array<any> | Raw | string | number | boolean | null | undefined) ? T : never} Child
  */
 
 /**
@@ -92,7 +92,7 @@ export class Tag {
 
 /**
  * @param {Parameters<typeof String.raw>} args
- * @returns {Tag<'style'>}
+ * @returns {import('./types.js').TypeOrArrayOfType<Tag<'style'>>}
  */
 export function css(...args) {
   return tags.style(raw(`@scope to (*:has(> style) > *) { ${String.raw(...args)} }`))

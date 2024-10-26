@@ -12,7 +12,7 @@ import { createAsyncTaskQueue } from './asyncTaskQueue.js'
  */
 export function createMessageBroker({ apiPath, onError }) {
   const [$connectId, setConnectId] = createSignal(null)
-  const eventSource = createEventSource({ onConnect: setConnectId, onError })
+  const eventSource = createEventSource({ onConnectIdChange: setConnectId, onError })
   const serverQueue = createAsyncTaskQueue({ processTask, onError, })
 
   /** @type {Map<Pathname, ConnectionCount>} */
@@ -41,12 +41,22 @@ export function createMessageBroker({ apiPath, onError }) {
     }
   }
 
-  function createEventSource({ onConnect, onError }) {
-    const eventSource = new EventSource(`${apiPath}/events`)
-    eventSource.addEventListener('connect', e => {
-      onConnect(JSON.parse(e.data))
+  function createEventSource({ onConnectIdChange, onError }) {
+    const pathname = `${apiPath}/events`
+    const eventSource = new EventSource(pathname)
+    window.addEventListener('beforeunload', _ => eventSource.close())
+    eventSource.addEventListener('open', _ => {
+      console.log(`Connection to ${pathname} established`)
     })
-    eventSource.addEventListener('error', onError)
+    eventSource.addEventListener('connect', e => {
+      const connectId = JSON.parse(e.data)
+      onConnectIdChange(connectId)
+      console.log(`Obtained connect id "${connectId}"`)
+    })
+    eventSource.addEventListener('error', e => {
+      onConnectIdChange(null)
+      console.log(`Connection to ${pathname} lost`)
+    })
     return eventSource
   }
 

@@ -1,5 +1,5 @@
 import { conditional, derive, loop, useOnDestroy } from '#ui/dynamic.js'
-import { createSignal } from '#ui/signal.js'
+import { createSignal, Signal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
 import { ButtonAdd, ButtonChevronLeft, ButtonChevronRight, ButtonDelete, Link, List, scrollable } from '../buildingBlocks.js'
 import { context, getSchema } from '../context.js'
@@ -14,24 +14,17 @@ import { $pathname, pushState } from '../machinery/history.js'
 import { renderOnValue } from '../machinery/renderOnValue.js'
 import { useCombined, useSubscriptions } from '../machinery/signalHooks.js'
 
-const { div, input, h1, img } = tags
+const { div, input, h1, img, hr } = tags
 
 Desk.style = css`& {
-  --default-padding: 0.5rem;
-
   display: flex;
   flex-direction: column;
+  gap: var(--default-padding);
   height: 100%;
+  padding: var(--default-padding);
 
-  & > * {
-    padding: var(--default-padding);
-  }
-
-  & > :not(:first-child, :last-child) {
-    border-bottom: 1px solid lightgray;
-  }
-
-  & > :last-child {
+  & > .Panes {
+    height: 100%;
     flex-grow: 1;
   }
 }`
@@ -40,28 +33,23 @@ export function Desk({ deskStructure }) {
     div(
       Desk.style,
       DeskHeader(),
+      hr(),
       Panes({ firstPane: deskStructure.pane }),
     )
   )
 }
 
+DeskHeader.style = css`& {
+  line-height: 1em;
+}`
 function DeskHeader() {
-  return div(div(css`& { padding: 0.5rem; }`, 'CMS'))
+  return div({ className: 'DeskHeader' }, DeskHeader.style, 'CMS')
 }
 
 Panes.style = css`& {
   display: flex;
-  height: 100%;
   min-height: 0; /* display: flex sets it to auto */
-
-  & > .list {
-    max-width: 20rem;
-    flex-shrink: 0;
-  }
-
-  & > :not(:first-child) {
-    border-right: 1px solid lightgray;
-  }
+  gap: var(--default-padding);
 
   & > :last-child {
     flex-grow: 1;
@@ -74,15 +62,19 @@ function Panes({ firstPane }) {
   })
 
   return (
-    div(
+    div({ className: 'Panes' },
       Panes.style,
-      loop(
-        $panesWithPath,
-        x => x.path.join('/'),
-        Pane
-      )
+      loopWithHr($panesWithPath, x => x.path.join('/'), Pane)
     )
   )
+}
+
+/** @type {typeof loop} */
+function loopWithHr(signal, getKey, renderItem) {
+  return loop(signal, getKey, (props, i, items) => [
+    Boolean(i) && hr(),
+    renderItem(props, i, items)
+  ])
 }
 
 function Pane({ pane, path }) {
@@ -98,12 +90,11 @@ function Pane({ pane, path }) {
 }
 
 ListPane.style = css`& {
-  height: 100%;
-  padding: var(--default-padding);
+  max-width: 20rem;
 }`
 function ListPane({ items, path }) {
   return (
-    div({ className: 'list' },
+    div({ className: 'ListPane' },
       ListPane.style,
       List({ renderItems: renderItem =>
         items.map(item =>
@@ -123,7 +114,7 @@ DocumentListPane.style = css`& {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: var(--default-padding);
+  max-width: 20rem;
 
   & > :not(:first-child, :last-child) {
     margin-bottom: 0.5rem;
@@ -145,18 +136,19 @@ function DocumentListPane({ schemaType, path }) {
     )
 
   return (
-    div({ className: 'list' },
+    div({ className: 'DocumentListPane' },
       DocumentListPane.style,
       DocumentListHeader({ schema, onFilterChange: handleFilterChange, onAddClick: handleAddClick }),
       List({ renderItems: renderItem =>
-        loop($filteredDocuments, x => x._id + hack(x), document => // TODO: document should probably be a signal, if the id does not change, nothing will be re-rendered
-          renderItem(
+        loop($filteredDocuments, x => x._id, ({ _id }, i) => {
+          const $document = $filteredDocuments.derive(a => a[i])
+          return renderItem(
             ListItem({
-              href: [context.basePath, ...path, document._id].join('/'),
-              title: schema.preview(document).title ,
+              href: [context.basePath, ...path, _id].join('/'),
+              title: $document.derive(document => schema.preview(document).title),
             })
           )
-        )
+        })
       })
     )
   )
@@ -168,10 +160,6 @@ function DocumentListPane({ schemaType, path }) {
 
   function handleFilterChange(value) {
     setFilter(value)
-  }
-
-  function hack(document) {
-    return JSON.stringify(schema.preview(document))
   }
 }
 
@@ -232,27 +220,22 @@ function DocumentPane({ id, schemaType }) {
 }
 
 ImagesPane.style = css`& {
-  height: 100%;
   padding: var(--default-padding);
-
-  & > * {
-    height: 100%;
-  }
+  max-width: 10rem;
+  min-width: 10rem;
 }`
 function ImagesPane({ path }) {
   const $images = useImages()
 
   return (
-    div({ className: 'list' },
+    List({ className: 'ImagesPane', renderItems: renderItem => [
       ImagesPane.style,
-      List({ renderItems: renderItem =>
-        loop(
-          $images,
-          image => image.filename,
-          image => renderItem(ImageItem({ image, path }))
-        )
-      })
-    )
+      loop(
+        $images,
+        image => image.filename,
+        image => renderItem(ImageItem({ image, path }))
+      )
+    ]})
   )
 }
 
@@ -277,7 +260,6 @@ function ImageItem({ image, path }) {
 }
 
 ImagePane.style = css`& {
-  padding: var(--default-padding);
   display: flex;
   gap: 1rem;
 
@@ -428,7 +410,10 @@ ListItem.style = css`& {
   }
 }`
 function ListItem({ href, title }) {
-  const $className = $pathname.derive(pathname => pathname.startsWith(href) ? 'active' : '')
+  const $className = $pathname.derive(pathname => {
+    const activeHref = href instanceof Signal ? href.get() : href
+    return pathname.startsWith(activeHref) ? 'active' : ''
+  })
   return Link({ className: $className, href },
     ListItem.style,
     title,
