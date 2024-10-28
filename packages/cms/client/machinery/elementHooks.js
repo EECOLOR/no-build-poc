@@ -9,7 +9,7 @@ export function combineRefs(...refs) {
 
 export function useHasScrollbar() {
   const { $size, ref } = useElementSize()
-  const $hasScrollbar = $size.derive(size => Boolean(size) && size.height <= size.element.scrollHeight)
+  const $hasScrollbar = $size.derive(size => Boolean(size) && size.height < size.element.scrollHeight)
 
   return { ref, $hasScrollbar }
 }

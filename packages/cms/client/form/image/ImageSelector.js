@@ -39,7 +39,7 @@ ImageSelectorDialog.style = css`& {
     display: flex;
     flex-direction: column;
     align-items: end;
-    gap: 0.5rem;
+    gap: var(--default-gap);
     box-shadow: 4px 4px 8px rgb(0 0 0 / 50%);
     height: 100%;
   }
@@ -93,7 +93,7 @@ Details.style = css`& {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--default-gap);
   padding: var(--default-padding);
 
   & > * {
@@ -162,7 +162,7 @@ function SelectFile({ onChange }) {
 Images.style = css`& {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: var(--default-gap);
   align-items: center;
 
   & > * {
@@ -194,7 +194,7 @@ function Images({ $selected, onSelect, onNewClick }) {
 AddLabel.styles = css`& {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--default-gap);
   justify-content: center;
   align-items: center;
 }`

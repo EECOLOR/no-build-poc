@@ -50,6 +50,7 @@ export const render = createRenderer(
         const infoByKey = new Map()
         const nodesFromLoop = dynamic.signal.get().flatMap((item, i, items) => {
           try {
+            // TODO: make sure key is unique for all individual items
             const key = dynamic.getKey(item, i, items)
             return renderItem(key, item, i, items)
           } catch (e) {

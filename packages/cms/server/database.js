@@ -174,6 +174,7 @@ function createHistoryActions({ database, streams }) {
       timestampStart: x.timestampStart,
       timestampEnd: x.timestampEnd,
       details: JSON.parse(x.details),
+      key: `${x.clientId}:${x.fieldPath}:${x.timestampStart}`,
     }))
   }
 

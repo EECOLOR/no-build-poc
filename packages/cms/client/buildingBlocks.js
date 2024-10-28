@@ -4,6 +4,7 @@ import { pushState } from './machinery/history.js'
 import { combineRefs, useHasScrollbar } from './machinery/elementHooks.js'
 import { separatePropsAndChildren } from '#ui/utils.js'
 import { Signal } from '#ui/signal.js'
+import { loop } from '#ui/dynamic.js'
 
 const { ul, li, button, a, div } = tags
 
@@ -18,12 +19,25 @@ List.style = css`& {
     list-style-type: none;
   }
 }`
-export function List({ className = undefined, gap = undefined, renderItems }) {
-  return scrollable.ul({ className, style: { ...(gap && { '--gap': gap }) } },
+export function List({ className = undefined, renderItems }, ...children) {
+  return scrollable.ul({ className },
     List.style,
+    ...children,
     renderItems((...args) =>
       li(...args)
     )
+  )
+}
+
+export function ListSignal({ signal, getKey, className = undefined, renderItem }, ...children) {
+  const renderUserItem = renderItem
+  return List(
+    {
+      className,
+      renderItems: renderItem =>
+        loop(signal, getKey, (...args) => renderItem(renderUserItem(...args))),
+    },
+    ...children
   )
 }
 
@@ -36,6 +50,7 @@ export const scrollable = new Proxy(tags, {
 
 Scrollable.styles = css`& {
   overflow-y: auto;
+  overflow-x: hidden;
 
   &[data-has-scrollbar=true] {
     padding-right: var(--scrollbarPadding, 0.5rem);

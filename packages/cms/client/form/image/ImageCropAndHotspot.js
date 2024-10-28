@@ -34,7 +34,7 @@ export function ImageCropAndHotspot({ src, $metadata, onCropChange, onHotspotCha
   const { $crop, $hotspot, resizeToActualSize } = useDerivedLocalValues({ $metadata, $displaySize })
 
   return (
-    div(
+    div({ className: 'ImageCropAndHotspot' },
       ImageCropAndHotspot.style,
       img({ ref, src }),
       conditional($displaySize, displaySize => displaySize !== connecting, _ =>

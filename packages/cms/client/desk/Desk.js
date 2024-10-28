@@ -1,7 +1,7 @@
 import { conditional, derive, loop, useOnDestroy } from '#ui/dynamic.js'
 import { createSignal, Signal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
-import { ButtonAdd, ButtonChevronLeft, ButtonChevronRight, ButtonDelete, Link, List, scrollable } from '../buildingBlocks.js'
+import { ButtonAdd, ButtonChevronLeft, ButtonChevronRight, ButtonDelete, Link, List, ListSignal, scrollable } from '../buildingBlocks.js'
 import { context, getSchema } from '../context.js'
 import { connecting, useDocument, useDocuments, useImageMetadata, useImages } from '../data.js'
 import { DocumentForm, patch } from '../form/DocumentForm.js'
@@ -19,8 +19,7 @@ const { div, input, h1, img, hr } = tags
 Desk.style = css`& {
   display: flex;
   flex-direction: column;
-  gap: var(--default-padding);
-  height: 100%;
+  gap: var(--default-gap);
   padding: var(--default-padding);
 
   & > .Panes {
@@ -30,7 +29,7 @@ Desk.style = css`& {
 }`
 export function Desk({ deskStructure }) {
   return (
-    div(
+    div({ className: 'Desk' },
       Desk.style,
       DeskHeader(),
       hr(),
@@ -49,7 +48,11 @@ function DeskHeader() {
 Panes.style = css`& {
   display: flex;
   min-height: 0; /* display: flex sets it to auto */
-  gap: var(--default-padding);
+  gap: var(--default-gap);
+
+  & > *:not(:last-child) {
+    flex-shrink: 0;
+  }
 
   & > :last-child {
     flex-grow: 1;
@@ -71,10 +74,18 @@ function Panes({ firstPane }) {
 
 /** @type {typeof loop} */
 function loopWithHr(signal, getKey, renderItem) {
-  return loop(signal, getKey, (props, i, items) => [
-    Boolean(i) && hr(),
-    renderItem(props, i, items)
-  ])
+  const $signalWithHr = signal.derive(a => a.flatMap((x, i) => i ? [Symbol('hr'), x] : [x]))
+  return loop(
+    $signalWithHr,
+    item => {
+      const items = signal.get()
+      return typeof item === 'symbol' ? item : getKey(item, items.indexOf(item), items)
+    },
+    item => {
+      const items = signal.get()
+      return typeof item === 'symbol' ? hr() : renderItem(item, items.indexOf(item), items)
+    }
+  )
 }
 
 function Pane({ pane, path }) {
@@ -94,18 +105,20 @@ ListPane.style = css`& {
 }`
 function ListPane({ items, path }) {
   return (
-    div({ className: 'ListPane' },
-      ListPane.style,
-      List({ renderItems: renderItem =>
-        items.map(item =>
-          renderItem(
-            ListItem({
-              href: [context.basePath, ...path, item.slug].join('/'),
-              title: item.label,
-            })
+    List(
+      {
+        className: 'ListPane',
+        renderItems: renderItem =>
+          items.map(item =>
+            renderItem(
+              ListItem({
+                href: [context.basePath, ...path, item.slug].join('/'),
+                title: item.label,
+              })
+            )
           )
-        )
-      })
+      },
+      ListPane.style,
     )
   )
 }
@@ -113,43 +126,24 @@ function ListPane({ items, path }) {
 DocumentListPane.style = css`& {
   display: flex;
   flex-direction: column;
-  height: 100%;
   max-width: 20rem;
-
-  & > :not(:first-child, :last-child) {
-    margin-bottom: 0.5rem;
-  }
+  gap: var(--default-gap);
 
   & > :last-child {
     flex-grow: 1;
   }
 }`
 function DocumentListPane({ schemaType, path }) {
-  const $documents = useDocuments({ schemaType })
   const schema = getSchema(schemaType)
   if (!schema) throw new Error(`Could not find schema '${schemaType}'`)
 
-  const [$filter, setFilter] = createSignal('')
-  const $filteredDocuments = useCombined($documents, $filter)
-    .derive(([documents, filter]) => documents.filter(doc =>
-      schema.preview(doc).title.toLowerCase().includes(filter.toLowerCase()))
-    )
+  const { $documents, setFilter } = useFilteredDocuments({ schema })
 
   return (
     div({ className: 'DocumentListPane' },
       DocumentListPane.style,
       DocumentListHeader({ schema, onFilterChange: handleFilterChange, onAddClick: handleAddClick }),
-      List({ renderItems: renderItem =>
-        loop($filteredDocuments, x => x._id, ({ _id }, i) => {
-          const $document = $filteredDocuments.derive(a => a[i])
-          return renderItem(
-            ListItem({
-              href: [context.basePath, ...path, _id].join('/'),
-              title: $document.derive(document => schema.preview(document).title),
-            })
-          )
-        })
-      })
+      DocumentListItems({ $documents, schema, path })
     )
   )
 
@@ -163,9 +157,20 @@ function DocumentListPane({ schemaType, path }) {
   }
 }
 
+function useFilteredDocuments({ schema }) {
+  const $documents = useDocuments({ schemaType: schema.type })
+  const [$filter, setFilter] = createSignal('')
+  const $filteredDocuments = useCombined($documents, $filter)
+    .derive(([documents, filter]) => documents.filter(doc =>
+      schema.preview(doc).title.toLowerCase().includes(filter.toLowerCase()))
+    )
+
+  return { $documents: $filteredDocuments, setFilter }
+}
+
 DocumentListHeader.style = css`& {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--default-gap);
 
   & > input {
     flex-grow: 1;
@@ -181,20 +186,30 @@ function DocumentListHeader({ schema, onFilterChange, onAddClick }) {
   )
 }
 
+function DocumentListItems({ $documents, schema, path }) {
+  return (
+    ListSignal({
+      signal: $documents,
+      getKey: document => document._id,
+      renderItem: ({ _id }) => {
+        const $document = $documents.derive(documents => documents.find(x => x._id === _id))
+        return (
+          ListItem({
+            href: [context.basePath, ...path, _id].join('/'),
+            title: $document.derive(document => schema.preview(document).title),
+          })
+        )
+      }
+    })
+  )
+}
+
 DocumentPane.style = css`& {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--default-gap);
   padding: var(--default-padding);
   max-width: fit-content;
-
-  & > div {
-    display: flex;
-    min-height: 0;
-    gap: 1rem;
-    flex-grow: 1;
-
-  }
 }`
 function DocumentPane({ id, schemaType }) {
   const $document = useDocument({ id, schemaType })
@@ -206,21 +221,34 @@ function DocumentPane({ id, schemaType }) {
       DocumentPane.style,
       conditional($document, doc => doc !== connecting, _ => [
         DocumentHeader({ document, $showHistory, onShowHistoryClick: _ => setShowHistory(x => !x) }),
-        div(
-          scrollable.div(
-            DocumentForm({ document }),
-          ),
-          renderOnValue($showHistory,
-            _ => DocumentHistory({ id, schemaType }),
-          )
-        )
+        DocumentBody({ document, $showHistory, id, schemaType }),
       ])
     )
   )
 }
 
+DocumentBody.style = css`& {
+  display: flex;
+  min-height: 0;
+  gap: calc(var(--default-gap) * 2);
+
+  & > .DocumentHistory {
+    width: 20rem;
+  }
+}`
+function DocumentBody({ document, $showHistory, id, schemaType }) {
+  return (
+    div({ className: 'DocumentBody' },
+      DocumentBody.style,
+      DocumentForm({ document }),
+      renderOnValue($showHistory,
+        _ => DocumentHistory({ id, schemaType }),
+      )
+    )
+  )
+}
+
 ImagesPane.style = css`& {
-  padding: var(--default-padding);
   max-width: 10rem;
   min-width: 10rem;
 }`
@@ -228,14 +256,15 @@ function ImagesPane({ path }) {
   const $images = useImages()
 
   return (
-    List({ className: 'ImagesPane', renderItems: renderItem => [
+    ListSignal(
+      {
+        className: 'ImagesPane',
+        signal: $images,
+        getKey: image => image.filename,
+        renderItem: image => ImageItem({ image, path })
+      },
       ImagesPane.style,
-      loop(
-        $images,
-        image => image.filename,
-        image => renderItem(ImageItem({ image, path }))
-      )
-    ]})
+    )
   )
 }
 
@@ -261,10 +290,11 @@ function ImageItem({ image, path }) {
 
 ImagePane.style = css`& {
   display: flex;
-  gap: 1rem;
+  gap: var(--default-gap);
 
-  & > * {
-    height: 100%;
+  & > .ImageEditor,
+  & > .ImagePreview {
+    flex-basis: 50%;
     width: 50%;
   }
 }`
@@ -289,17 +319,13 @@ function ImagePane({ id: filename, path }) {
   return (
     div(
       ImagePane.style,
-      scrollable.div(
-        ImageEditor({
-          src,
-          $serverMetadata,
-          onCropChange: crop => setClientMetadata(x => ({ ...x, crop })),
-          onHotspotChange: hotspot => setClientMetadata(x => ({ ...x, hotspot })),
-        })
-      ),
-      scrollable.div(
-        ImagePreview({ filename, $metadata: $previewMetadata })
-      )
+      ImageEditor({
+        src,
+        $serverMetadata,
+        onCropChange: crop => setClientMetadata(x => ({ ...x, crop })),
+        onHotspotChange: hotspot => setClientMetadata(x => ({ ...x, hotspot })),
+      }),
+      ImagePreview({ filename, $metadata: $previewMetadata })
     )
   )
 
@@ -316,9 +342,16 @@ function ImagePane({ id: filename, path }) {
 }
 
 function ImageEditor({ src, $serverMetadata, onCropChange, onHotspotChange }) {
+  // TODO: if you balance your height just right, a flickr will start
+  // images are shown by ratio, so when the scrollbar is there (and padding is added), the width
+  // will be smaller (and thus the height). With the smaller height a scrollbar is no longer needed
+  // so the padding and scrollbar are removed, causing the image to be wider. This causes the height
+  // to be greater, requiring a scrollbar. (recursion)
   return (
-    conditional($serverMetadata, metadata => metadata !== connecting,
-      _ => ImageCropAndHotspot({ src, $metadata: $serverMetadata, onCropChange, onHotspotChange }),
+    scrollable.div({ className: 'ImageEditor' },
+      conditional($serverMetadata, metadata => metadata !== connecting,
+        _ => ImageCropAndHotspot({ src, $metadata: $serverMetadata, onCropChange, onHotspotChange }),
+      )
     )
   )
 }
@@ -327,7 +360,7 @@ ImagePreview.style = css`& {
   display: flex;
   align-items: flex-start;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--default-gap);
 
   & > * { flex-grow: 1; flex-basis:30%; }
   & > :last-child { flex-basis: 100%; }
@@ -335,7 +368,7 @@ ImagePreview.style = css`& {
 function ImagePreview({ filename, $metadata }) {
 
   return (
-    div(
+    scrollable.div({ className: 'ImagePreview' },
       ImagePreview.style,
       PreviewImage({ filename, aspectRatio: '3 / 4', $metadata }),
       PreviewImage({ filename, aspectRatio: '1 / 1', $metadata }),
@@ -399,7 +432,7 @@ ListItem.style = css`& {
   text-decoration: none;
   color: inherit;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 1ex;
 
   &:hover, &.active {
     background-color: lightblue;

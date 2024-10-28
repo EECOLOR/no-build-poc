@@ -17,7 +17,7 @@ const deskStructure = {
         child: pane('list', {
           items: [
             item('general', {
-              child: pane('document', { schemaType: 'generalSettings' })
+              child: pane('document', { schemaType: 'generalSettings', id: 'general' })
             })
           ]
         })

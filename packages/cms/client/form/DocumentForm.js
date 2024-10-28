@@ -2,7 +2,7 @@ import { derive, loop } from '#ui/dynamic.js'
 import { createSignal } from '#ui/signal.js'
 import { tags, css } from '#ui/tags.js'
 import { createUniqueId } from '#ui/utils.js'
-import { Button, ButtonChevronDown, ButtonChevronUp, ButtonDelete, ButtonDown, ButtonUp } from '../buildingBlocks.js'
+import { Button, ButtonChevronDown, ButtonChevronUp, ButtonDelete, ButtonDown, ButtonUp, scrollable } from '../buildingBlocks.js'
 import { context } from '../context.js'
 import { connecting, useImageMetadata } from '../data.js'
 import { debounce } from '../machinery/debounce.js'
@@ -25,7 +25,7 @@ DocumentForm.style = css`& {
 }`
 export function DocumentForm({ document }) {
   return (
-    div(// TODO: use context.documentView
+    scrollable.div(// TODO: use context.documentView
       DocumentForm.style,
       DocumentFields({ document }),
     )
@@ -40,7 +40,7 @@ function DocumentFields({ document }) {
 ObjectFields.style = css`& {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: calc(var(--default-gap) * 2);
 }`
 function ObjectFields({ document, fields, $path }) {
 
@@ -179,7 +179,7 @@ function ObjectField({ document, field, $path, id }) {
 ImageField.style = css`& {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--default-gap);
 }`
 function ImageField({ document, field, $path }) {
   const [$value, setValue] = useFieldValue({
@@ -257,7 +257,7 @@ function ObjectTitle({ id, title, $expanded, onExpandClick }) {
 ArrayField.style = css`& {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--default-gap);
   padding-left: var(--default-padding);
   border-left: 1px solid lightgray;
 
@@ -323,7 +323,7 @@ function ArrayField({ document, field, $path }) {
 
 ArrayItem.style = css`& {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--default-gap);
 
   & > :nth-child(2) {
     flex-grow: 1;

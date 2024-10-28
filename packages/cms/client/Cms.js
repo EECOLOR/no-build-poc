@@ -19,6 +19,11 @@ function CmsLoader() {
 
 CmsWithContext.style = css`& {
   --default-padding: 0.5rem;
+  --default-gap: var(--default-padding);
+
+  & > .Desk {
+    height: 100%;
+  }
 }`
 function CmsWithContext({ basePath, deskStructure, documentSchemas, documentView, apiPath, onError }) {
   const apiPathWithVersion = `${apiPath}/${apiVersion}`

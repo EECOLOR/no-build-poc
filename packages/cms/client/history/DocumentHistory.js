@@ -1,32 +1,28 @@
-import { loop } from '#ui/dynamic.js'
 import { css, tags } from '#ui/tags.js'
-import { List } from '../buildingBlocks.js'
-import { context, getPathInfo, getSchema } from '../context.js'
+import { ListSignal } from '../buildingBlocks.js'
+import { getPathInfo, getSchema } from '../context.js'
 import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
 
 const { div, span, pre, code, del, ins, date, time, em } = tags
 
 DocumentHistory.style = css`& {
-  height: 100%;
-  width: 20rem;
-
-  & > * {
-    height: 100%;
-  }
+  --gap: 1rem;
 }`
 export function DocumentHistory({ id, schemaType }) {
   const $history = useDocumentHistory({ id, schemaType })
+    .derive(history => history.filter(x => x.details.type !== 'empty'))
+
   const schema = getSchema(schemaType)
+
   return (
-    div(
+    ListSignal(
+      {
+        className: 'DocumentHistory',
+        signal: $history,
+        getKey: historyItem => historyItem.key,
+        renderItem: historyItem => HistoryItem({ historyItem, schema })
+      },
       DocumentHistory.style,
-      List({ gap: '1rem', renderItems: renderItem =>
-        loop(
-          $history.derive(history => history.filter(x => x.details.type !== 'empty')),
-          historyItem => `${historyItem.clientId} ${historyItem.fieldPath} ${historyItem.timestampEnd}`,
-          historyItem => renderItem(HistoryItem({ historyItem, schema }))
-        )
-      })
     )
   )
 }
@@ -35,6 +31,7 @@ HistoryItem.style = css`&{
   padding: 0.2rem;
 }`
 function HistoryItem({ historyItem, schema }) {
+  // TODO: history items that are not a minute old can still change, we should probably make them reactive (or not, probably not important for real use cases, maybe introduce a refresh button, I don't know)
   return (
     div(
       HistoryItemHeader({ historyItem, schema }),
@@ -47,7 +44,7 @@ HistoryItemHeader.style = css`& {
   & > .dateAndAuthor {
     display: flex;
     justify-content: space-between;
-    gap: 1rem;
+    gap: 1ex;
   }
 
   & > .pathAndAction {
@@ -77,6 +74,7 @@ function Action({ details }) {
   const { patches = [], oldValue, newValue } = details
   const [patch] = patches.slice(-1)
   const { op } = patch || {}
+
   return (
     em(
       op === 'replace' && oldValue ? 'Updated' :
@@ -136,9 +134,8 @@ function UnsupportedTypeItem({ historyItem, schema }) {
 }
 
 DateTime.style = css`& {
-  & > date {
-    margin-right: 0.5rem;
-  }
+  display: inline-flex;
+  gap: 1ex;
 }`
 function DateTime({ timestamp }) {
   const [dateString, timeString] = new Date(timestamp).toISOString().split('T')
