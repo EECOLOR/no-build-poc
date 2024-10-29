@@ -1,14 +1,14 @@
 import { Button, ButtonClose, IconAdd, scrollable } from '#cms/client/buildingBlocks.js'
 import { context } from '#cms/client/context.js'
 import { useImages } from '#cms/client/data.js'
-import { useRef } from '#cms/client/machinery/elementHooks.js'
 import { renderOnValue } from '#cms/client/machinery/renderOnValue.js'
 import { conditional, derive, loop } from '#ui/dynamic.js'
+import { useRef } from '#ui/hooks.js'
 import { createSignal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
 import { createImageSrc } from './createImgSrc.js'
 
-const { button, dialog, div, img, pre, input } = tags
+const { dialog, div, img, input } = tags
 
 const newImage = Symbol('new image')
 

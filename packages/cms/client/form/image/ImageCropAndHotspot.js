@@ -1,8 +1,9 @@
-import { useDrag, useElementSize } from '#cms/client/machinery/elementHooks.js'
-import { useCombined, useSubscriptions } from '#cms/client/machinery/signalHooks.js'
+import { useDrag } from '#cms/client/machinery/useDrag.js'
+import { useSubscriptions } from '#cms/client/machinery/signalHooks.js'
 import { conditional, derive, useOnDestroy } from '#ui/dynamic.js'
 import { Signal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
+import { useCombined, useElementSize } from '#ui/hooks.js'
 
 const { div, img } = tags
 

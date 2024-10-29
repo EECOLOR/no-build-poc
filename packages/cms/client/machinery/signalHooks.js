@@ -1,29 +1,6 @@
 import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
 import { createSignal, Signal } from '#ui/signal.js'
 
-export function useCombined(...signals) {
-  const [$combined, setCombined] = createSignal(() => signals.map(signal => signal.get()))
-
-  const subscriptions = []
-  for (const [i, signal] of signals.entries()) {
-    const unsubscribe = signal.subscribeDirect(value => {
-      setCombined(previous => {
-        const newValue = previous.slice()
-        newValue[i] = value
-        return newValue
-      })
-    })
-
-    subscriptions.push(unsubscribe)
-  }
-
-  useOnDestroy(() => {
-    for (const unsubscribe of subscriptions) unsubscribe()
-  })
-
-  return $combined
-}
-
 export function useSubscriptions(...subscriptions) {
   useOnDestroy(() => {
     for (const unsubscribe of subscriptions) unsubscribe()
@@ -62,6 +39,7 @@ export function useDynamicSignalHook(signal, constructSignalHook) {
   /** @param {X} value */
   function createSignalHook(value) {
     callCapturedOnDestroyCallbacks()
+
     const [result, callbacks] = withOnDestroyCapture(() => constructSignalHook(value))
     capturedOnDestroyCallbacks = callbacks
     return result

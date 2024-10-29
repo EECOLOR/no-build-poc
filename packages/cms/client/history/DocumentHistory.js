@@ -3,7 +3,7 @@ import { ListSignal } from '../buildingBlocks.js'
 import { getPathInfo, getSchema } from '../context.js'
 import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
 
-const { div, span, pre, code, del, ins, date, time, em } = tags
+const { div, span, pre, code, del, ins, time, em } = tags
 
 DocumentHistory.style = css`& {
   --gap: 1rem;
@@ -142,7 +142,7 @@ function DateTime({ timestamp }) {
   return (
     span(
       DateTime.style,
-      date(dateString),
+      time(dateString),
       time(timeString.slice(0, 5)),
     )
   )

@@ -35,6 +35,10 @@ function CmsWithContext({ basePath, deskStructure, documentSchemas, documentView
     clientId: window.crypto.randomUUID(),
     apiPath: apiPathWithVersion,
     events: createMessageBroker({ apiPath: apiPathWithVersion, onError }),
+    handleError(e) {
+      onError(e)
+      // TODO: show error toast or something, maybe even full screen
+    },
   })
 
   return (

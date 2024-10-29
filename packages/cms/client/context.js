@@ -6,6 +6,7 @@
  *   clientId: string
  *   apiPath: string
  *   events: import('./machinery/messageBroker.js').MessageBroker
+ *   handleError(e: Error): void
  * }} Context
  */
 

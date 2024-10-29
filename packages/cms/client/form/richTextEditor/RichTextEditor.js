@@ -77,9 +77,9 @@ export function RichTextEditor({ id, initialValue, $steps, synchronize, schema }
     },
     nodeViews: Object.fromEntries(
       Object.entries(schema.nodes).map(([name, node]) =>
-        [name, node.spec[nodeView]]
-      )
-    )
+        [name, node.spec[nodeView]] // https://github.com/ProseMirror/prosemirror-model/commit/c8c7b62645d2a8293fa6b7f52aa2b04a97821f34#r148502417
+      )                             // if link does not jump (https://github.com/orgs/community/discussions/139005#discussioncomment-11092579)
+    )                               // src/schema.ts line 432
   })
   const unsubscribe = $steps.subscribe(({ steps, clientIds }) => {
     view.dispatch(

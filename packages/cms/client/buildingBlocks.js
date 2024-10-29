@@ -1,12 +1,12 @@
 import { arrowDown, arrowUp, chevronDown, chevronLeft, chevronRight, chevronUp, plus, trash } from '#cms/client/icons.js'
 import { tags, css, Tag } from '#ui/tags.js'
 import { pushState } from './machinery/history.js'
-import { combineRefs, useHasScrollbar } from './machinery/elementHooks.js'
-import { separatePropsAndChildren } from '#ui/utils.js'
+import { combineRefs, separatePropsAndChildren } from '#ui/utils.js'
 import { Signal } from '#ui/signal.js'
 import { loop } from '#ui/dynamic.js'
+import { useElementSize } from '#ui/hooks.js'
 
-const { ul, li, button, a, div } = tags
+const { li, button, a, div } = tags
 
 List.style = css`& {
   display: flex;
@@ -72,6 +72,13 @@ function Scrollable(element, ...params) {
       ...children,
     )
   )
+}
+
+function useHasScrollbar() {
+  const { $size, ref } = useElementSize()
+  const $hasScrollbar = $size.derive(size => Boolean(size) && size.height < size.element.scrollHeight)
+
+  return { ref, $hasScrollbar }
 }
 
 export const ButtonAdd = createIconButton(plus)

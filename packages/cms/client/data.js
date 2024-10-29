@@ -34,3 +34,28 @@ export function useImageMetadata({ filename }) {
     initialValue: connecting,
   }).derive(x => typeof x === 'symbol' ? x : x && x.data)
 }
+
+/**
+ * @param {{ document, fieldType } & (
+*   { op?: 'replace', path: string, value: any } |
+*   { op: 'move', from: string, path: string } |
+*   { op: 'remove', path: string }
+* )} params
+*/
+export function patchDocument(params) {
+ const { document, fieldType } = params
+ const { op = 'replace', path, value, from } = /** @type {typeof params & { value?: any, from?: any }} */ (params)
+ // TODO: add retries if the versions do not match
+ fetch(`${context.apiPath}/documents/${document.schema.type}/${document.id}`, {
+   method: 'PATCH',
+   headers: {
+     'Content-Type': 'application/json',
+   },
+   body: JSON.stringify({
+     version: document.$value.get()?.version ?? 0,
+     patch: { op, path, value, from },
+     clientId: context.clientId,
+     fieldType,
+   })
+ }).catch(context.handleError)
+}
