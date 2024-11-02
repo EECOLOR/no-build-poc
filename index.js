@@ -1,7 +1,7 @@
 import { startServer } from '#server'
 
 await startServer({
-  indexFiles: ['/server/IndexHtml.js', '/server/admin/IndexHtml.js'],
+  indexFiles: ['/server/IndexHtml.js', '/server/admin/IndexHtml.js', '/server/game/IndexHtml.js'],
   allowedPackages: [
     '#ui',
     '#cms/client',
