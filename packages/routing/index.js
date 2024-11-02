@@ -1,3 +1,5 @@
+// Copied from @kaliber/routing
+
 export const defaultConfig = {
   trailingSlash: true,
   localeParamName: 'language',
@@ -6,6 +8,7 @@ export const defaultConfig = {
 export const routeMapSymbol = Symbol('routeMapSymbol')
 export const routeSymbol = Symbol('routeSymbol')
 
+/** @param {Partial<typeof defaultConfig>} userConfig */
 export function asRouteMap(map, userConfig = defaultConfig) {
   const config = Object.assign({}, defaultConfig, userConfig)
   const childRoutes = createRouteChildren(config, map)
@@ -25,6 +28,42 @@ export function asRouteChain(route) {
   return result
 }
 
+export function match(routeMap, path) {
+  if (!routeMap.hasOwnProperty(routeMapSymbol))
+    throw new Error('Please create the routeMap using the `asRouteMap` function')
+
+  const pathSegments = path.split('/').filter(Boolean)
+  const result = matchChildren(pathSegments, routeMap[routeMapSymbol].children)
+  return result ? result : null
+}
+
+function matchChildren(pathSegments, children, previousParams = {}) {
+  for (const route of children) {
+    const { match, children } = route[routeSymbol]
+
+    const info = match(pathSegments, previousParams)
+    if (!info)
+      continue
+
+    const { params, remainingSegments } = info
+
+    const hasChildren = Boolean(children.length)
+    const hasRemainingSegments = Boolean(remainingSegments.length)
+
+    const potentialMatch = hasChildren || !hasRemainingSegments
+    if (!potentialMatch)
+      continue
+
+    const combinedParams = { ...previousParams, ...params }
+    const resultFromChildren = matchChildren(remainingSegments, children, combinedParams)
+    if (resultFromChildren)
+      return resultFromChildren
+
+    if (!hasRemainingSegments)
+      return { params: combinedParams, route }
+  }
+}
+
 function createRouteChildren(config, children, getParent = () => null, parentName = '') {
   return mapValues(children, (childOrPath, key) => {
     const routeInput = typeof childOrPath === 'string' ? { path: childOrPath } : childOrPath
@@ -38,7 +77,7 @@ function createRoute(config, routeInput, getParent, name) {
 
   const childRoutes = createRouteChildren(config, children, () => route, name)
 
-  const info = determinePathInfo(path)
+  const info = determinePathInfo(path, config)
 
   let parent = null
   const route = withReverseRoute(config, {
