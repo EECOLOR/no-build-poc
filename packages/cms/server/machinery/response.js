@@ -9,6 +9,11 @@ export function notFound(res) {
   res.end()
 }
 
+export function methodNotAllowed(res) {
+  res.writeHead(405)
+  res.end()
+}
+
 export function sendImage(res, image) {
   res.writeHead(200) // TODO: correct headers
   res.write(image)

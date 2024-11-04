@@ -1,11 +1,14 @@
 import { createHistoryHandler } from './documents/history.js'
 import { createRichTextHandler } from './documents/rich-text.js'
 import { deleteAt, getAt, setAt } from './documents/utils.js'
-import { handleSubscription } from './machinery/eventStreams.js'
+import { handleSubscribe, handleUnsubscribe } from './machinery/eventStreams.js'
 import { withRequestJsonBody } from './machinery/request.js'
 import { respondJson } from './machinery/response.js'
 
+/** @import { DeepReadonly } from '#typescript/utils.ts' */
+
 /** @typedef {ReturnType<typeof createDocumentsHandler>['patchDocument']} PatchDocument */
+/** @typedef {DeepReadonly<ReturnType<typeof createDocumentsHandler>>} DocumentsHandler */
 
 /** @param {{ databaseActions: import('./database.js').Actions, streams: import('./machinery/eventStreams.js').Streams }} params */
 export function createDocumentsHandler({ databaseActions, streams }) {
@@ -24,42 +27,22 @@ export function createDocumentsHandler({ databaseActions, streams }) {
   const richTextHandler = createRichTextHandler({ databaseActions, streams, patchDocument })
 
   return {
-    handleRequest,
-    canHandleRequest(method, pathSegments) {
-      const [type, id] = pathSegments
-      const [subscription] = pathSegments.slice(-1)
-
-      return (
-        historyHandler.canHandleRequest(method, pathSegments)  ||
-        richTextHandler.canHandleRequest(method, pathSegments) ||
-        (id && ['PATCH'].includes(method)) ||
-        (subscription === 'subscription' && ['HEAD', 'DELETE'].includes(method))
-      )
+    richText: richTextHandler,
+    history: historyHandler,
+    handleDocumentsSubscribe(req, res, { type }) {
+      handleSubscribe(req, res, documentsEventStreams, [type])
     },
-
+    handleDocumentsUnsubscribe(req, res, { type }) {
+      handleUnsubscribe(req, res, documentsEventStreams, [type])
+    },
+    handlePatchDocument,
+    handleDocumentSubscribe(req, res, { type, id }) {
+      handleSubscribe(req, res, documentEventStreams, [type, id])
+    },
+    handleDocumentUnsubscribe(req, res, { type, id }) {
+      handleUnsubscribe(req, res, documentEventStreams, [type, id])
+    },
     /* only here so we can expose the type signature */ patchDocument,
-  }
-
-  /**
-   * @param {import('node:http').IncomingMessage} req
-   * @param {import('node:http').ServerResponse} res
-   * @param {Array<string>} pathSegments
-   */
-  function handleRequest(req, res, pathSegments, searchParams, connectId) {
-    const { method } = req
-    const [type, id] = pathSegments
-    const [subscription] = pathSegments.slice(-1)
-
-    if (historyHandler.canHandleRequest(method, pathSegments))
-      historyHandler.handleRequest(req, res, pathSegments, searchParams, connectId)
-    else if (richTextHandler.canHandleRequest(method, pathSegments))
-      richTextHandler.handleRequest(req, res, pathSegments, searchParams, connectId)
-    else if (id && method === 'PATCH')
-      handlePatchDocument(req, res, { type, id })
-    else if (id !== 'subscription' && subscription === 'subscription')
-      handleSubscription(res, documentEventStreams, method, connectId, [type, id])
-    else if (subscription === 'subscription')
-      handleSubscription(res, documentsEventStreams, method, connectId, [type])
   }
 
   function handlePatchDocument(req, res, { type, id }) {

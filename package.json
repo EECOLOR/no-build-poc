@@ -9,12 +9,11 @@
     "#server": "./packages/server/index.js",
     "#import-root-slash/*": "./packages/import-root-slash/*",
     "#import-browser/*": "./packages/import-browser/*",
-    "#islands": "./packages/islands/index.js",
-    "#islands/*": "./packages/islands/*",
     "#utils": "./packages/utils/index.js",
     "#utils/*": "./packages/utils/*",
     "#ui/*": "./packages/ui/*",
-    "#cms/*": "./packages/cms/*"
+    "#cms/*": "./packages/cms/*",
+    "#routing/*": "./packages/routing/*"
   },
   "dependencies": {
     "diff": "^7.0.0",

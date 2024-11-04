@@ -3,8 +3,11 @@ import fs from 'node:fs'
 import { createDatabase, createDatabaseActions } from './database.js'
 import { createDocumentsHandler } from './documents.js'
 import { createImagesHandler } from './images.js'
-import { notFound } from './machinery/response.js'
-import { createStreams, sendEvent, startEventStream } from './machinery/eventStreams.js'
+import { methodNotAllowed, notFound } from './machinery/response.js'
+import { createStreams } from './machinery/eventStreams.js'
+import { routeMap } from './routeMap.js'
+import { match } from '#routing/index.js'
+import { createRequestHandlers } from './requestHandlers.js'
 
 export function createCms({ basePath, storagePath }) {
   const imagesPath = path.join(storagePath, 'images')
@@ -19,9 +22,15 @@ export function createCms({ basePath, storagePath }) {
   const documentsHandler = createDocumentsHandler({ databaseActions, streams })
   const imagesHandler = createImagesHandler({ imagesPath, databaseActions })
 
+  const requestHandlers = createRequestHandlers({
+    documents: documentsHandler,
+    images: imagesHandler,
+    streams,
+  })
+
   return {
     canHandleRequest,
-    handleRequest
+    handleRequest,
   }
 
   function canHandleRequest(req) {
@@ -29,28 +38,30 @@ export function createCms({ basePath, storagePath }) {
   }
 
   function handleRequest(req, res) {
-    const { method, headers } = req
+    const { method } = req
     const { searchParams, pathname } = new URL(`fake://fake.local${req.url}`)
-    const [version, category, ...pathSegments] = pathname.replace(apiPath, '').split('/')
-    const connectId = headers['x-connect-id']
 
-    console.log(method, version, category, pathSegments.join('/'), { connectId })
+    const info = match(routeMap, pathname.replace(basePath, ''))
 
-    if (category === 'documents' && documentsHandler.canHandleRequest(method, pathSegments))
-      documentsHandler.handleRequest(req, res, pathSegments, searchParams, connectId)
-    else if (category === 'images' && imagesHandler.canHandleRequest(method, pathSegments))
-      imagesHandler.handleRequest(req, res, pathSegments, searchParams, connectId)
-    else if (category === 'events' && method === 'GET')
-      streams.connect(res)
-    else if (category === 'connect' && method === 'GET')
-      handleConnect(res)
-    else {
-      notFound(res)
-    }
+    if (!info)
+      return notFound(res)
+
+    const { params, route } = info
+    if (route === routeMap.notFound)
+      return notFound(res)
+
+    const { data } = route
+    if (!data)
+      return notFound(res)
+
+    const handlers = data(requestHandlers)
+    if (!handlers)
+      return notFound(res)
+
+    const handler = handlers[method]
+    if (!handler)
+      return methodNotAllowed(res)
+
+    return handler(req, res, { ...params, searchParams })
   }
-}
-
-function handleConnect(res) {
-  startEventStream(res)
-  sendEvent(res, 'connect', null)
 }

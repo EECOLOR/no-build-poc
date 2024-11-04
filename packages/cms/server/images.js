@@ -4,7 +4,11 @@ import sharp from 'sharp'
 import fs from 'node:fs'
 import path from 'node:path'
 import { notFound, respondJson, sendImage } from './machinery/response.js'
-import { handleSubscription } from './machinery/eventStreams.js'
+import { handleSubscribe, handleUnsubscribe } from './machinery/eventStreams.js'
+
+/** @import { DeepReadonly } from '#typescript/utils.ts' */
+
+/** @typedef {DeepReadonly<ReturnType<typeof createImagesHandler>>} ImagesHandler */
 
 /** @param {{ imagesPath: string, databaseActions: import('./database.js').Actions }} params */
 export function createImagesHandler({ imagesPath, databaseActions }) {
@@ -18,38 +22,15 @@ export function createImagesHandler({ imagesPath, databaseActions }) {
   } = databaseActions.images
 
   return {
-    handleRequest,
-    canHandleRequest(method, pathSegments) {
-      const [filename] = pathSegments
-      const [subscription] = pathSegments.slice(-1)
-
-      return (
-        metadataHandler.canHandleRequest(method, pathSegments) ||
-        (!filename && ['POST'].includes(method)) ||
-        (filename && method === 'GET') ||
-        (subscription === 'subscription' && ['HEAD', 'DELETE'].includes(method))
-      )
-    }
-  }
-
-  /**
-   * @param {import('node:http').IncomingMessage} req
-   * @param {import('node:http').ServerResponse} res
-   * @param {Array<string>} pathSegments
-   */
-  function handleRequest(req, res, pathSegments, searchParams, connectId) {
-    const { method } = req
-    const [filename] = pathSegments
-    const [subscription] = pathSegments.slice(-1)
-
-    if (metadataHandler.canHandleRequest(method, pathSegments))
-      metadataHandler.handleRequest(req, res, pathSegments, searchParams, connectId)
-    else if (subscription === 'subscription')
-      handleSubscription(res, imagesEventStream, method, connectId, [])
-    else if (!filename && method === 'POST')
-      handlePostImage(req, res, { searchParams })
-    else if (filename && method === 'GET')
-      handleGetImage(req, res, { filename, searchParams })
+    metadata: metadataHandler,
+    handleSubscribe(req, res) {
+      handleSubscribe(req, res, imagesEventStream, [])
+    },
+    handleUnsubscribe(req, res) {
+      handleUnsubscribe(req, res, imagesEventStream, [])
+    },
+    handleGetImage,
+    handlePostImage,
   }
 
   /**

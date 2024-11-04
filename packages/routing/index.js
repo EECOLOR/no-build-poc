@@ -252,7 +252,7 @@ function withReverseRoute(config, route) {
   const pathEnd = config.trailingSlash ? '/' : ''
   return Object.assign(reverseRoute, route)
 
-  function reverseRoute(params = {}) {
+  function reverseRoute(params = {}) { // TODO: should we add support for query string params?
     let resolvedPath = ''
     let currentRoute = route
 

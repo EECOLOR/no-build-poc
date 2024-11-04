@@ -1,4 +1,4 @@
-import { createCustomEventStreamCollection, handleSubscription } from '../machinery/eventStreams.js'
+import { createCustomEventStreamCollection, handleSubscribe, handleUnsubscribe } from '../machinery/eventStreams.js'
 import { withRequestJsonBody } from '../machinery/request.js'
 import { respondJson } from '../machinery/response.js'
 import { getAt } from './utils.js'
@@ -30,25 +30,13 @@ export function createRichTextHandler({ databaseActions, streams, patchDocument 
   })
 
   return {
-    handleRequest,
-    canHandleRequest(method, pathSegments) {
-      const [type, id, feature, encodedFieldPath, subscription] = pathSegments
-
-      return (
-        feature === 'rich-text' && ['POST'].includes(method) ||
-        subscription === 'subscription' && ['HEAD', 'DELETE'].includes(method)
-      )
-    }
-  }
-
-  function handleRequest(req, res, pathSegments, searchParams, connectId) {
-    const { method, headers } = req
-    const [type, id, feature, encodedFieldPath, subscription] = pathSegments
-
-    if (subscription === 'subscription')
-      handleSubscription(res, eventStreamCollection, method, connectId, [type, id, encodedFieldPath])
-    else if (feature === 'rich-text' && method === 'POST')
-      handlePostRichText(req, res, { type, id, encodedFieldPath })
+    handlePostRichText,
+    handleSubscribe(req, res, { type, id, encodedFieldPath }) {
+      handleSubscribe(req, res, eventStreamCollection, [type, id, encodedFieldPath])
+    },
+    handleUnsubscribe(req, res, { type, id, encodedFieldPath }) {
+      handleUnsubscribe(req, res, eventStreamCollection, [type, id, encodedFieldPath])
+    },
   }
 
   /** @param {import('node:http').ServerResponse} res */

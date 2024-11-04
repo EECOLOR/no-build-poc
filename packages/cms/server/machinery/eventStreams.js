@@ -54,7 +54,6 @@ export function createStreams() {
  * @typedef {{
  *   subscribe(connectId: string, args: X): void
  *   unsubscribe(connectId: string, args: X): void
- *   notify(...args: X): void
  *   isValid(connectId: string): boolean
  * }} StreamCollection
  */
@@ -114,16 +113,28 @@ export function createStreams() {
 /**
  * @template {readonly string[]} T
  * @param {StreamCollection<T>} eventStreams */
-export function handleSubscription(res, eventStreams, method, connectId, args) {
+export function handleSubscribe(req, res, eventStreams, args) {
+  handleSubscription(req, res, eventStreams, connectId => {
+    eventStreams.subscribe(connectId, args)
+  })
+}
+
+/**
+ * @template {readonly string[]} T
+ * @param {StreamCollection<T>} eventStreams */
+export function handleUnsubscribe(req, res, eventStreams, args) {
+  handleSubscription(req, res, eventStreams, connectId => {
+    eventStreams.unsubscribe(connectId, args)
+  })
+}
+
+function handleSubscription(req, res, eventStreams, f) {
+  const connectId = req.headers['x-connect-id']
   if (!eventStreams.isValid(connectId))
     return notFound(res)
 
-  if (method === 'HEAD')
-    eventStreams.subscribe(connectId, args)
-  else if (method === 'DELETE')
-    eventStreams.unsubscribe(connectId, args)
-
-  noContent(res)
+  f(connectId)
+  return noContent(res)
 }
 
 /**

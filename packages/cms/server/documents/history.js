@@ -1,5 +1,5 @@
 import { diffChars } from 'diff'
-import { handleSubscription } from '../machinery/eventStreams.js'
+import { handleSubscribe, handleUnsubscribe } from '../machinery/eventStreams.js'
 
 /** @param {{ databaseActions: import('../database.js').Actions }} params */
 export function createHistoryHandler({ databaseActions }) {
@@ -13,21 +13,13 @@ export function createHistoryHandler({ databaseActions }) {
   } = databaseActions.history
 
   return {
-    handleRequest,
-    canHandleRequest(method, pathSegments) {
-      const [type, id, feature, subscription] = pathSegments
-
-      return subscription === 'subscription' && ['HEAD', 'DELETE'].includes(method)
-    },
     updateDocumentHistory,
-  }
-
-  function handleRequest(req, res, pathSegments, searchParams, connectId) {
-    const { method, headers } = req
-    const [type, id, feature, subscription] = pathSegments
-
-    if (subscription === 'subscription')
-      handleSubscription(res, historyEventStreams, method, connectId, [type, id])
+    handleSubscribe(req, res, { type, id }) {
+      handleSubscribe(req, res, historyEventStreams, [type, id])
+    },
+    handleUnsubscribe(req, res, { type, id }) {
+      handleUnsubscribe(req, res, historyEventStreams, [type, id])
+    },
   }
 
   /**

@@ -5,9 +5,10 @@ import { UniversalContainer } from '/client/features/UniversalContainer.js'
 import { MemoryLeak } from '/client/features/MemoryLeak.js'
 import { UniversalContainer1 } from '/client/features/UniversalContainer1.js'
 import { UniversalContainer2 } from '/client/features/UniversalContainer2.js'
-import { Island, ClientConfigProvider, ImportMap, HydrateComponents } from '#islands'
+import { ClientConfigProvider, ImportMap, HydrateComponents } from '#ui/islands/setup.js'
+import { Island } from '#ui/islands/Island.js'
 
-const { html, head, body, script, b, p, i, br } = tags
+const { html, head, body, b, p, i, br } = tags
 
 export function IndexHtml({ importMap }) {
   return (

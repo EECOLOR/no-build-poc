@@ -1,4 +1,4 @@
-import { handleSubscription } from '../machinery/eventStreams.js'
+import { handleSubscribe, handleUnsubscribe } from '../machinery/eventStreams.js'
 import { withRequestJsonBody } from '../machinery/request.js'
 import { respondJson } from '../machinery/response.js'
 
@@ -13,28 +13,16 @@ export function createMetadataHandler({ databaseActions }) {
   } = databaseActions.images
 
   return {
-    handleRequest,
-    canHandleRequest(method, pathSegments) {
-      const [filename, feature, subscription] = pathSegments
-
-      return (
-        (feature === 'metadata' && filename && subscription === 'subscription' && ['GET', 'HEAD'].includes(method)) ||
-        (feature === 'metadata' && filename && method === 'PATCH')
-      )
+    handlePatchImageMetadata,
+    handleSubscribe(req, res, { filename }) {
+      handleSubscribe(req, res, metadataEventStream, [filename])
+    },
+    handleUnsubscribe(req, res, { filename }) {
+      handleUnsubscribe(req, res, metadataEventStream, [filename])
     }
   }
 
-  function handleRequest(req, res, pathSegments, searchParams, connectId) {
-    const { method } = req
-    const [filename, feature, subscription] = pathSegments
-
-    if (feature === 'metadata' && filename && subscription === 'subscription')
-      handleSubscription(res, metadataEventStream, method, connectId, [filename])
-    else if (feature === 'metadata' && filename && method === 'PATCH')
-      handlePatchImageMtadata(req, res, { filename })
-  }
-
-  function handlePatchImageMtadata(req, res, { filename }) {
+  function handlePatchImageMetadata(req, res, { filename }) {
     withRequestJsonBody(req, (body, error) => {
       // TODO: error handling
       // TODO: history

@@ -1,7 +1,7 @@
 import { raw, tags, css } from '#ui/tags.js'
 import { createSignal, derived, Signal } from '#ui/signal.js'
 import { component, createContext } from '#ui/component.js'
-import { clientConfig } from '#islands/clientConfig.js'
+import { clientConfig } from '#ui/islands/clientConfig.js'
 import { derive, loop } from '#ui/dynamic.js'
 
 import * as THREE from 'three'
