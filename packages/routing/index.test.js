@@ -107,7 +107,8 @@ describe('asRouteMap', () => {
           language: {
             path: ':language',
 
-            a: { path: { nl: 'a', en: 'b' } } },
+            a: { path: { nl: 'a', en: 'b' } },
+          },
         })
 
         expect(match(map, 'nl/a').route).toBe(map.language.a)
@@ -124,7 +125,13 @@ describe('asRouteMap', () => {
             language: {
               path: ':locale',
 
-              a: { path: { nl: 'a', en: 'b' } } },
+              a: { path: { nl: 'a', en: 'b' } }
+            },
+            noLanguage: {
+              path: 'c',
+
+              d: { path: { nl: 'e', en: 'f' } }
+            },
           },
           {
             localeParamName: 'locale',
@@ -138,6 +145,8 @@ describe('asRouteMap', () => {
         expect(match(map, 'en/b').route).toBe(map.language.a)
         expect(map.language.a({ locale: 'en' })).toBe('/en/b/')
         expect(match(map, 'nl/b')).toBe(null)
+
+        expect(map.noLanguage.d({ locale: 'en' })).toBe('/c/f/')
       })
     })
     describe('reverse routing', () => {

@@ -1,4 +1,5 @@
-// Copied from @kaliber/routing
+/** @import { Const } from '#typescript/utils.js' */
+/** @import { AsRouteMap, Config, ExtractLocaleParamName, Route, RouteInputChildren } from './types.ts' */
 
 export const defaultConfig = {
   trailingSlash: true,
@@ -8,14 +9,22 @@ export const defaultConfig = {
 export const routeMapSymbol = Symbol('routeMapSymbol')
 export const routeSymbol = Symbol('routeSymbol')
 
-/** @param {Partial<typeof defaultConfig>} userConfig */
-export function asRouteMap(map, userConfig = defaultConfig) {
+/**
+ * @template {Config} P
+ * @template {RouteInputChildren} T
+ *
+ * @param {Const<T>} map
+ * @param {Const<P>} [userConfig]
+ *
+ * @returns {AsRouteMap<T, ExtractLocaleParamName<P>>}
+ */
+export function asRouteMap(map, userConfig) {
   const config = Object.assign({}, defaultConfig, userConfig)
   const childRoutes = createRouteChildren(config, map)
-  return {
+  return /** @type {any} */ ({
     ...childRoutes,
     [routeMapSymbol]: { children: asSortedArray(childRoutes), config }
-  }
+  })
 }
 
 export function asRouteChain(route) {
@@ -73,7 +82,8 @@ function createRouteChildren(config, children, getParent = () => null, parentNam
 
 function createRoute(config, routeInput, getParent, name) {
   const { path, data = undefined, ...children } = routeInput
-  if (path === undefined) throw new Error(`No path found in '${name}': ${JSON.stringify(routeInput)}`)
+  if (path === undefined)
+    throw new Error(`No path found in '${name}': ${JSON.stringify(routeInput)}`)
 
   const childRoutes = createRouteChildren(config, children, () => route, name)
 
@@ -237,6 +247,7 @@ function calculateScore(path) {
   return totalScore
 }
 
+/** @returns {Route} */
 function withReverseRoute(config, route) {
   const pathEnd = config.trailingSlash ? '/' : ''
   return Object.assign(reverseRoute, route)
@@ -259,6 +270,14 @@ function asSortedArray(children) {
   return Object.values(children).sort((a, b) => b[routeSymbol].score - a[routeSymbol].score)
 }
 
+/**
+ * @template {{ [key: string | number | symbol]: any }} O
+ * @template {(v: O[keyof O], k: keyof O, o: O) => any} F
+ *
+ * @param {O} o
+ * @param {F} f
+ * @returns {{ [key in keyof O]: ReturnType<F> }}
+ */
 function mapValues(o, f) {
   return Object.fromEntries(
     Object.entries(o).map(([k, v]) => [k, f(v, k, o)])
