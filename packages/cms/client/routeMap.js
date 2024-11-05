@@ -1,6 +1,6 @@
-import { asRouteMap } from '#routing/index.js';
+import { asRouteMap } from '#routing/routeMap.js';
 
-/** @import { RequestHandlers } from './requestHandlers.js' */
+/** @import { RequestHandlers } from '#cms/server/requestHandlers.js' */
 
 export const routeMap = asRouteMap({
   api: {

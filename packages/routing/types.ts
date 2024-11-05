@@ -1,5 +1,5 @@
 import { Expand } from '#typescript/utils.js'
-import type { routeSymbol, routeMapSymbol } from './index.js'
+import type { routeSymbol, routeMapSymbol } from './routeMap.js'
 
 export type RouteMap = { [routeMapSymbol]: any }
 export type Route = ReverseRoute & RouteProps & { [routeSymbol]: any }

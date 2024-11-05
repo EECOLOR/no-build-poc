@@ -5,8 +5,8 @@ import { createDocumentsHandler } from './documents.js'
 import { createImagesHandler } from './images.js'
 import { methodNotAllowed, notFound } from './machinery/response.js'
 import { createStreams } from './machinery/eventStreams.js'
-import { routeMap } from './routeMap.js'
-import { match } from '#routing/index.js'
+import { routeMap } from '#cms/client/routeMap.js'
+import { match } from '#routing/routeMap.js'
 import { createRequestHandlers } from './requestHandlers.js'
 
 export function createCms({ basePath, storagePath }) {

@@ -1,6 +1,6 @@
-import { asRouteChain, asRouteMap, match, routeMapSymbol, routeSymbol } from './index.js'
 import { describe, test } from 'node:test'
 import assert from 'node:assert/strict'
+import { asRouteChain, asRouteMap, match, routeMapSymbol, routeSymbol } from './routeMap.js'
 
 describe('asRouteMap', () => {
 
