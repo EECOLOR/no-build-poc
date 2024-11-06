@@ -61,17 +61,22 @@ export const render = createRenderer(
 
         const unsubscribe = dynamic.signal.subscribeDirect(newItems => {
           const unusedKeys = new Set(infoByKey.keys())
-          const oldNodes = nodes.slice(1, -1)
-          const newNodes = newItems.flatMap((item, i, items) => {
-            const key = dynamic.getKey(item, i, items)
+
+          for (const [i, item] of newItems.entries()) {
+            const key = dynamic.getKey(item, i, newItems)
             unusedKeys.delete(key)
-            return infoByKey.has(key) ? infoByKey.get(key).nodes : renderItem(key, item, i, items)
-          })
+          }
 
           for (const key of unusedKeys) {
             for (const callback of infoByKey.get(key).callbacks) callback()
             infoByKey.delete(key)
           }
+
+          const oldNodes = nodes.slice(1, -1)
+          const newNodes = newItems.flatMap((item, i, items) => {
+            const key = dynamic.getKey(item, i, items)
+            return infoByKey.has(key) ? infoByKey.get(key).nodes : renderItem(key, item, i, items)
+          })
 
           swapNodesInDom(marker, newNodes, oldNodes)
 
