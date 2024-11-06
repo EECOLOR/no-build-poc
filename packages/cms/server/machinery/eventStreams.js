@@ -55,6 +55,7 @@ export function createStreams() {
  *   subscribe(connectId: string, args: X): void
  *   unsubscribe(connectId: string, args: X): void
  *   isValid(connectId: string): boolean
+ *   channel: string
  * }} StreamCollection
  */
 
@@ -62,15 +63,15 @@ export function createStreams() {
  * @template {readonly string[]} X
  * @template Y
  * @param {{
- *   getChannel(args: X): string
  *   getData(...args: X): Y,
  *   eventName: string,
- *   streams: Streams
+ *   streams: Streams,
+ *   channel?: string,
  * }} props
  */
- export function createEventStreamCollection({ getChannel, getData, eventName, streams }) {
+ export function createEventStreamCollection({ getData, eventName, streams, channel = eventName }) {
   const collection = createCustomEventStreamCollection({
-    getChannel,
+    channel,
     createInitialValue: noValue,
     notifyEvent: eventName,
     subscribeEvent: eventName,
@@ -97,6 +98,8 @@ export function createStreams() {
     isValid(connectId) {
       return collection.isValid(connectId)
     },
+
+    channel,
   }
 
   /** @param {X} args */
@@ -111,37 +114,10 @@ export function createStreams() {
 }
 
 /**
- * @template {readonly string[]} T
- * @param {StreamCollection<T>} eventStreams */
-export function handleSubscribe(req, res, eventStreams, args) {
-  handleSubscription(req, res, eventStreams, connectId => {
-    eventStreams.subscribe(connectId, args)
-  })
-}
-
-/**
- * @template {readonly string[]} T
- * @param {StreamCollection<T>} eventStreams */
-export function handleUnsubscribe(req, res, eventStreams, args) {
-  handleSubscription(req, res, eventStreams, connectId => {
-    eventStreams.unsubscribe(connectId, args)
-  })
-}
-
-function handleSubscription(req, res, eventStreams, f) {
-  const connectId = req.headers['x-connect-id']
-  if (!eventStreams.isValid(connectId))
-    return notFound(res)
-
-  f(connectId)
-  return noContent(res)
-}
-
-/**
  * @template {readonly string[]} X
  * @template Y
  * @param {{
- *   getChannel(args: X): string
+ *   channel: string
  *   createInitialValue(...args: X): Y
  *   subscribeEvent: string
  *   getSubscribeData(value: Y, args: X): any
@@ -150,7 +126,7 @@ function handleSubscription(req, res, eventStreams, f) {
  * }} props
  */
 export function createCustomEventStreamCollection({
-  getChannel,
+  channel,
   createInitialValue,
   subscribeEvent,
   getSubscribeData,
@@ -198,11 +174,13 @@ export function createCustomEventStreamCollection({
     getValue(...args) {
       return getAt(collection, args)?.value
     },
+
+    channel,
   }
 
   /** @param {X} args */
   function event(base, args) {
-    return `${base}-${getChannel(args)}`
+    return `${base}-${channel}-${args.join('|')}`
   }
 
   /** @param {X} args */

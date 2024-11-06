@@ -1,10 +1,12 @@
 import { sendEvent, startEventStream } from './machinery/eventStreams.js'
+import { withRequestJsonBody } from './machinery/request.js'
+import { noContent, notFound } from './machinery/response.js'
 
 /** @typedef {ReturnType<typeof createRequestHandlers>} RequestHandlers */
 
 /** @import { DocumentsHandler } from './documents.js' */
 /** @import { ImagesHandler } from './images.js' */
-/** @import { Streams } from './machinery/eventStreams.js' */
+/** @import { Streams, StreamCollection } from './machinery/eventStreams.js' */
 
 /**
  * @param {{
@@ -15,43 +17,31 @@ import { sendEvent, startEventStream } from './machinery/eventStreams.js'
  */
 export function createRequestHandlers({ documents, images, streams }) {
 
-  return {
+  const channels = byChannel(
+    documents.documentEventStreams,
+    documents.documentsEventStreams,
+    documents.richText.eventStreamCollection,
+    documents.history.historyEventStreams,
+    images.imagesEventStream,
+    images.metadata.metadataEventStream,
+  )
 
+  return {
     documents: {
-      subscription: {
-        HEAD: documents.handleDocumentsSubscribe,
-        DELETE: documents.handleDocumentsUnsubscribe,
-      },
       single: {
         patch: {
           PATCH: documents.handlePatchDocument,
-        },
-        subscription: {
-          HEAD: documents.handleDocumentSubscribe,
-          DELETE: documents.handleDocumentUnsubscribe,
         },
         richText: {
           post: {
             POST: documents.richText.handlePostRichText,
           },
-          subscription: {
-            HEAD: documents.richText.handleSubscribe,
-            DELETE: documents.richText.handleUnsubscribe,
-          }
         },
-        history: {
-          HEAD: documents.history.handleSubscribe,
-          DELETE: documents.history.handleUnsubscribe,
-        }
       }
     },
     images: {
       post: {
         POST: images.handlePostImage,
-      },
-      subscription: {
-        HEAD: images.handleSubscribe,
-        DELETE: images.handleUnsubscribe,
       },
       single: {
         get: {
@@ -62,16 +52,36 @@ export function createRequestHandlers({ documents, images, streams }) {
           patch: {
             PATCH: images.metadata.handlePatchImageMetadata,
           },
-          subscription: {
-            HEAD: images.metadata.handleSubscribe,
-            DELETE: images.metadata.handleUnsubscribe,
-          },
         }
       }
     },
     events: {
       connect: {
-        GET: (req, res) => streams.connect(res)
+        GET: (req, res) => streams.connect(res),
+      },
+      subscription: {
+        POST: (req, res, params) => {
+          withRequestJsonBody(req, (body, e) => {
+
+            // TODO: error handling
+            const { channel, args } = body
+
+            // TODO: incorrect args for channel handling
+
+            const eventStreams = channels[channel]
+            const connectId = req.headers['x-connect-id']
+            if (!eventStreams.isValid(connectId))
+              return notFound(res)
+
+            const { action } = params
+            if (action === 'subscribe')
+              eventStreams.subscribe(connectId, args)
+            if (action === 'unsubscribe')
+              eventStreams.unsubscribe(connectId, args)
+
+            noContent(res)
+          })
+        }
       }
     },
     connect: {
@@ -81,4 +91,9 @@ export function createRequestHandlers({ documents, images, streams }) {
       }
     }
   }
+}
+
+/** @param {StreamCollection<any>[]} eventStreams */
+function byChannel(...eventStreams) {
+  return Object.fromEntries(eventStreams.map(x => [x.channel, x]))
 }

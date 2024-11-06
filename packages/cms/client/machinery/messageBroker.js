@@ -1,10 +1,11 @@
 import { createSignal } from '#ui/signal.js'
 import { createAsyncTaskQueue } from './asyncTaskQueue.js'
 
-/** @typedef {string} Pathname */
+/** @typedef {string} Key */
+/** @typedef {string} Channel */
+/** @typedef {any[]} Args */
 /** @typedef {string} EventName */
 /** @typedef {(event: EventName, data: any) => void} Callback */
-/** @typedef {number} ConnectionCount */
 /** @typedef {ReturnType<typeof createMessageBroker>} MessageBroker */
 
 /**
@@ -15,24 +16,25 @@ export function createMessageBroker({ apiPath, onError }) {
   const eventSource = createEventSource({ onConnectIdChange: setConnectId, onError })
   const serverQueue = createAsyncTaskQueue({ processTask, onError, })
 
-  /** @type {Map<Pathname, ConnectionCount>} */
+  /** @type {Map<Key, { count, channel, args }>} */
   const serverSubscriptions = new Map()
 
   $connectId.subscribe(_ => {
-    for (const pathname of serverSubscriptions.keys())
-      updateServerSubscription('subscribe', pathname)
+    for (const { channel, args } of serverSubscriptions.values())
+      updateServerSubscription('subscribe', channel, args)
   })
 
   return {
     /**
      *
-     * @param {Pathname} pathname
+     * @param {Channel} channel
+     * @param {Args} args
      * @param {EventName} event
      * @param {Callback} callback
      */
-    subscribe(pathname, event, callback) {
-      const unsubscribeFromEventSource = subscribeToEventSource(pathname, event, callback)
-      const unsubscribeFromServer = subscribeToServer(pathname)
+    subscribe(channel, args, event, callback) {
+      const unsubscribeFromEventSource = subscribeToEventSource(event, channel, args, callback)
+      const unsubscribeFromServer = subscribeToServer(channel, args)
 
       return function unsubscribe() {
         unsubscribeFromEventSource()
@@ -60,8 +62,8 @@ export function createMessageBroker({ apiPath, onError }) {
     return eventSource
   }
 
-  function subscribeToEventSource(pathname, event, callback) {
-    const fullEventName = `${event}-${pathname}`
+  function subscribeToEventSource(event, channel, args, callback) {
+    const fullEventName = `${event}-${channel}-${args.join('|')}`
     eventSource.addEventListener(fullEventName, listener)
 
     return function unsubscribeFromEventSource() {
@@ -73,34 +75,37 @@ export function createMessageBroker({ apiPath, onError }) {
     }
   }
 
-  function subscribeToServer(pathname) {
-    const count = serverSubscriptions.get(pathname) || 0
-    serverSubscriptions.set(pathname, count + 1)
+  function subscribeToServer(channel, args) {
+    const key = `${channel}-${args.join('|')}`
 
-    if (count)
+    const existingSubscription = serverSubscriptions.get(key)
+    if (existingSubscription) {
+      existingSubscription.count += 1
       return unsubscribeFromServer
+    }
 
-    updateServerSubscription('subscribe', pathname)
+    serverSubscriptions.set(key, { count: 1, channel, args })
+    updateServerSubscription('subscribe', channel, args)
 
     return unsubscribeFromServer
 
     function unsubscribeFromServer() {
-      const count = serverSubscriptions.get(pathname)
-      const newCount = count - 1
-      if (newCount)
-        serverSubscriptions.set(pathname, newCount)
-      else {
-        serverSubscriptions.delete(pathname)
-        updateServerSubscription('unsubscribe', pathname)
-      }
+      const subscription = serverSubscriptions.get(key)
+      subscription.count -= 1
+      if (subscription.count)
+        return
+
+      serverSubscriptions.delete(key)
+      updateServerSubscription('unsubscribe', channel, args)
     }
   }
 
-  function updateServerSubscription(action, pathname) {
+  function updateServerSubscription(action, channel, args) {
     serverQueue.add(connectId =>
-      fetch(`${apiPath}/${pathname}/subscription`, {
-        method: action === 'subscribe' ? 'HEAD' : 'DELETE',
-        headers: { 'X-connect-id': connectId }
+      fetch(`${apiPath}/events/${action}`, {
+        method: 'POST',
+        headers: { 'X-connect-id': connectId },
+        body: JSON.stringify({ channel, args }),
       })
     )
   }

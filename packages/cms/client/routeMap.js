@@ -9,41 +9,20 @@ export const routeMap = asRouteMap({
     documents: {
       path: 'documents/:type',
 
-      subscription: {
-        path: 'subscription',
-        data: handler(x => x.documents.subscription)
-      },
       single: {
         path: ':id',
         data: handler(x => x.documents.single.patch),
 
-        subscription: {
-          path: 'subscription',
-          data: handler(x => x.documents.single.subscription)
-        },
         richText: {
           path: 'rich-text/:encodedFieldPath',
           data: handler(x => x.documents.single.richText.post),
-
-          subscription: {
-            path: 'subscription',
-            data: handler(x => x.documents.single.richText.subscription)
-          }
         },
-        history: {
-          path: 'history/subscription',
-          data: handler(x => x.documents.single.history)
-        }
       }
     },
     images: {
       path: 'images',
       data: handler(x => x.images.post),
 
-      subscription: {
-        path: 'subscription',
-        data: handler(x => x.images.subscription)
-      },
       single: {
         path: ':filename',
         data: handler(x => x.images.single.get),
@@ -51,17 +30,17 @@ export const routeMap = asRouteMap({
         metadata: {
           path: 'metadata',
           data: handler(x => x.images.single.metadata.patch),
-
-          subscription: {
-            path: 'subscription',
-            data: handler(x => x.images.single.metadata.subscription)
-          },
         }
       }
     },
     events: {
       path: 'events',
-      data: handler(x => x.events.connect)
+      data: handler(x => x.events.connect),
+
+      subscription: {
+        path: ':action',
+        data: handler(x => x.events.subscription)
+      }
     },
     connect: {
       path: 'connect',

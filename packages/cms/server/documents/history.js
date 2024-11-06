@@ -1,5 +1,4 @@
 import { diffChars } from 'diff'
-import { handleSubscribe, handleUnsubscribe } from '../machinery/eventStreams.js'
 
 /** @param {{ databaseActions: import('../database.js').Actions }} params */
 export function createHistoryHandler({ databaseActions }) {
@@ -14,12 +13,7 @@ export function createHistoryHandler({ databaseActions }) {
 
   return {
     updateDocumentHistory,
-    handleSubscribe(req, res, { type, id }) {
-      handleSubscribe(req, res, historyEventStreams, [type, id])
-    },
-    handleUnsubscribe(req, res, { type, id }) {
-      handleUnsubscribe(req, res, historyEventStreams, [type, id])
-    },
+    historyEventStreams,
   }
 
   /**

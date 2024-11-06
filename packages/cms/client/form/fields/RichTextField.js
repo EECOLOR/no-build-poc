@@ -10,10 +10,11 @@ RichTextField.style = css`& {
 }`
 export function RichTextField({ document, field, $path, id }) {
   const { schema } = field
-  const $richTextPathname = $path.derive(path => getRichTextPathname({ document, fieldPath: path }))
+  const $richTextArgs = $path.derive(path => getRichTextArgs({ document, fieldPath: path }))
 
   const $events = useEventSourceAsSignal({
-    pathnameSignal: $richTextPathname,
+    channel: 'document/rich-text',
+    argsSignal: $richTextArgs,
     events: ['initialValue', 'steps'],
   })
 
@@ -39,8 +40,10 @@ export function RichTextField({ document, field, $path, id }) {
 
   function synchronize({ clientId, steps, version, value }) {
     const controller = new AbortController()
+    const [type, id, encodedFieldPath] = $richTextArgs.get()
+
     const result = fetch(
-      `${context.apiPath}/${$richTextPathname.get()}`,
+      `${context.apiPath}/documents/${type}/${id}/rich-text/${encodedFieldPath}`,
       {
         method: 'POST',
         headers: {
@@ -75,7 +78,7 @@ function parseStepsData(value, schema) {
   }
 }
 
-function getRichTextPathname({ document, fieldPath }) {
+function getRichTextArgs({ document, fieldPath }) {
   // instead of using path as an id for prosemirror document handing, we should probably use a unique id for each document, that would prevent problems handling stuff nested in arrays
-  return `documents/${document.schema.type}/${document.id}/rich-text/${encodeURIComponent(fieldPath)}`
+  return [document.schema.type, document.id, encodeURIComponent(fieldPath)]
 }

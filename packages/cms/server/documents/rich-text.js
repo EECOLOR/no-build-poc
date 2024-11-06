@@ -1,4 +1,4 @@
-import { createCustomEventStreamCollection, handleSubscribe, handleUnsubscribe } from '../machinery/eventStreams.js'
+import { createCustomEventStreamCollection } from '../machinery/eventStreams.js'
 import { withRequestJsonBody } from '../machinery/request.js'
 import { respondJson } from '../machinery/response.js'
 import { getAt } from './utils.js'
@@ -15,7 +15,7 @@ export function createRichTextHandler({ databaseActions, streams, patchDocument 
   const { getDocumentById } = databaseActions.documents
 
   const eventStreamCollection = createCustomEventStreamCollection({
-    getChannel: ([type, id, encodedFieldPath]) => `documents/${type}/${id}/rich-text/${encodedFieldPath}`,
+    channel: `document/rich-text`,
     createInitialValue(type, id, encodedFieldPath) {
       const fieldPath = decodeURIComponent(encodedFieldPath)
       return {
@@ -31,12 +31,7 @@ export function createRichTextHandler({ databaseActions, streams, patchDocument 
 
   return {
     handlePostRichText,
-    handleSubscribe(req, res, { type, id, encodedFieldPath }) {
-      handleSubscribe(req, res, eventStreamCollection, [type, id, encodedFieldPath])
-    },
-    handleUnsubscribe(req, res, { type, id, encodedFieldPath }) {
-      handleUnsubscribe(req, res, eventStreamCollection, [type, id, encodedFieldPath])
-    },
+    eventStreamCollection,
   }
 
   /** @param {import('node:http').ServerResponse} res */

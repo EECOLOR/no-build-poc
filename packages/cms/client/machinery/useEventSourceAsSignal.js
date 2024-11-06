@@ -4,24 +4,24 @@ import { context } from '../context.js'
 
 /**
  * @template T
- * @param {({ pathname: string } | { pathnameSignal: Signal<string> }) &
- *   { events: Array<string>, initialValue?: T }
+ * @param {({ args: any[] } | { argsSignal: Signal<any[]> }) &
+ *   { channel: string, events: Array<string>, initialValue?: T }
  * } params
  * @returns {Signal<T | { event: string, data: any }>}
  */
 export function useEventSourceAsSignal(params) {
-  const { events, initialValue = null } = params
+  const { channel, events, initialValue = null } = params
 
-  const pathIsSignal = 'pathnameSignal' in params
+  const argsIsSignal = 'argsSignal' in params
 
   const [$signal, setValue] = createSignal(initialValue)
 
-  const pathname = pathIsSignal ? params.pathnameSignal.get() : params.pathname
-  let unsubscribeEvents = subscribeToEvents(pathname, events, setValue)
+  const args = argsIsSignal ? params.argsSignal.get() : params.args
+  let unsubscribeEvents = subscribeToEvents(channel, args, events, setValue)
 
-  const unsubscribeSignal = pathIsSignal && params.pathnameSignal.subscribe(pathname => {
+  const unsubscribeSignal = argsIsSignal && params.argsSignal.subscribe(args => {
     unsubscribeEvents()
-    unsubscribeEvents = subscribeToEvents(pathname, events, setValue)
+    unsubscribeEvents = subscribeToEvents(channel, args, events, setValue)
   })
 
   useOnDestroy(() => {
@@ -32,10 +32,10 @@ export function useEventSourceAsSignal(params) {
   return $signal
 }
 
-function subscribeToEvents(pathname, events, callback) {
+function subscribeToEvents(channel, args, events, callback) {
   const subscriptions = []
   for (const event of events)
-    subscriptions.push(context.events.subscribe(pathname, event, callback))
+    subscriptions.push(context.events.subscribe(channel, args, event, callback))
 
   return function unsubscribe() {
     for (const unsubscribe of subscriptions)

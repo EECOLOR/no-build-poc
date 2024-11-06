@@ -1,7 +1,6 @@
 import { createHistoryHandler } from './documents/history.js'
 import { createRichTextHandler } from './documents/rich-text.js'
 import { deleteAt, getAt, setAt } from './documents/utils.js'
-import { handleSubscribe, handleUnsubscribe } from './machinery/eventStreams.js'
 import { withRequestJsonBody } from './machinery/request.js'
 import { respondJson } from './machinery/response.js'
 
@@ -29,26 +28,15 @@ export function createDocumentsHandler({ databaseActions, streams }) {
   return {
     richText: richTextHandler,
     history: historyHandler,
-    handleDocumentsSubscribe(req, res, { type }) {
-      handleSubscribe(req, res, documentsEventStreams, [type])
-    },
-    handleDocumentsUnsubscribe(req, res, { type }) {
-      handleUnsubscribe(req, res, documentsEventStreams, [type])
-    },
     handlePatchDocument,
-    handleDocumentSubscribe(req, res, { type, id }) {
-      handleSubscribe(req, res, documentEventStreams, [type, id])
-    },
-    handleDocumentUnsubscribe(req, res, { type, id }) {
-      handleUnsubscribe(req, res, documentEventStreams, [type, id])
-    },
+    documentsEventStreams,
+    documentEventStreams,
     /* only here so we can expose the type signature */ patchDocument,
   }
 
   function handlePatchDocument(req, res, { type, id }) {
     withRequestJsonBody(req, (body, error) => {
       // TODO: error handling
-      console.dir({ body, error }, { depth: 8 })
       const { version, patch, clientId, fieldType } = body
 
       const result = patchDocument({ clientId, type, id, version, patch, fieldType })

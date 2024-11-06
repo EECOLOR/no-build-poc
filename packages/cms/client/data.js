@@ -6,7 +6,8 @@ export const connecting = Symbol('connecting')
 
 export function useDocument({ id, schemaType }) {
   return useEventSourceAsSignal({
-    pathname: `documents/${schemaType}/${id}`,
+    channel: 'document',
+    args: [schemaType, id],
     events: ['document'],
     initialValue: connecting,
   }).derive(x => typeof x === 'symbol' ? x : x && x.data)
@@ -14,14 +15,16 @@ export function useDocument({ id, schemaType }) {
 
 export function useDocuments({ schemaType }) {
   return useEventSourceAsSignal({
-    pathname: `documents/${schemaType}`,
+    channel: 'documents',
+    args: [schemaType],
     events: ['documents'],
   }).derive(x => x?.data || [])
 }
 
 export function useImages() {
   return useEventSourceAsSignal({
-    pathname: `images`,
+    channel: 'images',
+    args: [],
     events: ['images'],
   }).derive(x => x?.data || [])
 }
@@ -29,7 +32,8 @@ export function useImages() {
 /** @returns {Signal<typeof connecting | { width, height, crop?, hotspot? }>} */
 export function useImageMetadata({ filename }) {
   return useEventSourceAsSignal({
-    pathname: `images/${filename}/metadata`,
+    channel: 'image/metadata',
+    args: [filename],
     events: ['metadata'],
     initialValue: connecting,
   }).derive(x => typeof x === 'symbol' ? x : x && x.data)

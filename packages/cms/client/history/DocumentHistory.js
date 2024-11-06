@@ -213,7 +213,8 @@ function ObjectItem({ historyItem, schema }) {
 
 function useDocumentHistory({ id, schemaType }) {
   return useEventSourceAsSignal({
-    pathname: `documents/${schemaType}/${id}/history`,
+    channel: 'document/history',
+    args: [schemaType, id],
     events: ['history'],
   }).derive(x => x?.data || [])
 }

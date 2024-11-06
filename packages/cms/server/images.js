@@ -4,7 +4,6 @@ import sharp from 'sharp'
 import fs from 'node:fs'
 import path from 'node:path'
 import { notFound, respondJson, sendImage } from './machinery/response.js'
-import { handleSubscribe, handleUnsubscribe } from './machinery/eventStreams.js'
 
 /** @import { DeepReadonly } from '#typescript/utils.ts' */
 
@@ -23,12 +22,7 @@ export function createImagesHandler({ imagesPath, databaseActions }) {
 
   return {
     metadata: metadataHandler,
-    handleSubscribe(req, res) {
-      handleSubscribe(req, res, imagesEventStream, [])
-    },
-    handleUnsubscribe(req, res) {
-      handleUnsubscribe(req, res, imagesEventStream, [])
-    },
+    imagesEventStream,
     handleGetImage,
     handlePostImage,
   }

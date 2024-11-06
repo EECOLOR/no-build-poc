@@ -1,4 +1,3 @@
-import { handleSubscribe, handleUnsubscribe } from '../machinery/eventStreams.js'
 import { withRequestJsonBody } from '../machinery/request.js'
 import { respondJson } from '../machinery/response.js'
 
@@ -14,12 +13,7 @@ export function createMetadataHandler({ databaseActions }) {
 
   return {
     handlePatchImageMetadata,
-    handleSubscribe(req, res, { filename }) {
-      handleSubscribe(req, res, metadataEventStream, [filename])
-    },
-    handleUnsubscribe(req, res, { filename }) {
-      handleUnsubscribe(req, res, metadataEventStream, [filename])
-    }
+    metadataEventStream,
   }
 
   function handlePatchImageMetadata(req, res, { filename }) {
