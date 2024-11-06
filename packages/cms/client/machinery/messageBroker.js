@@ -80,6 +80,12 @@ export function createMessageBroker({ apiPath, onError }) {
 
     const existingSubscription = serverSubscriptions.get(key)
     if (existingSubscription) {
+      // If you end up here because of the warning you might want the initial value to be sent for
+      // each subscription, even if it is a double subscription. It is quite easy to do so by
+      // modifying this code. The implications however are that every subscription will get that
+      // initial value again, which is potentially bad for performance and might even cause
+      // unexpected behavior.
+      console.warn(`Warning: multiple subscriptions active for the same channel and args (${key}), you might want to share those subscriptions. Also note that the initial value is only sent for the first subscription. See code for more details.`)
       existingSubscription.count += 1
       return unsubscribeFromServer
     }
