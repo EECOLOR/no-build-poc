@@ -33,12 +33,5 @@ export function useEventSourceAsSignal(params) {
 }
 
 function subscribeToEvents(channel, args, events, callback) {
-  const subscriptions = []
-  for (const event of events)
-    subscriptions.push(context.events.subscribe(channel, args, event, callback))
-
-  return function unsubscribe() {
-    for (const unsubscribe of subscriptions)
-      unsubscribe()
-  }
+  return context.events.subscribe(channel, args, events, callback)
 }

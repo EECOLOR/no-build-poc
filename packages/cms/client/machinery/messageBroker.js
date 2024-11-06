@@ -29,15 +29,20 @@ export function createMessageBroker({ apiPath, onError }) {
      *
      * @param {Channel} channel
      * @param {Args} args
-     * @param {EventName} event
+     * @param {Array<EventName>} events
      * @param {Callback} callback
      */
-    subscribe(channel, args, event, callback) {
-      const unsubscribeFromEventSource = subscribeToEventSource(event, channel, args, callback)
+    subscribe(channel, args, events, callback) {
+      const eventSourceSubscriptions = []
+      for (const event of events)
+        eventSourceSubscriptions.push(subscribeToEventSource(event, channel, args, callback))
+
       const unsubscribeFromServer = subscribeToServer(channel, args)
 
       return function unsubscribe() {
-        unsubscribeFromEventSource()
+        for (const unsubscribe of eventSourceSubscriptions)
+          unsubscribe()
+
         unsubscribeFromServer()
       }
     }
