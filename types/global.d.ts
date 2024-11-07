@@ -8,7 +8,12 @@ declare interface ObjectConstructor {
   fromEntries<Key extends PropertyKey, Value>(entries: Iterable<readonly [Key, Value]>): { [k in Key]: Value }
 }
 
+// TODO: move this to library if possible
 declare module '#config' {
-  const x: (typeof import('../config/dev.js').default) & (typeof import('../config/default.js').default)
+  const x: (
+    (typeof import('../config/dev.js').default) &
+    (typeof import('../config/default.js').default) &
+    (typeof import('../config/local.js').default)
+  )
   export default x
 }

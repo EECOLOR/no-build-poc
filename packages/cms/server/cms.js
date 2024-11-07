@@ -23,6 +23,7 @@ export function createCms({ basePath, storagePath }) {
   const imagesHandler = createImagesHandler({ imagesPath, databaseActions })
 
   const requestHandlers = createRequestHandlers({
+    basePath,
     documents: documentsHandler,
     images: imagesHandler,
     streams,

@@ -24,3 +24,10 @@ export function noContent(res) {
   res.writeHead(204, { 'Content-Length': 0, 'Connection': 'close' })
   res.end()
 }
+
+export function redirect(res, status, url) {
+  res.writeHead(status, { 'Location': url })
+  res.end()
+}
+
+export const FOUND = 302

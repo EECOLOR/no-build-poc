@@ -27,7 +27,8 @@ CmsWithContext.style = css`& {
   }
 }`
 function CmsWithContext({ basePath, deskStructure, documentSchemas, documentView, onError }) {
-  const { api } = withParamsAndPrefix(basePath, routeMap, { version: apiVersion })
+  const versionedRouteMap = withParamsAndPrefix(basePath, routeMap, { version: apiVersion })
+  const api = versionedRouteMap.api.versioned
 
   setContext({
     documentSchemas,

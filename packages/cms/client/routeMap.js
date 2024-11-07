@@ -4,47 +4,68 @@ import { asRouteMap } from '#routing/routeMap.js';
 
 export const routeMap = asRouteMap({
   api: {
-    path: 'api/:version',
+    path: 'api',
 
-    documents: {
-      path: 'documents/:type',
+    versioned: {
+      path: ':version',
 
-      single: {
-        path: ':id',
-        data: handler(x => x.documents.single.patch),
+      documents: {
+        path: 'documents/:type',
 
-        richText: {
-          path: 'rich-text/:encodedFieldPath',
-          data: handler(x => x.documents.single.richText.post),
-        },
-      }
+        single: {
+          path: ':id',
+          data: handler(x => x.documents.single.patch),
+
+          richText: {
+            path: 'rich-text/:encodedFieldPath',
+            data: handler(x => x.documents.single.richText.post),
+          },
+        }
+      },
+      images: {
+        path: 'images',
+        data: handler(x => x.images.post),
+
+        single: {
+          path: ':filename',
+          data: handler(x => x.images.single.get),
+
+          metadata: {
+            path: 'metadata',
+            data: handler(x => x.images.single.metadata.patch),
+          }
+        }
+      },
+      events: {
+        path: 'events',
+        data: handler(x => x.events.connect),
+
+        subscription: {
+          path: ':action',
+          data: handler(x => x.events.subscription)
+        }
+      },
+      connect: {
+        path: 'connect',
+        data: handler(x => x.connect)
+      },
     },
-    images: {
-      path: 'images',
-      data: handler(x => x.images.post),
 
-      single: {
-        path: ':filename',
-        data: handler(x => x.images.single.get),
+    auth: {
+      path: 'auth',
 
-        metadata: {
-          path: 'metadata',
-          data: handler(x => x.images.single.metadata.patch),
+      google: {
+        path: 'google',
+
+        login: {
+          path: 'login',
+          data: handler(x => x.auth.google.login)
+        },
+        callback: {
+          path: 'callback',
+          data: handler(x => x.auth.google.callback)
         }
       }
-    },
-    events: {
-      path: 'events',
-      data: handler(x => x.events.connect),
-
-      subscription: {
-        path: ':action',
-        data: handler(x => x.events.subscription)
-      }
-    },
-    connect: {
-      path: 'connect',
-      data: handler(x => x.connect)
     },
   },
   notFound: '*'

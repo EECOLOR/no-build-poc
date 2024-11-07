@@ -1,6 +1,7 @@
+import config from '#config'
 import { sendEvent, startEventStream } from './machinery/eventStreams.js'
 import { withRequestJsonBody } from './machinery/request.js'
-import { noContent, notFound } from './machinery/response.js'
+import { FOUND, noContent, notFound, redirect } from './machinery/response.js'
 
 /** @typedef {ReturnType<typeof createRequestHandlers>} RequestHandlers */
 
@@ -10,12 +11,13 @@ import { noContent, notFound } from './machinery/response.js'
 
 /**
  * @param {{
+ *   basePath: string
  *   documents: DocumentsHandler
  *   images: ImagesHandler
  *   streams: Streams
  * }} props
  */
-export function createRequestHandlers({ documents, images, streams }) {
+export function createRequestHandlers({ basePath, documents, images, streams }) {
 
   const channels = byChannel(
     documents.documentEventStreams,
@@ -88,6 +90,65 @@ export function createRequestHandlers({ documents, images, streams }) {
       GET: (req, res) => {
         startEventStream(res)
         sendEvent(res, 'connect', null)
+      }
+    },
+    auth: {
+      google: {
+        login: {
+          GET: (req, res) => {
+            const authConfig = config.google.web
+            const searchParams = new URLSearchParams({
+              client_id: authConfig.client_id,
+              redirect_uri: authConfig.redirect_uri,
+              response_type: 'code',
+              scope: authConfig.scope,
+              // TODO: state - https://developers.google.com/identity/protocols/oauth2/web-server#httprest
+            })
+            redirect(res, FOUND, `${authConfig.auth_uri}?${searchParams}`)
+          }
+        },
+        callback: {
+          GET: (req, res, { searchParams }) => {
+            const authConfig = config.google.web
+            const error = searchParams.get('error')
+            if (error) {
+              // TODO: handle error
+              console.error(error)
+              return notFound(res)
+            }
+
+            fetch(authConfig.token_uri, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+              },
+              body: new URLSearchParams({
+                code: searchParams.get('code'),
+                client_id: authConfig.client_id,
+                client_secret: authConfig.client_secret,
+                redirect_uri: authConfig.redirect_uri,
+                grant_type: 'authorization_code',
+              })
+            })
+              .then(async response => {
+                const text = await response.text()
+                let json
+                try {
+                  json = JSON.parse(text)
+                } catch (e) {
+                  throw new Error(`Failed to parse JSON:\n${text}`)
+                }
+                console.log(json)
+              })
+              .catch(e => {
+                // TODO: error handling
+                console.error(e)
+              })
+              .finally(() => {
+                redirect(res, FOUND, basePath)
+              })
+          }
+        }
       }
     }
   }

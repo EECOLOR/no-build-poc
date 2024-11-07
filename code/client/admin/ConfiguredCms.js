@@ -18,7 +18,7 @@ export function ConfiguredCms({ basePath }) {
   const { deskStructure, documentSchemas, documentView } = createCmsConfig()
 
   // For development, reconnects when server reloads
-  useReloadOnReConnect({ endpoint: `${basePath}${routeMap.api.connect({ version: apiVersion })}` })
+  useReloadOnReConnect({ endpoint: `${basePath}${routeMap.api.versioned.connect({ version: apiVersion })}` })
 
   return Cms({ basePath, deskStructure, documentSchemas, documentView, onError })
 

@@ -8,7 +8,7 @@
  *   documentView: any
  *   basePath: any
  *   clientId: string
- *   api: ProvideParamsToRouteMap<typeof routeMap, { version: string }>['api']
+ *   api: ProvideParamsToRouteMap<typeof routeMap, { version: string }>['api']['versioned']
  *   events: MessageBroker
  *   handleError(e: Error): void
  * }} Context
