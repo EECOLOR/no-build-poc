@@ -43,7 +43,7 @@ export function RichTextField({ document, field, $path, id }) {
     const [type, id, encodedFieldPath] = $richTextArgs.get()
 
     const result = fetch(
-      `${context.apiPath}/documents/${type}/${id}/rich-text/${encodedFieldPath}`,
+      context.api.documents.single.richText({ type, id, encodedFieldPath }),
       {
         method: 'POST',
         headers: {

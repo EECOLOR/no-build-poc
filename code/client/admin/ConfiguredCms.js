@@ -1,5 +1,6 @@
 import { Cms } from '#cms/client/Cms.js'
 import { Desk } from '#cms/client/desk/Desk.js'
+import { routeMap } from '#cms/client/routeMap.js'
 import { css } from '#ui/tags.js'
 import { createCmsConfig } from './cmsConfig.js'
 
@@ -13,13 +14,13 @@ Desk.style = [
   }`
 ]
 
-export function ConfiguredCms({ basePath, apiPath }) {
+export function ConfiguredCms({ basePath }) {
   const { deskStructure, documentSchemas, documentView } = createCmsConfig()
 
   // For development, reconnects when server reloads
-  useReloadOnReConnect({ endpoint: `${apiPath}/${apiVersion}/connect` })
+  useReloadOnReConnect({ endpoint: `${basePath}${routeMap.api.connect({ version: apiVersion })}` })
 
-  return Cms({ basePath, deskStructure, documentSchemas, documentView, apiPath, onError })
+  return Cms({ basePath, deskStructure, documentSchemas, documentView, onError })
 
   function onError(e) {
     console.error(e)

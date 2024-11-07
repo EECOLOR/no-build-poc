@@ -7,7 +7,6 @@ import { Island } from '#ui/islands/Island.js'
 const { html, head, body, link } = tags
 
 const basePath = '/admin'
-const apiPath = `${basePath}/api`
 const storagePath = `./cmsStorage`
 const cms = createCms({ basePath, storagePath })
 
@@ -27,7 +26,7 @@ export function IndexHtml({ importMap }) {
         link({ rel: 'stylesheet', type: 'text/css', href: '/static/client/admin/reset.css' })
       ),
       body(
-        Island('/client/admin/ConfiguredCms.js', ConfiguredCms, { basePath, apiPath })
+        Island('/client/admin/ConfiguredCms.js', ConfiguredCms, { basePath })
       ),
     )
   )

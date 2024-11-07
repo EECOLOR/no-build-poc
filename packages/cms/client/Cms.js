@@ -2,15 +2,16 @@ import { css, tags } from '#ui/tags.js'
 import { setContext } from './context.js'
 import { Desk } from './desk/Desk.js'
 import { createMessageBroker } from './machinery/messageBroker.js'
+import { routeMap } from './routeMap.js'
 
 const { div } = tags
 
 const apiVersion = '2024-09-07'
 
-export function Cms({ basePath, deskStructure, documentSchemas, documentView, apiPath, onError }) {
+export function Cms({ basePath, deskStructure, documentSchemas, documentView, onError }) {
   return typeof window === 'undefined'
     ? CmsLoader()
-    : CmsWithContext({ basePath, deskStructure, documentSchemas, documentView, apiPath, onError })
+    : CmsWithContext({ basePath, deskStructure, documentSchemas, documentView, onError })
 }
 
 function CmsLoader() {
@@ -25,16 +26,16 @@ CmsWithContext.style = css`& {
     height: 100%;
   }
 }`
-function CmsWithContext({ basePath, deskStructure, documentSchemas, documentView, apiPath, onError }) {
-  const apiPathWithVersion = `${apiPath}/${apiVersion}`
+function CmsWithContext({ basePath, deskStructure, documentSchemas, documentView, onError }) {
+  const { api } = withParamsAndPrefix(basePath, routeMap, { version: apiVersion })
 
   setContext({
     documentSchemas,
     documentView,
     basePath,
     clientId: window.crypto.randomUUID(),
-    apiPath: apiPathWithVersion,
-    events: createMessageBroker({ apiPath: apiPathWithVersion, onError }),
+    api,
+    events: createMessageBroker({ api, onError }),
     handleError(e) {
       onError(e)
       // TODO: show error toast or something, maybe even full screen
@@ -48,3 +49,22 @@ function CmsWithContext({ basePath, deskStructure, documentSchemas, documentView
     )
   )
 }
+
+/**
+ * @template R
+ * @template T
+ * @param {R} routeOrRouteMap
+ * @param {import('#typescript/utils.ts').Const<T>} params
+ * @returns {import('./types.ts').ProvideParamsToRouteMap<R, T>}
+ */
+function withParamsAndPrefix(basePath, routeOrRouteMap, params) {
+  return new Proxy(/** @type {any} */ (routeOrRouteMap), {
+    get(target, p) {
+      return withParamsAndPrefix(basePath, target[p], params)
+    },
+    apply(target, _, [providedParams]) {
+      return basePath + target({ ...params, ...providedParams })
+    },
+  })
+}
+

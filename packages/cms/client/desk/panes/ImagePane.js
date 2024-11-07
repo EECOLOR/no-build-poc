@@ -23,7 +23,7 @@ ImagePane.style = css`& {
   }
 }`
 export function ImagePane({ id: filename, path }) {
-  const src = `${context.apiPath}/images/${filename}`
+  const src = context.api.images.single({ filename })
 
   // TODO: we should ignore our own updates
   // Seems this is a general pattern when we listen for live changes
@@ -55,7 +55,7 @@ export function ImagePane({ id: filename, path }) {
 
   function saveMetadata(metadata) {
     console.log('⎙ save', metadata)
-    fetch(`${context.apiPath}/images/${filename}/metadata`, {
+    fetch(context.api.images.single.metadata({ filename }), {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',

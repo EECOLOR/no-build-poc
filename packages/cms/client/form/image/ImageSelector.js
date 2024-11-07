@@ -132,7 +132,7 @@ function Details({ $selected, onSelect, onChoose }) {
 
     // TODO: prevent large files from being uploaded
 
-    const response = await fetch(`${context.apiPath}/images?${new URLSearchParams({ name: file.name })}`, {
+    const response = await fetch(`${context.api.images()}?${new URLSearchParams({ name: file.name })}`, {
       method: 'POST',
       headers: {
         'Content-Type': file.type,

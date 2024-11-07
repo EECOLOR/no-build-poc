@@ -50,7 +50,7 @@ export function patchDocument(params) {
  const { document, fieldType } = params
  const { op = 'replace', path, value, from } = /** @type {typeof params & { value?: any, from?: any }} */ (params)
  // TODO: add retries if the versions do not match
- fetch(`${context.apiPath}/documents/${document.schema.type}/${document.id}`, {
+ fetch(context.api.documents.single({ type: document.schema.type, id: document.id }), {
    method: 'PATCH',
    headers: {
      'Content-Type': 'application/json',

@@ -5,7 +5,7 @@ import { context } from '#cms/client/context.js'
  * @param {{ width, height, crop?, hotspot? }} metadata
  */
 export function createImageSrc(filename, { width, height, crop, hotspot }) {
-  const src = `${context.apiPath}/images/${filename}`
+  const src = context.api.images.single({ filename })
   const params = new URLSearchParams({
     w: String(width), h: String(height),
     ...(crop && { crop: [crop.x, crop.y, crop.width, crop.height].join(',') }),

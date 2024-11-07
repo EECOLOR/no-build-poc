@@ -1,11 +1,15 @@
+/** @import { MessageBroker } from './machinery/messageBroker.js' */
+/** @import { routeMap } from './routeMap.js' */
+/** @import { ProvideParamsToRouteMap } from './types.ts' */
+
 /**
  * @typedef {{
  *   documentSchemas: any
  *   documentView: any
  *   basePath: any
  *   clientId: string
- *   apiPath: string
- *   events: import('./machinery/messageBroker.js').MessageBroker
+ *   api: ProvideParamsToRouteMap<typeof routeMap, { version: string }>['api']
+ *   events: MessageBroker
  *   handleError(e: Error): void
  * }} Context
  */

@@ -40,7 +40,7 @@ function ImageItem({ image, path }) {
             max-height: 100%;
           }
         }`,
-        img({ src: `${context.apiPath}/images/${image.filename}` }),
+        img({ src: context.api.images.single({ filename: image.filename }) }),
       )
      })
   )

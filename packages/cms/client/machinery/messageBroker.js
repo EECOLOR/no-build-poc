@@ -9,9 +9,9 @@ import { createAsyncTaskQueue } from './asyncTaskQueue.js'
 /** @typedef {ReturnType<typeof createMessageBroker>} MessageBroker */
 
 /**
- * @param {{ apiPath: string, onError(e:Error):void }} params
+ * @param {{ api: import('../context.js').Context['api'], onError(e:Error):void }} params
  */
-export function createMessageBroker({ apiPath, onError }) {
+export function createMessageBroker({ api, onError }) {
   const [$connectId, setConnectId] = createSignal(null)
   const eventSource = createEventSource({ onConnectIdChange: setConnectId, onError })
   const serverQueue = createAsyncTaskQueue({ processTask, onError, })
@@ -49,7 +49,7 @@ export function createMessageBroker({ apiPath, onError }) {
   }
 
   function createEventSource({ onConnectIdChange, onError }) {
-    const pathname = `${apiPath}/events`
+    const pathname = api.events()
     const eventSource = new EventSource(pathname)
     window.addEventListener('beforeunload', _ => eventSource.close())
     eventSource.addEventListener('open', _ => {
@@ -62,6 +62,7 @@ export function createMessageBroker({ apiPath, onError }) {
     })
     eventSource.addEventListener('error', e => {
       onConnectIdChange(null)
+      onError(e)
       console.log(`Connection to ${pathname} lost`)
     })
     return eventSource
@@ -113,11 +114,11 @@ export function createMessageBroker({ apiPath, onError }) {
 
   function updateServerSubscription(action, channel, args) {
     serverQueue.add(connectId =>
-      fetch(`${apiPath}/events/${action}`, {
+      fetch(api.events.subscription({ action }), {
         method: 'POST',
         headers: { 'X-connect-id': connectId },
         body: JSON.stringify({ channel, args }),
-      })
+      }).then(r => r.text() /* If we don't read the response, Chrome thinks we failed, also we might trigger an open pipe error */)
     )
   }
 

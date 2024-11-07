@@ -5,6 +5,7 @@ await startServer({
   allowedPackages: [
     '#ui',
     '#cms/client',
+    '#routing',
   ],
   allowedLibraries: [
     'three',
