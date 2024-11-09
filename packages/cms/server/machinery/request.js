@@ -25,3 +25,22 @@ export function withRequestBufferBody(req, callback) {
   })
   req.on('error', e => { callback(null, e) })
 }
+
+const emptyObject = {}
+
+export function getCookies(req) {
+  const cookieHeader = req.headers['cookie']
+  if (!cookieHeader)
+    return emptyObject
+
+  const cookies = Object.create(null) // prevent prototype pollution
+  for (const cookieSegment of cookieHeader.split(';')) {
+    const [encodedName, encodedValue] = cookieSegment.trim().split('=')
+    if (!encodedName)
+      continue
+
+    cookies[decodeURIComponent(encodedName)] = decodeURIComponent(encodedValue)
+  }
+
+  return cookies
+}

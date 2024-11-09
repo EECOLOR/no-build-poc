@@ -13,7 +13,8 @@
     "#utils/*": "./packages/utils/*",
     "#ui/*": "./packages/ui/*",
     "#cms/*": "./packages/cms/*",
-    "#routing/*": "./packages/routing/*"
+    "#routing/*": "./packages/routing/*",
+    "#auth/*": "./packages/auth/*"
   },
   "dependencies": {
     "diff": "^7.0.0",

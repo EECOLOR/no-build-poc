@@ -39,6 +39,7 @@ export function createCms({ basePath, storagePath }) {
   }
 
   function handleRequest(req, res) {
+    // TODO: CSRF token (store in session db, embed in html, pass in header, check header with session)
     const { method } = req
     const { searchParams, pathname } = new URL(`fake://fake.local${req.url}`)
 

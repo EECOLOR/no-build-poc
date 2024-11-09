@@ -49,6 +49,10 @@ export const routeMap = asRouteMap({
         path: 'connect',
         data: handler(x => x.connect)
       },
+      me: {
+        path: 'me',
+        data: handler(x => x.auth.me)
+      },
     },
 
     auth: {

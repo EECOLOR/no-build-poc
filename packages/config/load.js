@@ -1,5 +1,9 @@
 import path from 'node:path'
 import fs from 'node:fs'
+import url from 'node:url'
+
+const pwd = process.cwd()
+const currentPath = path.dirname(url.fileURLToPath(import.meta.url))
 
 export async function load(configEnv) {
   const configFiles = [
@@ -8,24 +12,20 @@ export async function load(configEnv) {
     { name: 'local'  , required: false, allowOverride: true }
   ]
 
-  return configFiles.reduce(
-    async (resultPromise, { name, required, allowOverride }) => {
-      const result = await resultPromise
-      const configFile = path.resolve('./config', `${name}.js`)
+  let config = {}
 
-      if (fs.existsSync(configFile)) {
-        const config = (await import('/' + path.relative('./src', configFile))).default
+  for (const { name, required, allowOverride } of configFiles) {
+    const configFile = path.resolve(pwd, './config', `${name}.js`)
 
-        return mergeDeep(result, config, allowOverride)
-      } else if (required) {
-        throw new Error(`Could not find configuration for '${name}'`)
-      } else {
-        return result
-      }
+    if (fs.existsSync(configFile)) {
+      const configFromFile = (await import(path.relative(currentPath, configFile))).default
+      mergeDeep(config, configFromFile, allowOverride)
+    } else if (required) {
+      throw new Error(`Could not find configuration for '${name}'`)
+    }
+  }
 
-    },
-    Promise.resolve({})
-  )
+  return config
 }
 
 function mergeDeep(target, source, allowOverride, path = []) {

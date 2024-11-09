@@ -5,13 +5,15 @@ export function respondJson(res, status, body) {
 }
 
 export function notFound(res) {
-  res.writeHead(404)
-  res.end()
+  res.writeHead(404).end()
+}
+
+export function notAuthorized(res) {
+  res.writeHead(401).end()
 }
 
 export function methodNotAllowed(res) {
-  res.writeHead(405)
-  res.end()
+  res.writeHead(405).end()
 }
 
 export function sendImage(res, image) {
@@ -21,13 +23,20 @@ export function sendImage(res, image) {
 }
 
 export function noContent(res) {
-  res.writeHead(204, { 'Content-Length': 0, 'Connection': 'close' })
-  res.end()
+  res.writeHead(204, { 'Content-Length': 0, 'Connection': 'close' }).end()
 }
 
 export function redirect(res, status, url) {
-  res.writeHead(status, { 'Location': url })
-  res.end()
+  res.writeHead(status, { 'Location': url }).end()
 }
 
 export const FOUND = 302
+
+export function setCookie(res, name, value) {
+  const cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}; HttpOnly; SameSite=lax; Path=/` // TODO: ; Secure   and probably a more restrictive path
+  const cookies = res.getHeader('Set-Cookie')
+  if (cookies)
+    cookies.push(cookie)
+  else
+    res.setHeader('Set-Cookie', [cookie])
+}
