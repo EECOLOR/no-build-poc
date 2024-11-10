@@ -32,11 +32,22 @@ export function redirect(res, status, url) {
 
 export const FOUND = 302
 
-export function setCookie(res, name, value) {
-  const cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}; HttpOnly; SameSite=lax; Path=/` // TODO: ; Secure   and probably a more restrictive path
+export function setCookie(res, name, value, expires = undefined) {
+  const cookie =
+    `${encodeURIComponent(name)}=${encodeURIComponent(value)}; ` +
+    `HttpOnly; ` +
+    `SameSite=lax; ` +
+    `Path=/` +
+    (expires ? `; Expires=${expires}` : '') // TODO: ; Secure   and probably a more restrictive path
+
   const cookies = res.getHeader('Set-Cookie')
   if (cookies)
     cookies.push(cookie)
   else
     res.setHeader('Set-Cookie', [cookie])
+}
+
+export function expireCookie(res, name) {
+  const expiresDate = new Date(0)
+  setCookie(res, name, '', expiresDate.toUTCString())
 }

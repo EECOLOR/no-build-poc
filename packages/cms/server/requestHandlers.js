@@ -1,15 +1,22 @@
 import * as google from '#auth/google.js'
+import * as microsoft from '#auth/microsoft.js'
 import { decodeAndVerifyJwt } from '#auth/jwt.js'
+import { getLoginUrl, handleLoginCallback } from '#auth/oauth2.js'
 import config from '#config'
 import { sendEvent, startEventStream } from './machinery/eventStreams.js'
 import { getCookies, withRequestJsonBody } from './machinery/request.js'
-import { FOUND, noContent, notAuthorized, notFound, redirect, respondJson, setCookie } from './machinery/response.js'
+import { expireCookie, FOUND, noContent, notAuthorized, notFound, redirect, respondJson, setCookie } from './machinery/response.js'
 
 /** @typedef {ReturnType<typeof createRequestHandlers>} RequestHandlers */
 
 /** @import { DocumentsHandler } from './documents.js' */
 /** @import { ImagesHandler } from './images.js' */
 /** @import { Streams, StreamCollection } from './machinery/eventStreams.js' */
+
+const publicKeys = {
+  google: google.withPublicKeys,
+  microsoft: microsoft.withPublicKeys,
+}
 
 /**
  * @param {{
@@ -102,11 +109,14 @@ export function createRequestHandlers({ basePath, documents, images, streams }) 
           const idProvider = cookies['idp']
           const idToken = cookies['idt']
 
-          if (!idToken || !idProvider || idProvider !== 'google')
+          if (!idToken || !idProvider || !config.auth[idProvider])
             return notAuthorized(res)
 
-          google.withPublicKeys((publicKeys, error) => {
-            console.log({ publicKeys, error })
+          const withPublicKeys = publicKeys[idProvider]
+          if (!withPublicKeys)
+            return notAuthorized(res)
+
+          withPublicKeys((publicKeys, error) => {
             // TODO error handling
             if (error) {
               console.error(error)
@@ -114,37 +124,65 @@ export function createRequestHandlers({ basePath, documents, images, streams }) 
             }
 
             const { valid, body } = decodeAndVerifyJwt(idToken, publicKeys)
-            console.log({ valid, body })
             if (!valid)
               return notAuthorized(res)
 
-            return respondJson(res, 200, { email: body.email })
+            return respondJson(res, 200, { email: body.email, name: body.name })
           })
         }
       },
 
+      logout: {
+        GET: (req, res) => { oAuth2Logout(res) }
+      },
+
       google: {
         login: {
-          GET: (req, res) => {
-            redirect(res, FOUND, google.getLoginUrl())
-          }
+          GET: (req, res) => { oAuth2Login(res, 'google') }
         },
         callback: {
           GET: (req, res, { searchParams }) => {
-            google.handleLoginCallback(searchParams)
-              .then(idToken => {
-                setCookie(res, 'idt', idToken)
-                setCookie(res, 'idp', 'google')
-                redirect(res, FOUND, basePath)
-              })
-              .catch(e => {
-                console.error(e)
-                notFound(res)
-              })
+            oAuth2LoginCallback(res, searchParams, 'google')
+          }
+        }
+      },
+
+      microsoft: {
+        login: {
+          GET: (req, res) => { oAuth2Login(res, 'microsoft') }
+        },
+        callback: {
+          GET: (req, res, { searchParams }) => {
+            oAuth2LoginCallback(res, searchParams, 'microsoft')
           }
         }
       }
     }
+  }
+
+  /** @param {keyof typeof config.auth} idp */
+  function oAuth2Login(res, idp) {
+    redirect(res, FOUND, getLoginUrl(config.auth[idp].web))
+  }
+
+  /** @param {keyof typeof config.auth} idp */
+  function oAuth2LoginCallback(res, searchParams, idp) {
+    handleLoginCallback(config.auth[idp].web, searchParams)
+      .then(idToken => {
+        setCookie(res, 'idt', idToken)
+        setCookie(res, 'idp', idp)
+        redirect(res, FOUND, basePath)
+      })
+      .catch(e => {
+        console.error(e)
+        notFound(res)
+      })
+  }
+
+  function oAuth2Logout(res) {
+    expireCookie(res, 'idt')
+    expireCookie(res, 'idp')
+    redirect(res, FOUND, basePath)
   }
 }
 

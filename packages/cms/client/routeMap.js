@@ -58,6 +58,11 @@ export const routeMap = asRouteMap({
     auth: {
       path: 'auth',
 
+      logout: {
+        path: 'logout',
+        data: handler(x => x.auth.logout)
+      },
+
       google: {
         path: 'google',
 
@@ -68,6 +73,19 @@ export const routeMap = asRouteMap({
         callback: {
           path: 'callback',
           data: handler(x => x.auth.google.callback)
+        }
+      },
+
+      microsoft: {
+        path: 'microsoft',
+
+        login: {
+          path: 'login',
+          data: handler(x => x.auth.microsoft.login)
+        },
+        callback: {
+          path: 'callback',
+          data: handler(x => x.auth.microsoft.callback)
         }
       }
     },

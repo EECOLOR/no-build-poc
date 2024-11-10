@@ -4,7 +4,7 @@ export function decodeAndVerifyJwt(jwt, publicKeys) {
   const [encodedHeader, encodedBody, encodedSignature] = jwt.split('.')
   const header = decodeJson(encodedHeader)
   const body = decodeJson(encodedBody)
-  const signature =decodeRaw(encodedSignature)
+  const signature = decodeRaw(encodedSignature)
 
   if (!header)
     return invalid(`Could not decode header`)
