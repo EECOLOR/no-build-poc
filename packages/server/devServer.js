@@ -39,11 +39,11 @@ export async function startServer({ indexFiles, allowedPackages, allowedLibrarie
       return notFound(res)
 
     const { IndexComponent, requestHandler } = indexInfo
-    const handled = requestHandler?.(req, res)
-    if (handled)
+    const handlerResult = requestHandler?.(req, res)
+    if (handlerResult?.handled)
       return
 
-    const { result, destroy } = render(IndexComponent({ importMap }))
+    const { result, destroy } = render(() => IndexComponent({ importMap }))
     destroy()
     return serve(res, 200, 'text/html;charset=UTF-8', result)
   }

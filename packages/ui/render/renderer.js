@@ -27,20 +27,23 @@ export const emptyValues = [false, undefined, null]
 /**
  * @template T
  * @param {RendererConstructor<T>} constructor
- * @returns {(tagOrComponent: Tag<any> | Component<any>) => ({ destroy(): void, result: T })}
+ * @returns {(f: () => Tag<any> | Component<any>) => ({ destroy(): void, result: T })}
  */
 export function createRenderer(constructor) {
   const renderer = constructor({ renderValue })
 
   return render
 
-  function render(tagOrComponent) {
+  function render(f) {
     const context = {}
-    const [result, onDestroyCallbacks] = withOnDestroyCapture(() =>
-      tagOrComponent instanceof Component ? renderComponent(tagOrComponent, context) :
-      tagOrComponent instanceof Tag ? renderer.renderTag(tagOrComponent, context) :
-      renderValue(tagOrComponent, context)
-    )
+    const [result, onDestroyCallbacks] = withOnDestroyCapture(() => {
+      const tagOrComponent = f()
+      return (
+        tagOrComponent instanceof Component ? renderComponent(tagOrComponent, context) :
+        tagOrComponent instanceof Tag ? renderer.renderTag(tagOrComponent, context) :
+        renderValue(tagOrComponent, context)
+      )
+    })
 
     return { result, destroy() { for (const callback of onDestroyCallbacks) callback() } }
   }

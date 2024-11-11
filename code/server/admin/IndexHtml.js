@@ -13,7 +13,7 @@ const cms = createCms({ basePath, storagePath })
 export function requestHandler(req, res) {
   if (cms.canHandleRequest(req)) {
     cms.handleRequest(req, res)
-    return true
+    return { handled: true }
   }
 }
 

@@ -17,7 +17,7 @@ await Promise.all(
     const childrenPlaceholder = document.createComment('[childrenPlaceholder]')
     const { [info.name]: Component } = await import(info.path)
     const params = (info.props ? [info.props] : []).concat(raw(childrenPlaceholder))
-    const rendered = render(Component(...params))
+    const rendered = render(() => Component(...params))
 
     const nodeReplacements = [].concat(rendered.result)
 

@@ -164,7 +164,7 @@ schema.customComponent = function createCustomNodeView(name, Component) {
  return schema.nodeViewNode(name, node => {
    const [$selected, setSelected] = createSignal(false)
 
-   const { result, destroy } = render(Component({ id: node.attrs.id, $selected }))
+   const { result, destroy } = render(() => Component({ id: node.attrs.id, $selected }))
 
    return {
      dom: result,
