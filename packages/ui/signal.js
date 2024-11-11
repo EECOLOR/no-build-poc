@@ -90,12 +90,15 @@ export function createSignal(initialValue, isEqual = defaultIsEqual) {
   return [
     signal,
     function setValue(newValueOrFunction) {
+      const wasInitialized = isInitialized
       const oldValue = getValue()
       const newValue = isCallable(newValueOrFunction)
         ? newValueOrFunction(oldValue)
         : newValueOrFunction
 
-      if (isEqual(newValue, oldValue)) return
+      if (wasInitialized && isEqual(newValue, oldValue))
+        return
+
       value = newValue
 
       for (const callback of directListeners) {
