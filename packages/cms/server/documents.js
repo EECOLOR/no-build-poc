@@ -2,7 +2,7 @@ import { createHistoryHandler } from './documents/history.js'
 import { createRichTextHandler } from './documents/rich-text.js'
 import { deleteAt, getAt, setAt } from './documents/utils.js'
 import { withRequestJsonBody } from './machinery/request.js'
-import { respondJson } from './machinery/response.js'
+import { internalServerError, notAuthorized, respondJson } from './machinery/response.js'
 
 /** @import { DeepReadonly } from '#typescript/utils.ts' */
 
@@ -31,13 +31,19 @@ export function createDocumentsHandler({ databaseActions, streams }) {
     handlePatchDocument,
     documentsEventStreams,
     documentEventStreams,
-    /* only here so we can expose the type signature */ patchDocument,
   }
 
-  function handlePatchDocument(req, res, { type, id }) {
+  function handlePatchDocument(req, res, { type, id, auth }) {
     withRequestJsonBody(req, (body, error) => {
       // TODO: error handling
+      if (error) {
+        console.error(error)
+        return internalServerError(res)
+      }
       const { version, patch, clientId, fieldType } = body
+
+      if (clientId !== auth.user.id)
+        return notAuthorized(res)
 
       const result = patchDocument({ clientId, type, id, version, patch, fieldType })
 

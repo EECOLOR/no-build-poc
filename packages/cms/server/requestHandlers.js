@@ -1,10 +1,7 @@
-import * as google from '#auth/google.js'
-import * as microsoft from '#auth/microsoft.js'
-import { decodeAndVerifyJwt } from '#auth/jwt.js'
 import { getLoginUrl, handleLoginCallback } from '#auth/oauth2.js'
 import config from '#config'
 import { sendEvent, startEventStream } from './machinery/eventStreams.js'
-import { getCookies, withRequestJsonBody } from './machinery/request.js'
+import { withRequestJsonBody } from './machinery/request.js'
 import { expireCookie, FOUND, noContent, notAuthorized, notFound, redirect, respondJson, setCookie } from './machinery/response.js'
 
 /** @typedef {ReturnType<typeof createRequestHandlers>} RequestHandlers */
@@ -12,11 +9,6 @@ import { expireCookie, FOUND, noContent, notAuthorized, notFound, redirect, resp
 /** @import { DocumentsHandler } from './documents.js' */
 /** @import { ImagesHandler } from './images.js' */
 /** @import { Streams, StreamCollection } from './machinery/eventStreams.js' */
-
-const publicKeys = {
-  google: google.withPublicKeys,
-  microsoft: microsoft.withPublicKeys,
-}
 
 /**
  * @param {{
@@ -103,32 +95,8 @@ export function createRequestHandlers({ basePath, documents, images, streams }) 
     },
     auth: {
       me: {
-        GET: (req, res, { searchParams }) => {
-          const cookies = getCookies(req)
-
-          const idProvider = cookies['idp']
-          const idToken = cookies['idt']
-
-          if (!idToken || !idProvider || !config.auth[idProvider])
-            return notAuthorized(res)
-
-          const withPublicKeys = publicKeys[idProvider]
-          if (!withPublicKeys)
-            return notAuthorized(res)
-
-          withPublicKeys((publicKeys, error) => {
-            // TODO error handling
-            if (error) {
-              console.error(error)
-              return notFound(res)
-            }
-
-            const { valid, body } = decodeAndVerifyJwt(idToken, publicKeys)
-            if (!valid)
-              return notAuthorized(res)
-
-            return respondJson(res, 200, { email: body.email, name: body.name })
-          })
+        GET: (req, res, { auth }) => {
+          return respondJson(res, 200, auth)
         }
       },
 

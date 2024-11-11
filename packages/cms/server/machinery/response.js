@@ -8,6 +8,10 @@ export function notFound(res) {
   res.writeHead(404).end()
 }
 
+export function internalServerError(res) {
+  res.writeHead(500).end()
+}
+
 export function notAuthorized(res) {
   res.writeHead(401).end()
 }

@@ -1,7 +1,9 @@
 import { css, tags } from '#ui/tags.js'
+import { context } from '../context.js'
+import { routeMap } from '../routeMap.js'
 import { Panes } from './Panes.js'
 
-const { div, hr } = tags
+const { div, hr, a } = tags
 
 Desk.style = css`& {
   display: flex;
@@ -27,7 +29,13 @@ export function Desk({ deskStructure }) {
 
 DeskHeader.style = css`& {
   line-height: 1em;
+  display: flex;
+  justify-content: space-between;
 }`
 function DeskHeader() {
-  return div({ className: 'DeskHeader' }, DeskHeader.style, 'CMS')
+  return div({ className: 'DeskHeader' },
+    DeskHeader.style,
+    'CMS',
+    a({ href: context.basePath + routeMap.api.auth.logout() }, 'Logout')
+  )
 }

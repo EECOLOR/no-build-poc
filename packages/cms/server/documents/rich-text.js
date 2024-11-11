@@ -1,6 +1,6 @@
 import { createCustomEventStreamCollection } from '../machinery/eventStreams.js'
 import { withRequestJsonBody } from '../machinery/request.js'
-import { respondJson } from '../machinery/response.js'
+import { internalServerError, notAuthorized, respondJson } from '../machinery/response.js'
 import { getAt } from './utils.js'
 
 /**
@@ -35,11 +35,19 @@ export function createRichTextHandler({ databaseActions, streams, patchDocument 
   }
 
   /** @param {import('node:http').ServerResponse} res */
-  function handlePostRichText(req, res, { type, id, encodedFieldPath }) {
+  function handlePostRichText(req, res, { type, id, encodedFieldPath, auth }) {
     const fieldPath = decodeURIComponent(encodedFieldPath)
     withRequestJsonBody(req, (body, error) => {
       // TODO: error handling
+      if (error) {
+        console.error(error)
+        return internalServerError(res)
+      }
+
       const { clientId, steps, documentVersion, value, valueVersion, fieldType } = body
+
+      if (clientId !== auth.user.id)
+        return notAuthorized(res)
 
       const stored = eventStreamCollection.getValue(type, id, encodedFieldPath)
       if (stored.version !== valueVersion)
