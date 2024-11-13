@@ -1,6 +1,6 @@
 import { writeToDom } from '#ui/domInteraction.js'
 import { createRenderer } from './renderer.js'
-import { Signal } from '#ui/signal.js'
+import { createSignal, Signal } from '#ui/signal.js'
 import { raw } from '#ui/tags.js'
 import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
 
@@ -47,12 +47,13 @@ export const render = createRenderer(
       },
       renderDynamic(dynamic, context) {
         const marker = comment()
+        /** @type {Map<string, { callbacks: any[], nodes: Node[], setItem(item): void }>} */
         const infoByKey = new Map()
-        const nodesFromLoop = dynamic.signal.get().flatMap((item, i, items) => {
+        const nodesFromLoop = dynamic.signal.get().flatMap((item) => {
           try {
             // TODO: make sure key is unique for all individual items
-            const key = dynamic.getKey(item, i, items)
-            return renderItem(key, item, i, items)
+            const key = dynamic.getKey(item)
+            return renderItem(key, item)
           } catch (e) {
             throw `Problem rendering dynamic:\n${e.message}\n${dynamic.signal.stack}\nTrigger:\n${e.stack}`
           }
@@ -62,8 +63,8 @@ export const render = createRenderer(
         const unsubscribe = dynamic.signal.subscribeDirect(newItems => {
           const unusedKeys = new Set(infoByKey.keys())
 
-          for (const [i, item] of newItems.entries()) {
-            const key = dynamic.getKey(item, i, newItems)
+          for (const item of newItems.values()) {
+            const key = dynamic.getKey(item)
             unusedKeys.delete(key)
           }
 
@@ -73,9 +74,9 @@ export const render = createRenderer(
           }
 
           const oldNodes = nodes.slice(1, -1)
-          const newNodes = newItems.flatMap((item, i, items) => {
-            const key = dynamic.getKey(item, i, items)
-            return infoByKey.has(key) ? infoByKey.get(key).nodes : renderItem(key, item, i, items)
+          const newNodes = newItems.flatMap(item => {
+            const key = dynamic.getKey(item)
+            return renderItem(key, item)
           })
 
           swapNodesInDom(marker, newNodes, oldNodes)
@@ -93,12 +94,20 @@ export const render = createRenderer(
 
         return nodes
 
-        function renderItem(key, item, i, items) {
+        function renderItem(key, item) {
+          if (infoByKey.has(key)) {
+            const { nodes, setItem } = infoByKey.get(key)
+            setItem(item)
+            return nodes
+          }
+
+          const [$item, setItem] = createSignal(item)
           const [nodes, callbacks] = withOnDestroyCapture(() => {
-            const rendered = dynamic.renderItem(item, i, items)
+            const rendered = dynamic.renderItem($item, key)
             return renderValue(rendered, context)
           })
-          infoByKey.set(key, { callbacks, nodes })
+
+          infoByKey.set(key, { callbacks, nodes, setItem })
           return nodes
         }
       },

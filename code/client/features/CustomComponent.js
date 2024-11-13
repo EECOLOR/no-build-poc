@@ -1,5 +1,5 @@
 import { raw, tags, css } from '#ui/tags.js'
-import { createSignal, derived, Signal } from '#ui/signal.js'
+import { createSignal, Signal } from '#ui/signal.js'
 import { component, createContext } from '#ui/component.js'
 import { clientConfig } from '#ui/islands/clientConfig.js'
 import { derive, loop } from '#ui/dynamic.js'
@@ -10,6 +10,7 @@ import { initializeApp } from 'firebase/app'
 import { serverTimestamp } from 'firebase/database'
 
 import { Runtime } from './Runtime.js'
+import { useCombined } from '#ui/hooks.js'
 
 const customContext = createContext()
 const CustomProvider = customContext.Provider
@@ -179,11 +180,14 @@ function SlotBasedLastFiveCounts({ $count }) {
     p(
       loop(
         $slots,
-        (i, _, slots) => `${i}-${slots.length}`,
-        (i, _, slots) => [
-          Boolean(i) && ' - ',
+        (i) => i,
+        ($i, key) => [
+          Boolean(key) && ' - ',
           span(
-            $count.derive(count => TwoDigitCount({ count: count - (slots.length - i - 1) }))
+            derive(
+              useCombined($count, $slots),
+              ([count, slots]) => TwoDigitCount({ count: count - (slots.length - key - 1) })
+            )
           )
         ]
       ),
@@ -198,7 +202,7 @@ function CountDown({ $count, countDownToThree }) {
 }
 
 function FatCount({ $count }) {
-  return strong(derived($count, count => count + count))
+  return strong($count.derive(count => count + count))
 }
 
 function TwoDigitCount({ count }) {

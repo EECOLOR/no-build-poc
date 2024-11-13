@@ -3,6 +3,7 @@ import { createUniqueId } from '#ui/utils.js'
 import { ArrayField } from './ArrayField.js'
 import { ImageField } from './ImageField.js'
 import { ObjectField } from './ObjectField.js'
+import { ReferenceField } from './ReferenceField.js'
 import { RichTextField } from './RichTextField.js'
 import { StringField } from './StringField.js'
 
@@ -13,6 +14,7 @@ const fieldRenderers = /** @type {const} */({
   'rich-text': RichTextField,
   'array': ArrayField,
   'image': ImageField,
+  'reference': ReferenceField,
   default: ObjectField,
 })
 

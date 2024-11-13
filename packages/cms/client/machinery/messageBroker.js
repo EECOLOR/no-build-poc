@@ -16,6 +16,9 @@ export function createMessageBroker({ api, onError }) {
   const eventSource = createEventSource({ onConnectIdChange: setConnectId, onError })
   const serverQueue = createAsyncTaskQueue({ processTask, onError, })
 
+  /** @type {Map<string, { listenerCount: number, event?: any }>} */
+  const lastKnownEvents = new Map()
+
   /** @type {Map<Key, { count, channel, args }>} */
   const serverSubscriptions = new Map()
 
@@ -70,14 +73,39 @@ export function createMessageBroker({ api, onError }) {
 
   function subscribeToEventSource(event, channel, args, callback) {
     const fullEventName = `${event}-${channel}-${args.join('|')}`
-    eventSource.addEventListener(fullEventName, listener)
+
+    const lastKnownEvent = prepareLastKnownEvent(fullEventName)
+    addEventListener(lastKnownEvent, fullEventName)
 
     return function unsubscribeFromEventSource() {
-      eventSource.removeEventListener(fullEventName, listener)
+      removeEventListener(lastKnownEvent, fullEventName)
     }
 
     function listener(e) {
+      lastKnownEvent.event = e
       callback({ event, data: JSON.parse(e.data) })
+    }
+
+    function prepareLastKnownEvent(fullEventName) {
+      if (!lastKnownEvents.has(fullEventName))
+        lastKnownEvents.set(fullEventName, { listenerCount: 0 })
+
+      return lastKnownEvents.get(fullEventName)
+    }
+
+    function addEventListener(lastKnownEvent, fullEventName) {
+      lastKnownEvent.listenerCount += 1
+      eventSource.addEventListener(fullEventName, listener)
+      if (lastKnownEvent.event)
+        listener(lastKnownEvent.event)
+    }
+
+    function removeEventListener(lastKnownEvent, fullEventName) {
+      lastKnownEvent.listenerCount -= 1
+      if (!lastKnownEvent.listenerCount)
+        lastKnownEvents.delete(fullEventName)
+
+      eventSource.removeEventListener(fullEventName, listener)
     }
   }
 

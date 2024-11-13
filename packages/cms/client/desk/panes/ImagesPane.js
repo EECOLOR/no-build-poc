@@ -19,17 +19,17 @@ export function ImagesPane({ path }) {
         className: 'ImagesPane',
         signal: $images,
         getKey: image => image.filename,
-        renderItem: image => ImageItem({ image, path })
+        renderItem: ($image, key) => ImageItem({ filename: key, path })
       },
       ImagesPane.style,
     )
   )
 }
 
-function ImageItem({ image, path }) {
+function ImageItem({ filename, path }) {
   return (
     ListItem({
-      href: [context.basePath, ...path, image.filename].join('/'),
+      href: [context.basePath, ...path, filename].join('/'),
       title: div(
         css`& {
           max-height: 5rem;
@@ -40,7 +40,7 @@ function ImageItem({ image, path }) {
             max-height: 100%;
           }
         }`,
-        img({ src: context.api.images.single({ filename: image.filename }) }),
+        img({ src: context.api.images.single({ filename }) }),
       )
      })
   )

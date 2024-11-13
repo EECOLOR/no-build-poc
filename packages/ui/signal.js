@@ -134,7 +134,7 @@ export function createSignal(initialValue, isEqual = defaultIsEqual) {
  * @param {(value: T, previous?: X) => X} deriveValue
  * @returns {Signal<X>}
  */
-export function derived(signal, deriveValue) {
+function derived(signal, deriveValue) {
   const [newSignal, setValue] = createSignal(() => deriveValue(signal.get()))
 
   signal.subscribeDirect(value => {

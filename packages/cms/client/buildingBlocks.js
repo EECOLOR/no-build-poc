@@ -35,7 +35,7 @@ export function ListSignal({ signal, getKey, className = undefined, renderItem }
     {
       className,
       renderItems: renderItem =>
-        loop(signal, getKey, (...args) => renderItem(renderUserItem(...args))),
+        loop(signal, getKey, ($item, key) => renderItem(renderUserItem($item, key))),
     },
     ...children
   )

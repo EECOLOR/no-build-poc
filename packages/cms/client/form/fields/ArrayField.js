@@ -34,13 +34,14 @@ export function ArrayField({ document, field, $path }) {
       ArrayField.style,
       loop(
         $valueFromDocument,
-        (item, i) => item._key,
-        (item) => {
-          const { $isFirst, $isLast, $index } = derivePositionSignals($valueFromDocument, item)
+        (item) => item._key,
+        ($item, key) => {
+          const { $isFirst, $isLast, $index } = derivePositionSignals($valueFromDocument, key)
+          const type = $item.get()._type // type does not change
           return ArrayItem({
             $isFirst, $isLast, $index,
             document,
-            field: field.of.find(x => x.type === item?._type || true),
+            field: field.of.find(x => x.type === type || true),
             $arrayPath: $path,
             onMove: handleMove,
             onDelete: handleDelete,
@@ -98,6 +99,7 @@ function ArrayItem({ $isFirst, $isLast, document, $arrayPath, $index, field, onM
       ArrayItem.style,
       Object({ document, field, $path, id }),
       div({ className: 'buttonContainer' },
+        // TODO: seems the up button (and possibly other buttons) causes a referender, probably because a new item is created and the focus is being lost (and with that moved to the next element)
         ButtonUp({ disabled: $isFirst, onClick: handleUpClick }),
         ButtonDown({ disabled: $isLast, onClick: handleDownClick }),
         ButtonDelete({ onClick: handleDeleteClick }),
@@ -126,11 +128,10 @@ function ArrayItem({ $isFirst, $isLast, document, $arrayPath, $index, field, onM
 
 /**
  * @param {Signal<Array<{ _key: string }} $items
- * @param {{ _key: string }} item
  */
-function derivePositionSignals($items, item) {
+function derivePositionSignals($items, key) {
   const $lengthAndIndex = $items.derive(
-    items => [items.length, items.findIndex(x => x._key === item._key)]
+    items => [items.length, items.findIndex(x => x._key === key)]
   )
   return {
     $isFirst: $lengthAndIndex.derive(([length, i]) => !i),

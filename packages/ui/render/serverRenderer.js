@@ -1,5 +1,5 @@
 import { createRenderer } from './renderer.js'
-import { Signal } from '#ui/signal.js'
+import { createSignal, Signal } from '#ui/signal.js'
 import { raw } from '#ui/tags.js'
 
 const escapeHtml = createHtmlEscape()
@@ -27,7 +27,10 @@ export const render = createRenderer(
         )
       },
       renderDynamic(dynamic, context) {
-        const value = dynamic.signal.get().map(dynamic.renderItem)
+        const value = dynamic.signal.get().map(item => {
+          const [$item] = createSignal(item)
+          return dynamic.renderItem($item, dynamic.getKey(item))
+        })
         const result = [].concat(emptyComment(), value, emptyComment())
         return renderValue(result, context)
       },

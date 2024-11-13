@@ -66,11 +66,10 @@ function DocumentListItems({ $documents, schema, path }) {
     ListSignal({
       signal: $documents,
       getKey: document => document._id,
-      renderItem: ({ _id }) => {
-        const $document = $documents.derive(documents => documents.find(x => x._id === _id))
+      renderItem: ($document, key) => {
         return (
           ListItem({
-            href: [context.basePath, ...path, _id].join('/'),
+            href: [context.basePath, ...path, key].join('/'),
             title: $document.derive(document => schema.preview(document).title),
           })
         )

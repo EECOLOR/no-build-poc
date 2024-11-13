@@ -66,7 +66,8 @@ const documentSchemas = [
             ]
           })
         ]
-      })
+      }),
+      field('nextItem', 'reference', { title: 'Next item', to: ['page', 'generalSettings']}),
       // next up (don't forget to check for relevant TODO's):
       // - arrays - they present problems when indexes change and with that paths into documents for different kinds of fields
       // - references - can be tricky when we want to keep integrity (prevent removal for referenced documents)

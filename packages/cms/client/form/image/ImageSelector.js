@@ -180,12 +180,14 @@ function Images({ $selected, onSelect, onNewClick }) {
         label: AddLabel(),
         onClick: onNewClick
       }),
-      loop($images, x => x.filename, image =>
-        ImageItem({
-          image,
-          $selected: $selected.derive(selected => selected === image),
-          onClick: () => onSelect($selected.get() === image ? null : image),
-        })
+      loop($images, x => x.filename, $image =>
+        derive($image, image =>
+          ImageItem({
+            image,
+            $selected: $selected.derive(selected => selected === image),
+            onClick: () => onSelect($selected.get() === image ? null : image),
+          })
+        )
       )
     )
   )

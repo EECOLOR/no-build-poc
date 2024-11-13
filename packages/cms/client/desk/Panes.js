@@ -33,7 +33,11 @@ export function Panes({ firstPane }) {
   return (
     div({ className: 'Panes' },
       Panes.style,
-      loopWithHr($panesWithPath, x => x.path.join('/'), renderPane)
+      loopWithHr(
+        $panesWithPath,
+        x => x.path.join('/'),
+        $paneWithPath => renderPane($paneWithPath.get())
+      )
     )
   )
 }
@@ -42,8 +46,8 @@ export function Panes({ firstPane }) {
 /**
  * @template T
  * @param {Signal<Array<T>>} signal
- * @param {(value: T, index: number, items: Array<T>) => any} getKey
- * @param {(value: T, index: number, items: Array<T>) => any} renderItem
+ * @param {(value: T) => any} getKey
+ * @param {(value: Signal<T>, key: any) => any} renderItem
  */
 function loopWithHr(signal, getKey, renderItem) {
   const $signalWithHr = signal.derive(a => a.flatMap((x, i) => i ? [Symbol('hr'), x] : [x]))
@@ -53,15 +57,13 @@ function loopWithHr(signal, getKey, renderItem) {
       if (typeof item === 'symbol')
         return item
 
-      const items = signal.get()
-      return getKey(item, items.indexOf(item), items)
+      return getKey(item)
     },
-    item => {
-      if (typeof item === 'symbol')
+    ($item, key) => {
+      if (typeof key === 'symbol')
         return hr()
 
-      const items = signal.get()
-      return renderItem(item, items.indexOf(item), items)
+      return renderItem($item, key)
     }
   )
 }

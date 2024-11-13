@@ -26,8 +26,8 @@ export function withOnDestroyCapture(f) {
 export class Dynamic {
   /**
    * @param {Signal<Array<T>>} signal
-   * @param {(value: T, index: number, items: Array<T>) => any} getKey
-   * @param {(value: T, index: number, items: Array<T>) => any} renderItem
+   * @param {(value: T) => any} getKey
+   * @param {(value: Signal<T>, key: any) => any} renderItem
    */
   constructor(signal, getKey, renderItem) {
     this.signal = signal
@@ -39,8 +39,8 @@ export class Dynamic {
 /**
  * @template T
  * @param {Signal<Array<T>>} signal
- * @param {(value: T, index: number, items: Array<T>) => any} getKey
- * @param {(value: T, index: number, items: Array<T>) => any} renderItem
+ * @param {(value: T) => any} getKey
+ * @param {(value: Signal<T>, key: any) => any} renderItem
  */
 export function loop(signal, getKey, renderItem) {
   return new Dynamic(signal, getKey, renderItem)
@@ -51,5 +51,5 @@ export function conditional(signal, predicate, renderItem) {
 }
 
 export function derive(signal, renderItem) {
-  return new Dynamic(signal.derive(x => [x]), x => x, renderItem)
+  return new Dynamic(signal.derive(x => [x]), x => x, (_, key) => renderItem(key))
 }

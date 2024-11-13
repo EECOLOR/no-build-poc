@@ -1,3 +1,4 @@
+import { derive } from '#ui/dynamic.js'
 import { css, tags } from '#ui/tags.js'
 import { ListSignal } from '../buildingBlocks.js'
 import { getPathInfo, getSchema } from '../context.js'
@@ -20,7 +21,9 @@ export function DocumentHistory({ id, schemaType }) {
         className: 'DocumentHistory',
         signal: $history,
         getKey: historyItem => historyItem.key,
-        renderItem: historyItem => HistoryItem({ historyItem, schema })
+        renderItem: $historyItem => derive($historyItem, historyItem =>
+          HistoryItem({ historyItem, schema })
+        )
       },
       DocumentHistory.style,
     )
