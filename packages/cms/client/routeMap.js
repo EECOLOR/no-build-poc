@@ -63,29 +63,28 @@ export const routeMap = asRouteMap({
         data: handler(x => x.auth.logout)
       },
 
-      google: {
-        path: 'google',
+      provider: {
+        path: ':provider',
 
         login: {
           path: 'login',
-          data: handler(x => x.auth.google.login)
+          data: handler(x => x.auth.provider.login)
         },
         callback: {
           path: 'callback',
-          data: handler(x => x.auth.google.callback)
-        }
+          data: handler(x => x.auth.provider.callback)
+        },
       },
+      oauth2: {
+        path: 'oauth2',
 
-      microsoft: {
-        path: 'microsoft',
-
-        login: {
-          path: 'login',
-          data: handler(x => x.auth.microsoft.login)
+        authorize: {
+          path: 'authorize',
+          data: handler(x => x.auth.noAuth.authorize),
         },
         callback: {
           path: 'callback',
-          data: handler(x => x.auth.microsoft.callback)
+          data: handler(x => x.auth.noAuth.callback)
         }
       }
     },

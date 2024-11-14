@@ -3,7 +3,7 @@ import { context } from '../context.js'
 import { routeMap } from '../routeMap.js'
 import { Panes } from './Panes.js'
 
-const { div, hr, a } = tags
+const { div, hr, a, span } = tags
 
 Desk.style = css`& {
   display: flex;
@@ -16,11 +16,11 @@ Desk.style = css`& {
     flex-grow: 1;
   }
 }`
-export function Desk({ deskStructure }) {
+export function Desk({ deskStructure, auth }) {
   return (
     div({ className: 'Desk' },
       Desk.style,
-      DeskHeader(),
+      DeskHeader({ auth }),
       hr(),
       Panes({ firstPane: deskStructure.pane }),
     )
@@ -31,11 +31,20 @@ DeskHeader.style = css`& {
   line-height: 1em;
   display: flex;
   justify-content: space-between;
+
+  & > span {
+    display: flex;
+    gap: 1em;
+  }
 }`
-function DeskHeader() {
+function DeskHeader({ auth }) {
   return div({ className: 'DeskHeader' },
     DeskHeader.style,
     'CMS',
-    a({ href: context.basePath + routeMap.api.auth.logout() }, 'Logout')
+    span(
+      span(auth.user.name),
+      span(`(${auth.idProvider})`),
+      a({ href: context.basePath + routeMap.api.auth.logout() }, 'Logout')
+    )
   )
 }

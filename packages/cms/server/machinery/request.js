@@ -2,6 +2,8 @@ import { decodeAndVerifyJwt } from '#auth/jwt.js'
 import config from '#config'
 import crypto from 'node:crypto'
 
+/** @import { WithPublicKeys } from '#auth/oauth2.js' */
+
 export function withRequestJsonBody(req, callback) {
   withRequestBufferBody(req, (buffer, e) => {
     let error = e
@@ -50,9 +52,10 @@ export function getCookies(req) {
 }
 
 /**
+ * @param {{ [provider: string]: WithPublicKeys }} pubicKeyProviders
  * @param {(
 *    info:
-*      { authenticated: true, idProvider: string, user: { email: string, name: string } } |
+*      { authenticated: true, idProvider: string, user: { email: string, name: string, id: string } } |
 *      { authenticated: false, hint: string },
 *    error?: Error
  * ) => void} callback
@@ -78,9 +81,9 @@ export function withAuthInfo(req, pubicKeyProviders, callback) {
     if (error)
       return callback(null, error)
 
-    const { valid, body } = decodeAndVerifyJwt(idToken, publicKeys)
+    const { valid, body, hint } = decodeAndVerifyJwt(idToken, publicKeys)
     if (!valid)
-      return notAuthorized('JWT not valid')
+      return notAuthorized(`JWT not valid (${hint})`)
 
     const id = crypto.createHash('md5').update(body.email).digest('hex')
     return callback({ authenticated: true, idProvider, user: { email: body.email, name: body.name, id } })

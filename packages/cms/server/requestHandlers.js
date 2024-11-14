@@ -1,4 +1,6 @@
+import { createJwt } from '#auth/jwt.js'
 import { getLoginUrl, handleLoginCallback } from '#auth/oauth2.js'
+import { routeMap } from '#cms/client/routeMap.js'
 import config from '#config'
 import { sendEvent, startEventStream } from './machinery/eventStreams.js'
 import { withRequestJsonBody } from './machinery/request.js'
@@ -104,24 +106,34 @@ export function createRequestHandlers({ basePath, documents, images, streams }) 
         GET: (req, res) => { oAuth2Logout(res) }
       },
 
-      google: {
+      provider: {
         login: {
-          GET: (req, res) => { oAuth2Login(res, 'google') }
+          GET: (req, res, { provider }) => { oAuth2Login(res, provider) }
         },
         callback: {
-          GET: (req, res, { searchParams }) => {
-            oAuth2LoginCallback(res, searchParams, 'google')
+          GET: (req, res, { provider, searchParams }) => {
+            oAuth2LoginCallback(res, searchParams, provider)
           }
         }
       },
 
-      microsoft: {
-        login: {
-          GET: (req, res) => { oAuth2Login(res, 'microsoft') }
+      noAuth: {
+        authorize: {
+          GET: (req, res) => {
+            redirect(res, FOUND, basePath + routeMap.api.auth.oauth2.callback())
+          }
         },
+
         callback: {
-          GET: (req, res, { searchParams }) => {
-            oAuth2LoginCallback(res, searchParams, 'microsoft')
+          GET: (req, res) => {
+            const idToken = createJwt(
+              'publicKey',
+              { email: 'no-email@no-domain.com', name: 'No name' },
+              config.auth.noAuth.privateKey
+            )
+            setCookie(res, 'idt', idToken)
+            setCookie(res, 'idp', 'noAuth')
+            redirect(res, FOUND, basePath)
           }
         }
       }
@@ -130,6 +142,9 @@ export function createRequestHandlers({ basePath, documents, images, streams }) 
 
   /** @param {keyof typeof config.auth} idp */
   function oAuth2Login(res, idp) {
+    if (!config.auth[idp])
+      return notFound(res)
+
     redirect(res, FOUND, getLoginUrl(config.auth[idp].web))
   }
 

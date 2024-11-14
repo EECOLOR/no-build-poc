@@ -58,6 +58,8 @@ export async function handleLoginCallback(authConfig, searchParams) {
   return json.id_token
 }
 
+/** @typedef {ReturnType<typeof createWithPublicKeys>} WithPublicKeys */
+
 /** @param {() => Promise<{ [kid: string]: string }>} fetchPublicKeys */
 export function createWithPublicKeys(fetchPublicKeys) {
   const cache = {

@@ -33,8 +33,29 @@ export function decodeAndVerifyJwt(jwt, publicKeys) {
   return { valid: true, header, body }
 }
 
+export function createJwt(kid, body, privateKey) {
+  const encodedHeader = encodeJson({ alg: "RS256", typ: "JWT", kid })
+  const encodedBody = encodeJson(body)
+  const unsignedToken = `${encodedHeader}.${encodedBody}`
+
+  const signature = crypto.createSign('RSA-SHA256').update(unsignedToken).end()
+    .sign(privateKey)
+    .toString('base64url')
+
+  return `${unsignedToken}.${signature}`
+}
+
 function invalid(hint) {
   return { valid: false, hint }
+}
+
+function encodeJson(json) {
+  const jsonString = JSON.stringify(json)
+  return encodeRaw(jsonString)
+}
+
+function encodeRaw(value) {
+  return Buffer.from(value).toString('base64url')
 }
 
 function decodeJson(encoded) {

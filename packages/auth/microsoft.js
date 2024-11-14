@@ -1,16 +1,12 @@
-import config from '#config'
 import { createWithPublicKeys } from './oauth2.js'
-
-const authConfig = config.auth.microsoft.web
 
 export const withPublicKeys = createWithPublicKeys(fetchPublicKeys)
 
 async function fetchPublicKeys() {
   const response = await fetch(
-    authConfig.auth_provider_keys,
+    'https://login.microsoftonline.com/01d1e6d7-8e38-4132-8385-a5664abf27ed/discovery/v2.0/keys',
     { headers: { 'Accept': 'application/json' } }
   )
-
   const result = await response.json()
 
   return Object.fromEntries( result.keys.map(({ kid, x5c: [x5cCert] }) =>

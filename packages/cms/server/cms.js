@@ -1,5 +1,7 @@
 import path from 'node:path'
 import fs from 'node:fs'
+import config from '#config'
+import { mapValues } from '#utils'
 import { createDatabase, createDatabaseActions } from './database.js'
 import { createDocumentsHandler } from './documents.js'
 import { createImagesHandler } from './images.js'
@@ -9,13 +11,8 @@ import { routeMap } from '#cms/client/routeMap.js'
 import { asRouteChain, match } from '#routing/routeMap.js'
 import { createRequestHandlers } from './requestHandlers.js'
 import { withAuthInfo } from './machinery/request.js'
-import * as google from '#auth/google.js'
-import * as microsoft from '#auth/microsoft.js'
 
-const publicKeyProviders = {
-  google: google.withPublicKeys,
-  microsoft: microsoft.withPublicKeys,
-}
+const publicKeyProviders = mapValues(config.auth, x => x.web.withPublicKeys)
 
 export function createCms({ basePath, storagePath }) {
   const imagesPath = path.join(storagePath, 'images')

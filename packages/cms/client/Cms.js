@@ -37,10 +37,13 @@ function Login({ basePath }) {
   return (
     div(
       div(
-        a({ href: basePath + routeMap.api.auth.google.login() }, 'Login with Google'),
+        a({ href: basePath + routeMap.api.auth.provider.login({ provider: 'google'}) }, 'Login with Google'),
       ),
       div(
-        a({ href: basePath + routeMap.api.auth.microsoft.login() }, 'Login with Microsoft'),
+        a({ href: basePath + routeMap.api.auth.provider.login({ provider: 'microsoft' }) }, 'Login with Microsoft'),
+      ),
+      div(
+        a({ href: basePath + routeMap.api.auth.provider.login({ provider: 'noAuth' }) }, 'Fake login'),
       )
     )
   )
@@ -74,7 +77,7 @@ function CmsWithContext({ basePath, deskStructure, documentSchemas, documentView
   return (
     div(
       CmsWithContext.style,
-      Desk({ deskStructure }),
+      Desk({ deskStructure, auth }),
     )
   )
 }
@@ -98,7 +101,7 @@ function withParamsAndPrefix(basePath, routeOrRouteMap, params) {
 }
 
 function useAuth({ basePath }) {
-  const $auth = useFetch(basePath + routeMap.api.versioned.me({ version: apiVersion }))
+  const $auth = useFetch(basePath + routeMap.api.versioned.me({ version: apiVersion }),)
   return $auth.derive(auth =>
     !auth ? null :
     auth instanceof Error ? auth :
