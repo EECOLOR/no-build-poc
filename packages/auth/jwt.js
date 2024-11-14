@@ -25,8 +25,11 @@ export function decodeAndVerifyJwt(jwt, publicKeys) {
   if (!publicKey)
     return invalid(`No public key found for 'kid' with value '${kid}'`)
 
-  const verifier = crypto.createVerify('RSA-SHA256').update(`${encodedHeader}.${encodedBody}`).end()
-  const isVerified = verifier.verify(publicKey, signature)
+  const isVerified = crypto
+    .createVerify('RSA-SHA256')
+    .update(`${encodedHeader}.${encodedBody}`)
+    .verify(publicKey, signature)
+
   if (!isVerified)
     return invalid(`Signature is not valid`)
 
@@ -38,7 +41,9 @@ export function createJwt(kid, body, privateKey) {
   const encodedBody = encodeJson(body)
   const unsignedToken = `${encodedHeader}.${encodedBody}`
 
-  const signature = crypto.createSign('RSA-SHA256').update(unsignedToken).end()
+  const signature = crypto
+    .createSign('RSA-SHA256')
+    .update(unsignedToken)
     .sign(privateKey)
     .toString('base64url')
 
