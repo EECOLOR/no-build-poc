@@ -1,4 +1,4 @@
-import { scrollable } from '#cms/client/buildingBlocks.js'
+import { scrollable } from '#cms/client/ui/scrollable.js'
 import { context } from '#cms/client/context.js'
 import { connecting, useImageMetadata } from '#cms/client/data.js'
 import { createImageSrc } from '#cms/client/form/image/createImgSrc.js'

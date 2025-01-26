@@ -1,4 +1,4 @@
-import { Button, ButtonDelete, ButtonDown, ButtonUp } from '#cms/client/buildingBlocks.js'
+import { Button, ButtonDelete, ButtonDown, ButtonUp } from '#cms/client/ui/Button.js'
 import { patchDocument } from '#cms/client/data.js'
 import { loop } from '#ui/dynamic.js'
 import { useCombined } from '#ui/hooks.js'
@@ -10,7 +10,7 @@ import { getAtPath } from './utils.js'
 
 const { div } = tags
 
-ArrayField.style = css`& {
+ArrayField.style = css`
   display: flex;
   flex-direction: column;
   gap: var(--default-gap);
@@ -24,7 +24,7 @@ ArrayField.style = css`& {
       width: 100%;
     }
   }
-}`
+`
 export function ArrayField({ document, field, $path }) {
   const $documentAndPath = useCombined(document.$value, $path)
   const $valueFromDocument = $documentAndPath.derive(([doc, path]) => getAtPath(doc, path) || [])
@@ -74,7 +74,7 @@ export function ArrayField({ document, field, $path }) {
   }
 }
 
-ArrayItem.style = css`& {
+ArrayItem.style = css`
   display: flex;
   gap: var(--default-gap);
 
@@ -88,7 +88,7 @@ ArrayItem.style = css`& {
     display: flex;
     flex-direction: column;
   }
-}`
+`
 function ArrayItem({ $isFirst, $isLast, document, $arrayPath, $index, field, onMove, onDelete }) {
   const $arrayPathAndIndex = useCombined($arrayPath, $index)
   const $path = $arrayPathAndIndex.derive(([arrayPath, index]) => `${arrayPath}/${index}`)

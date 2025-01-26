@@ -1,18 +1,16 @@
 import { createSignal } from '#ui/signal.js'
 import { css } from '#ui/tags.js'
-import { scrollable } from '../buildingBlocks.js'
+import { scrollable } from '../ui/scrollable.js'
 import { ObjectFields } from './fields/ObjectField.js'
 
-DocumentForm.style = css`& {
-  /* display: flex;
-  flex-direction: column; */
+DocumentForm.style = css`
   min-width: 25rem;
   max-width: 35rem;
 
   & > :last-child {
     margin-top: 1rem;
   }
-}`
+`
 export function DocumentForm({ document }) {
   return (
     scrollable.div(// TODO: use context.documentView

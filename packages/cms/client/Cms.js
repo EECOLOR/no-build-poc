@@ -49,14 +49,14 @@ function Login({ basePath }) {
   )
 }
 
-CmsWithContext.style = css`& {
+CmsWithContext.style = css`
   --default-padding: 0.5rem;
   --default-gap: var(--default-padding);
 
   & > .Desk {
     height: 100%;
   }
-}`
+`
 function CmsWithContext({ basePath, deskStructure, documentSchemas, documentView, onError, auth }) {
   const versionedRouteMap = withParamsAndPrefix(basePath, routeMap, { version: apiVersion })
   const api = versionedRouteMap.api.versioned

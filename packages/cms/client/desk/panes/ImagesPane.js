@@ -1,4 +1,4 @@
-import { ListSignal } from '#cms/client/buildingBlocks.js'
+import { ListSignal } from '#cms/client/ui/List.js'
 import { context } from '#cms/client/context.js'
 import { useImages } from '#cms/client/data.js'
 import { css, tags } from '#ui/tags.js'

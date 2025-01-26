@@ -1,4 +1,4 @@
-import { ButtonChevronDown, ButtonChevronUp } from '#cms/client/buildingBlocks.js'
+import { ButtonChevronDown, ButtonChevronUp } from '#cms/client/ui/Button.js'
 import { renderOnValue } from '#cms/client/machinery/renderOnValue.js'
 import { derive } from '#ui/dynamic.js'
 import { createSignal } from '#ui/signal.js'
@@ -7,10 +7,10 @@ import { Field } from './Field.js'
 
 const { div, strong } = tags
 
-ObjectField.style = css`& {
+ObjectField.style = css`
   padding-left: var(--default-padding);
   border-left: 1px solid lightgrey;
-}`
+`
 export function ObjectField({ document, field, $path, id }) {
   return (
     div(
@@ -33,11 +33,11 @@ export function Object({ document, field, $path, id }) {
   )
 }
 
-ObjectFields.style = css`& {
+ObjectFields.style = css`
   display: flex;
   flex-direction: column;
   gap: calc(var(--default-gap) * 2);
-}`
+`
 export function ObjectFields({ document, fields, $path }) {
 
   return (
@@ -50,11 +50,11 @@ export function ObjectFields({ document, fields, $path }) {
   )
 }
 
-ObjectTitle.style = css`& {
+ObjectTitle.style = css`
   display: flex;
   justify-content: space-between;
   align-items: center;
-}`
+`
 function ObjectTitle({ id, title, $expanded, onExpandClick }) {
   const $Button = $expanded.derive(x => x ? ButtonChevronUp : ButtonChevronDown)
 

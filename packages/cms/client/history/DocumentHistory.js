@@ -1,14 +1,14 @@
 import { derive } from '#ui/dynamic.js'
 import { css, tags } from '#ui/tags.js'
-import { ListSignal } from '../buildingBlocks.js'
 import { getPathInfo, getSchema } from '../context.js'
 import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
+import { ListSignal } from '../ui/List.js'
 
 const { div, span, pre, code, del, ins, time, em } = tags
 
-DocumentHistory.style = css`& {
+DocumentHistory.style = css`
   --gap: 1rem;
-}`
+`
 export function DocumentHistory({ id, schemaType }) {
   const $history = useDocumentHistory({ id, schemaType })
     .derive(history => history.filter(x => x.details.type !== 'empty'))
@@ -30,9 +30,9 @@ export function DocumentHistory({ id, schemaType }) {
   )
 }
 
-HistoryItem.style = css`&{
+HistoryItem.style = css`
   padding: 0.2rem;
-}`
+`
 function HistoryItem({ historyItem, schema }) {
   // TODO: history items that are not a minute old can still change, we should probably make them reactive (or not, probably not important for real use cases, maybe introduce a refresh button, I don't know)
   return (
@@ -43,7 +43,7 @@ function HistoryItem({ historyItem, schema }) {
   )
 }
 
-HistoryItemHeader.style = css`& {
+HistoryItemHeader.style = css`
   & > .dateAndAuthor {
     display: flex;
     justify-content: space-between;
@@ -55,7 +55,7 @@ HistoryItemHeader.style = css`& {
     gap: 1ex;
     font-size: 0.85em;
   }
-}`
+`
 function HistoryItemHeader({ historyItem, schema }) {
 
   return (
@@ -136,10 +136,10 @@ function UnsupportedTypeItem({ historyItem, schema }) {
   )
 }
 
-DateTime.style = css`& {
+DateTime.style = css`
   display: inline-flex;
   gap: 1ex;
-}`
+`
 function DateTime({ timestamp }) {
   const [dateString, timeString] = new Date(timestamp).toISOString().split('T')
   return (
@@ -151,23 +151,23 @@ function DateTime({ timestamp }) {
   )
 }
 
-Author.style = css`&{
+Author.style = css`
   display: inline-block;
   width: 1.5rem;
   height: 1.5rem;
   border-radius: 1.5rem;
   background-color: var(--color);
-}`
+`
 function Author({ clientId }) {
   return span({ style: { '--color': `#${clientId.slice(0, 6)}` }, title: clientId },
     Author.style,
   )
 }
 
-StringItem.style = css`& {
+StringItem.style = css`
   & > ins { background-color: lightgreen; }
   & > del { background-color: lightcoral; }
-}`
+`
 function StringItem({ historyItem, schema }) {
   const { difference } = historyItem.details
   const merged = mergeChanges(difference)

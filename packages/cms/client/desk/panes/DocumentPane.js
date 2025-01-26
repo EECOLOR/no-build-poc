@@ -1,4 +1,4 @@
-import { ButtonChevronLeft, ButtonChevronRight, ButtonDelete } from '#cms/client/buildingBlocks.js'
+import { ButtonChevronLeft, ButtonChevronRight, ButtonDelete } from '#cms/client/ui/Button.js'
 import { getSchema } from '#cms/client/context.js'
 import { connecting, patchDocument, useDocument } from '#cms/client/data.js'
 import { DocumentForm } from '#cms/client/form/DocumentForm.js'
@@ -10,13 +10,12 @@ import { css, tags } from '#ui/tags.js'
 
 const { div, h1 } = tags
 
-DocumentPane.style = css`& {
+DocumentPane.style = css`
   display: flex;
   flex-direction: column;
   gap: var(--default-gap);
-  padding: var(--default-padding);
   max-width: fit-content;
-}`
+`
 export function DocumentPane({ id, schemaType }) {
   const $document = useDocument({ id, schemaType })
   const document = { id, schema: getSchema(schemaType), $value: $document }
@@ -33,7 +32,7 @@ export function DocumentPane({ id, schemaType }) {
   )
 }
 
-DocumentBody.style = css`& {
+DocumentBody.style = css`
   display: flex;
   min-height: 0;
   gap: calc(var(--default-gap) * 2);
@@ -41,7 +40,7 @@ DocumentBody.style = css`& {
   & > .DocumentHistory {
     width: 20rem;
   }
-}`
+`
 function DocumentBody({ document, $showHistory, id, schemaType }) {
   return (
     div({ className: 'DocumentBody' },
@@ -54,15 +53,11 @@ function DocumentBody({ document, $showHistory, id, schemaType }) {
   )
 }
 
-DocumentHeader.style = css`& {
+DocumentHeader.style = css`
   display: flex;
   justify-content: space-between;
   align-items: center;
-
-  & > div {
-    display: flex;
-  }
-}`
+`
 function DocumentHeader({ document, $showHistory, onShowHistoryClick }) {
   const $title = document.$value.derive(doc => document.schema.preview(doc).title)
   const $Button = $showHistory.derive(x => x ? ButtonChevronLeft : ButtonChevronRight)

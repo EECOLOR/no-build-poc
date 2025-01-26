@@ -9,11 +9,11 @@ import { useFieldValue } from './useFieldValue.js'
 
 const { div, img } = tags
 
-ImageField.style = css`& {
+ImageField.style = css`
   display: flex;
   flex-direction: column;
   gap: var(--default-gap);
-}`
+`
 export function ImageField({ document, field, $path }) {
   const [$value, setValue] = useFieldValue({
     document, $path, initialValue: null,

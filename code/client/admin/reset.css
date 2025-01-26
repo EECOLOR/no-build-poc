@@ -37,8 +37,7 @@ input, button:active {
 }
 
 button {
-  border: outset 1px lightgray;
-
+  border: none;
 }
 
 input {

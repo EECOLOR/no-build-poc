@@ -1,7 +1,8 @@
-import { ButtonAdd, ListSignal } from '#cms/client/buildingBlocks.js'
 import { context, getSchema } from '#cms/client/context.js'
 import { useDocuments } from '#cms/client/data.js'
 import { pushState } from '#cms/client/machinery/history.js'
+import { ButtonAdd } from '#cms/client/ui/Button.js'
+import { ListSignal } from '#cms/client/ui/List.js'
 import { useCombined } from '#ui/hooks.js'
 import { createSignal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
@@ -9,7 +10,7 @@ import { ListItem } from './list/ListItem.js'
 
 const { div, input } = tags
 
-DocumentListPane.style = css`& {
+DocumentListPane.style = css`
   display: flex;
   flex-direction: column;
   max-width: 20rem;
@@ -18,7 +19,7 @@ DocumentListPane.style = css`& {
   & > :last-child {
     flex-grow: 1;
   }
-}`
+`
 export function DocumentListPane({ schemaType, path }) {
   const schema = getSchema(schemaType)
   if (!schema) throw new Error(`Could not find schema '${schemaType}'`)
@@ -43,14 +44,15 @@ export function DocumentListPane({ schemaType, path }) {
   }
 }
 
-DocumentListHeader.style = css`& {
+DocumentListHeader.style = css`
   display: flex;
   gap: var(--default-gap);
+  align-items: center;
 
   & > input {
     flex-grow: 1;
   }
-}`
+`
 function DocumentListHeader({ schema, onFilterChange, onAddClick }) {
   return (
     div(

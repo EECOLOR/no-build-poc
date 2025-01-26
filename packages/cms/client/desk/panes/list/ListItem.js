@@ -1,9 +1,10 @@
-import { ButtonChevronRight, Link } from '#cms/client/buildingBlocks.js'
 import { $pathname } from '#cms/client/machinery/history.js'
+import { Link } from '#cms/client/machinery/Link.js'
+import { ButtonChevronRight } from '#cms/client/ui/Button.js'
 import { Signal } from '#ui/signal.js'
 import { css } from '#ui/tags.js'
 
-ListItem.style = css`& {
+ListItem.style = css`
   display: flex;
   text-decoration: none;
   color: inherit;
@@ -17,7 +18,7 @@ ListItem.style = css`& {
   & > button {
     border: none;
   }
-}`
+`
 export function ListItem({ href, title }) {
   const $className = $pathname.derive(pathname => {
     const activeHref = href instanceof Signal ? href.get() : href

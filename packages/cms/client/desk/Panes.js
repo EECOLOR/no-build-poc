@@ -1,20 +1,16 @@
 import { loop } from '#ui/dynamic.js'
-import { Signal } from '#ui/signal.js'
-import { css, tags } from '#ui/tags.js'
+import { css } from '#ui/tags.js'
 import { context } from '../context.js'
 import { $pathname } from '../machinery/history.js'
+import { FlexSectionHorizontal } from '../ui/FlexSection.js'
 import { DocumentListPane } from './panes/DocumentListPane.js'
 import { DocumentPane } from './panes/DocumentPane.js'
 import { ImagePane } from './panes/ImagePane.js'
 import { ImagesPane } from './panes/ImagesPane.js'
 import { ListPane } from './panes/ListPane.js'
 
-const { div, hr } = tags
-
-Panes.style = css`& {
-  display: flex;
-  min-height: 0; /* display: flex sets it to auto */
-  gap: var(--default-gap);
+Panes.style = css`
+  min-height: 0; /* 'display: flex' sets it to auto */
 
   & > *:not(:last-child) {
     flex-shrink: 0;
@@ -23,7 +19,7 @@ Panes.style = css`& {
   & > :last-child {
     flex-grow: 1;
   }
-}`
+`
 export function Panes({ firstPane }) {
   const $panesWithPath = $pathname.derive(pathname => {
     const pathSegments = pathname.replace(context.basePath, '').slice(1).split('/')
@@ -31,40 +27,14 @@ export function Panes({ firstPane }) {
   })
 
   return (
-    div({ className: 'Panes' },
+    FlexSectionHorizontal({ className: 'Panes' },
       Panes.style,
-      loopWithHr(
+      loop(
         $panesWithPath,
         x => x.path.join('/'),
         $paneWithPath => renderPane($paneWithPath.get())
       )
     )
-  )
-}
-
-// TODO: this below seems too complicated
-/**
- * @template T
- * @param {Signal<Array<T>>} signal
- * @param {(value: T) => any} getKey
- * @param {(value: Signal<T>, key: any) => any} renderItem
- */
-function loopWithHr(signal, getKey, renderItem) {
-  const $signalWithHr = signal.derive(a => a.flatMap((x, i) => i ? [Symbol('hr'), x] : [x]))
-  return loop(
-    $signalWithHr,
-    item => {
-      if (typeof item === 'symbol')
-        return item
-
-      return getKey(item)
-    },
-    ($item, key) => {
-      if (typeof key === 'symbol')
-        return hr()
-
-      return renderItem($item, key)
-    }
   )
 }
 

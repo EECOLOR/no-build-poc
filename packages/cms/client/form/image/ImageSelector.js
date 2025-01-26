@@ -1,12 +1,15 @@
-import { Button, ButtonClose, IconAdd, scrollable } from '#cms/client/buildingBlocks.js'
+import { Button, ButtonClose } from '#cms/client/ui/Button.js'
 import { context } from '#cms/client/context.js'
 import { useImages } from '#cms/client/data.js'
+import { plus } from '#cms/client/ui/icons.js'
 import { renderOnValue } from '#cms/client/machinery/renderOnValue.js'
+import { withIcon } from '#cms/client/ui/icon.js'
 import { conditional, derive, loop } from '#ui/dynamic.js'
 import { useRef } from '#ui/hooks.js'
 import { createSignal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
 import { createImageSrc } from './createImgSrc.js'
+import { scrollable } from '#cms/client/ui/scrollable.js'
 
 const { dialog, div, img, input } = tags
 
@@ -203,7 +206,7 @@ AddLabel.styles = css`& {
 function AddLabel() {
   return div(
     AddLabel.styles,
-    IconAdd(),
+    withIcon(plus).span(),
     'Upload new image'
   )
 }

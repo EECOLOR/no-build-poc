@@ -1,13 +1,8 @@
 import { context } from '#cms/client/context.js'
 import { renderOnValue } from '#cms/client/machinery/renderOnValue.js'
 import { useEventSourceAsSignal } from '#cms/client/machinery/useEventSourceAsSignal.js'
-import { css, tags } from '#ui/tags.js'
 import { RichTextEditor } from '../richTextEditor/RichTextEditor.js'
 
-const { div } = tags
-
-RichTextField.style = css`& {
-}`
 export function RichTextField({ document, field, $path, id }) {
   const { schema } = field
   const $richTextArgs = $path.derive(path => getRichTextArgs({ document, fieldPath: path }))
@@ -32,10 +27,7 @@ export function RichTextField({ document, field, $path, id }) {
   // This might be an interesting performance optimization if that is needed:
   // https://discuss.prosemirror.net/t/current-state-of-the-art-on-syncing-data-to-backend/5175/4
   return renderOnValue($initialValue, initialValue =>
-    div(
-      RichTextField.style,
-      RichTextEditor({ id, initialValue, $steps, synchronize, schema }),
-    )
+    RichTextEditor({ id, initialValue, $steps, synchronize, schema }),
   )
 
   function synchronize({ clientId, steps, version, value }) {

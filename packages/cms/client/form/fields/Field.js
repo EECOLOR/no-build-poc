@@ -18,10 +18,10 @@ const fieldRenderers = /** @type {const} */({
   default: ObjectField,
 })
 
-Field.style = css`& {
+Field.style = css`
   display: flex;
   flex-direction: column;
-}`
+`
 export function Field({ document, field, $path }) {
   let renderer = fieldRenderers[field.type]
   if (!renderer && 'fields' in field)

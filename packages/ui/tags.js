@@ -95,5 +95,5 @@ export class Tag {
  * @returns {import('./types.js').TypeOrArrayOfType<Tag<'style'>>}
  */
 export function css(...args) {
-  return tags.style(raw(`@scope to (*:has(> style) > *) { ${String.raw(...args)} }`))
+  return tags.style(raw(`@scope to (*:has(> style) > *) { :scope { ${String.raw(...args)} } }`))
 }
