@@ -1,3 +1,4 @@
+import { Signal } from '#ui/signal.js'
 import { tags, css } from '#ui/tags.js'
 import { separatePropsAndChildren } from '#ui/utils.js'
 
@@ -14,7 +15,7 @@ export function withIcon(icon, props = {}) {
   })
 }
 
-Icon.style = ({ icon,  rotation = '' }) => css`
+Icon.style = ({ icon }) => css`
   --width: 1.5rem;
   --height: 1.5rem;
   padding: 0.25rem;
@@ -38,16 +39,23 @@ Icon.style = ({ icon,  rotation = '' }) => css`
     background-position: center;
     background-repeat: no-repeat;
 
-    ${rotation && `transform: rotate(${rotation}deg);`}
+    transform: rotate(var(--rotation, 0));
+    transition: transform 200ms;
   }
 
   &:disabled {
     opacity: 0.5;
   }
 `
-/** @returns {(props?: import('#ui/tags.js').Attributes<'div'>) => Tag<'div'>} */
+/**
+ * @template {(...args: any[]) => any} T
+ * @param {T} element
+ * @returns {ReturnType<T>} */
 function Icon(icon, { rotation }, element, ...params) {
   const { props, children } = separatePropsAndChildren(params)
-  return element(props, Icon.style({ icon, rotation }), ...children)
+  return element({ ...props, style: { ...props?.style, '--rotation': map(rotation, x => `${x}deg`) } }, Icon.style({ icon }), ...children)
 }
 
+function map(x, f) {
+  return x instanceof Signal ? x.derive(f) : f(x)
+}

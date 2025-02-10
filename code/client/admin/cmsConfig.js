@@ -44,10 +44,11 @@ const documentSchemas = [
     fields: [
       field('title', 'string'),
       field('meta', 'object', {
+        title: 'Metadata',
         fields: [
           field('author', 'string'),
           field('readTime', 'string'),
-        ]
+        ],
       }),
       field('heroImage', 'image'),
       field('content', 'rich-text', {
@@ -63,7 +64,11 @@ const documentSchemas = [
             fields: [
               field('label', 'string'),
               field('value', 'string'),
-            ]
+            ],
+            options: {
+              collapsible: false,
+              showObjectHeader: true,
+            }
           })
         ]
       }),
@@ -117,7 +122,21 @@ function type(type, props = {}) {
 
 function field(name, type, props = {}) {
   if (!props.title) props.title = capitalize(name)
-  return { type, name, ...props }
+  return { type, name, ...defaults(type), ...props }
+}
+
+function defaults(type) {
+  switch (type) {
+    case 'object':
+      return {
+        options: {
+          collapsible: true,
+          showObjectHeader: false,
+        }
+      }
+    default:
+      return {}
+  }
 }
 
 function capitalize(s) {

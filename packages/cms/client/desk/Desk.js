@@ -1,7 +1,7 @@
 import { css, tags } from '#ui/tags.js'
 import { context } from '../context.js'
 import { routeMap } from '../routeMap.js'
-import { FlexSectionVertical } from '../ui/FlexSection.js'
+import { FlexSectionBorderedVertical } from '../ui/FlexSection.js'
 import { Panes } from './Panes.js'
 
 const { div, a, span } = tags
@@ -11,11 +11,12 @@ Desk.style = css`
 
   & > .Panes {
     flex-grow: 1;
+    min-height: 0;
   }
 `
 export function Desk({ deskStructure, auth }) {
   return (
-    FlexSectionVertical({ className: 'Desk' },
+    FlexSectionBorderedVertical({ className: 'Desk' },
       Desk.style,
       DeskHeader({ auth }),
       Panes({ firstPane: deskStructure.pane }),

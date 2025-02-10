@@ -5,59 +5,48 @@ import { plus } from '#cms/client/ui/icons.js'
 import { renderOnValue } from '#cms/client/machinery/renderOnValue.js'
 import { withIcon } from '#cms/client/ui/icon.js'
 import { conditional, derive, loop } from '#ui/dynamic.js'
-import { useRef } from '#ui/hooks.js'
 import { createSignal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
 import { createImageSrc } from './createImgSrc.js'
 import { scrollable } from '#cms/client/ui/scrollable.js'
+import { FlexSectionHorizontal, FlexSectionVertical } from '#cms/client/ui/FlexSection.js'
+import { useController } from '#cms/client/machinery/useController.js'
+import { Dialog } from '#cms/client/ui/Dialog.js'
 
-const { dialog, div, img, input } = tags
+const { div, img, input } = tags
 
 const newImage = Symbol('new image')
 
 export function ImageSelector({ onSelect }) {
-  const ref = useRef('dialog')
+  const controller = useController(Dialog.controller)
 
   return (
     div(
-      Button({ label: 'Select image', ref, onClick: () => ref.current.showModal() }),
-      ImageSelectorDialog({ ref, onChoose: handleChoose, onCloseClick: handleCloseClick }),
+      Button({ label: 'Select image', onClick: () => controller.open() }),
+      Dialog({ controller },
+        ImageSelectorDialogContent({ onChoose: handleChoose, onCloseClick: handleCloseClick })
+      ),
     )
   )
 
   function handleChoose(image) {
-    ref.current.close()
+    controller.close()
     onSelect(image)
   }
 
   function handleCloseClick() {
-    ref.current.close()
+    controller.close()
   }
 }
 
-ImageSelectorDialog.style = css`& {
-  &[open] {
-    padding: var(--default-padding);
-    margin: auto;
-    display: flex;
-    flex-direction: column;
-    align-items: end;
-    gap: var(--default-gap);
-    box-shadow: 4px 4px 8px rgb(0 0 0 / 50%);
-    height: 100%;
-  }
-
-  &::backdrop {
-    backdrop-filter: blur(0.25rem);
-  }
-}`
-function ImageSelectorDialog({ ref, onChoose, onCloseClick }) {
-  return (
-    dialog({ ref },
-      ImageSelectorDialog.style,
-      ButtonClose({ onClick: onCloseClick }),
-      ImagesAndDetails({ onChoose }),
-    )
+ImageSelectorDialogContent.style = css`
+  align-items: end;
+`
+function ImageSelectorDialogContent({ onChoose, onCloseClick }) {
+  return FlexSectionVertical({ className: 'ImageSelectorDialogContent' },
+    ImageSelectorDialogContent.style,
+    ButtonClose({ onClick: onCloseClick }),
+    ImagesAndDetails({ onChoose }),
   )
 }
 
@@ -93,10 +82,7 @@ function ImagesAndDetails({ onChoose }) {
 }
 
 Details.style = css`& {
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: var(--default-gap);
   padding: var(--default-padding);
 
   & > * {
@@ -109,15 +95,15 @@ Details.style = css`& {
 }`
 function Details({ $selected, onSelect, onChoose }) {
   return (
-    scrollable.div({ className: 'Details' },
+    scrollable(FlexSectionVertical)({ className: 'Details' },
       Details.style,
       conditional($selected, x => x === newImage,
         () => SelectFile({ onChange: handleFileChange }),
       ),
       derive($selected, image => image !== newImage && [
         Image({ image }),
-        $selected.derive(sizeString),
-        Button({ label: 'Select this image', onClick: () => onChoose($selected.get()) }),
+        sizeString(image),
+        Button({ label: 'Select this image', onClick: () => onChoose(image) }),
       ]),
     )
   )
@@ -163,9 +149,7 @@ function SelectFile({ onChange }) {
 }
 
 Images.style = css`& {
-  display: flex;
   flex-wrap: wrap;
-  gap: var(--default-gap);
   align-items: center;
 
   & > * {
@@ -177,7 +161,7 @@ function Images({ $selected, onSelect, onNewClick }) {
   const $images = useImages()
 
   return (
-    scrollable.div(
+    scrollable(FlexSectionHorizontal)({ className: 'Images' },
       Images.style,
       Button({
         label: AddLabel(),
@@ -197,14 +181,11 @@ function Images({ $selected, onSelect, onNewClick }) {
 }
 
 AddLabel.styles = css`& {
-  display: flex;
-  flex-direction: column;
-  gap: var(--default-gap);
   justify-content: center;
   align-items: center;
 }`
 function AddLabel() {
-  return div(
+  return FlexSectionVertical({ className: 'AddLabel' },
     AddLabel.styles,
     withIcon(plus).span(),
     'Upload new image'

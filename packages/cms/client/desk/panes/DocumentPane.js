@@ -1,4 +1,4 @@
-import { ButtonChevronLeft, ButtonChevronRight, ButtonDelete } from '#cms/client/ui/Button.js'
+import { ButtonChevron, ButtonDelete } from '#cms/client/ui/Button.js'
 import { getSchema } from '#cms/client/context.js'
 import { connecting, patchDocument, useDocument } from '#cms/client/data.js'
 import { DocumentForm } from '#cms/client/form/DocumentForm.js'
@@ -7,14 +7,34 @@ import { renderOnValue } from '#cms/client/machinery/renderOnValue.js'
 import { conditional, derive } from '#ui/dynamic.js'
 import { createSignal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
+import { FlexSectionHorizontal } from '#cms/client/ui/FlexSection.js'
 
 const { div, h1 } = tags
 
 DocumentPane.style = css`
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(auto, 35rem) auto;
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    'header history'
+    'form history'
+  ;
   gap: var(--default-gap);
-  max-width: fit-content;
+
+  & > .DocumentHeader {
+    grid-area: header;
+  }
+
+
+  & > .DocumentForm {
+    grid-area: form;
+    min-height: 0;
+  }
+
+  & > .DocumentHistory {
+    grid-area: history;
+    width: 20rem;
+  }
 `
 export function DocumentPane({ id, schemaType }) {
   const $document = useDocument({ id, schemaType })
@@ -22,55 +42,33 @@ export function DocumentPane({ id, schemaType }) {
   const [$showHistory, setShowHistory] = createSignal(false)
 
   return (
-    div(
+    div({ className: 'DocumentPane' },
       DocumentPane.style,
       conditional($document, doc => doc !== connecting, _ => [
         DocumentHeader({ document, $showHistory, onShowHistoryClick: _ => setShowHistory(x => !x) }),
-        DocumentBody({ document, $showHistory, id, schemaType }),
+        DocumentForm({ document }),
+        renderOnValue($showHistory,
+          _ => DocumentHistory({ id, schemaType }),
+        )
       ])
     )
   )
 }
 
-DocumentBody.style = css`
-  display: flex;
-  min-height: 0;
-  gap: calc(var(--default-gap) * 2);
-
-  & > .DocumentHistory {
-    width: 20rem;
-  }
-`
-function DocumentBody({ document, $showHistory, id, schemaType }) {
-  return (
-    div({ className: 'DocumentBody' },
-      DocumentBody.style,
-      DocumentForm({ document }),
-      renderOnValue($showHistory,
-        _ => DocumentHistory({ id, schemaType }),
-      )
-    )
-  )
-}
-
 DocumentHeader.style = css`
-  display: flex;
   justify-content: space-between;
   align-items: center;
 `
 function DocumentHeader({ document, $showHistory, onShowHistoryClick }) {
   const $title = document.$value.derive(doc => document.schema.preview(doc).title)
-  const $Button = $showHistory.derive(x => x ? ButtonChevronLeft : ButtonChevronRight)
 
   return (
-    div(
+    FlexSectionHorizontal({ className: 'DocumentHeader' },
       DocumentHeader.style,
       h1($title),
       div(
         ButtonDelete({ onClick: handleDeleteClick }),
-        derive($Button, Button =>
-          Button({ onClick: onShowHistoryClick })
-        )
+        ButtonChevron({ onClick: onShowHistoryClick, rotation: $showHistory.derive(x => x ? 270 : 90) })
       )
     )
   )

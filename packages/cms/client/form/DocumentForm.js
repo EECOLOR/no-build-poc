@@ -1,6 +1,6 @@
 import { createSignal } from '#ui/signal.js'
-import { css } from '#ui/tags.js'
 import { scrollable } from '../ui/scrollable.js'
+import { css } from '#ui/tags.js'
 import { ObjectFields } from './fields/ObjectField.js'
 
 DocumentForm.style = css`
@@ -13,7 +13,7 @@ DocumentForm.style = css`
 `
 export function DocumentForm({ document }) {
   return (
-    scrollable.div(// TODO: use context.documentView
+    scrollable.div({ className: 'DocumentForm' }, // TODO: use context.documentView
       DocumentForm.style,
       DocumentFields({ document }),
     )

@@ -4,20 +4,15 @@ import { loop } from '#ui/dynamic.js'
 import { useCombined } from '#ui/hooks.js'
 import { Signal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
-import { createUniqueId } from '#ui/utils.js'
 import { Object } from './ObjectField.js'
 import { getAtPath } from './utils.js'
+import { FlexSectionBorderedVertical, FlexSectionHorizontal, FlexSectionVertical } from '#cms/client/ui/FlexSection.js'
+import { indented } from '#cms/client/ui/indented.js'
 
 const { div } = tags
 
 ArrayField.style = css`
-  display: flex;
-  flex-direction: column;
-  gap: var(--default-gap);
-  padding-left: var(--default-padding);
-  border-left: 1px solid lightgray;
-
-  .buttonContainer {
+  & > .ArrayActions {
     margin-top: 1rem;
 
     & > button {
@@ -30,13 +25,13 @@ export function ArrayField({ document, field, $path }) {
   const $valueFromDocument = $documentAndPath.derive(([doc, path]) => getAtPath(doc, path) || [])
 
   return (
-    div(
+    indented(FlexSectionBorderedVertical)({ className: 'ArrayField' },
       ArrayField.style,
       loop(
         $valueFromDocument,
         (item) => item._key,
         ($item, key) => {
-          const { $isFirst, $isLast, $index } = derivePositionSignals($valueFromDocument, key)
+          const { $isFirst, $isLast, $index } = derivePositionSignals($valueFromDocument, key) // TODO: think about this, wouldn't this create signals for every call to this function that will never be removed because 'derive' ties them to the parent signal?
           const type = $item.get()._type // type does not change
           return ArrayItem({
             $isFirst, $isLast, $index,
@@ -48,11 +43,7 @@ export function ArrayField({ document, field, $path }) {
           })
         }
       ),
-      div({ className: 'buttonContainer'},
-        field.of.map(objectType =>
-          Button({ label: `Add ${objectType.title}`, onClick: _ => handleAdd(objectType.type) })
-        )
-      )
+      ArrayActions({ field, onAddClick: handleAdd })
     )
   )
 
@@ -74,36 +65,40 @@ export function ArrayField({ document, field, $path }) {
   }
 }
 
-ArrayItem.style = css`
-  display: flex;
-  gap: var(--default-gap);
+function ArrayActions({ field, onAddClick }) {
+  return (
+    div({ className: 'ArrayActions'},
+      field.of.map(objectType =>
+        Button({ label: `Add ${objectType.title}`, onClick: _ => onAddClick(objectType.type) })
+      )
+    )
+  )
+}
 
-  & > :nth-child(2) {
+ArrayItem.style = css`
+  & > .Object {
     flex-grow: 1;
   }
 
-  .buttonContainer {
+  & > .ArrayItemActions {
     align-self: flex-end;
-
-    display: flex;
-    flex-direction: column;
   }
 `
 function ArrayItem({ $isFirst, $isLast, document, $arrayPath, $index, field, onMove, onDelete }) {
   const $arrayPathAndIndex = useCombined($arrayPath, $index)
   const $path = $arrayPathAndIndex.derive(([arrayPath, index]) => `${arrayPath}/${index}`)
-  const id = createUniqueId()
 
   return (
-    div(
+    FlexSectionHorizontal({ className: 'ArrayItem' },
       ArrayItem.style,
-      Object({ document, field, $path, id }),
-      div({ className: 'buttonContainer' },
-        // TODO: seems the up button (and possibly other buttons) causes a referender, probably because a new item is created and the focus is being lost (and with that moved to the next element)
-        ButtonUp({ disabled: $isFirst, onClick: handleUpClick }),
-        ButtonDown({ disabled: $isLast, onClick: handleDownClick }),
-        ButtonDelete({ onClick: handleDeleteClick }),
-      )
+      Object({ document, field, $path }),
+      ArrayItemActions({
+        upDisabled: $isFirst,
+        downDisabled: $isLast,
+        onUpClick: handleUpClick,
+        onDownClick: handleDownClick,
+        onDeleteClick: handleDeleteClick,
+      })
     )
   )
 
@@ -124,6 +119,15 @@ function ArrayItem({ $isFirst, $isLast, document, $arrayPath, $index, field, onM
     const to = `${$arrayPath.get()}/${toIndex}`
     onMove({ from, to })
   }
+}
+
+function ArrayItemActions({ upDisabled, downDisabled, onUpClick, onDownClick, onDeleteClick}) {
+  return FlexSectionVertical({ className: 'ArrayItemActions' },
+    // TODO: seems the up button (and possibly other buttons) causes a referender, probably because a new item is created and the focus is being lost (and with that moved to the next element)
+    ButtonUp({ disabled: upDisabled, onClick: onUpClick }),
+    ButtonDown({ disabled: downDisabled, onClick: onDownClick }),
+    ButtonDelete({ onClick: onDeleteClick }),
+  )
 }
 
 /**

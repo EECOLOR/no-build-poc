@@ -7,11 +7,9 @@ const { li } = tags
 List.style = css`& {
   display: flex;
   flex-direction: column;
-  min-height: 0; /* 'display: flex' sets min-height to auto */
-  gap: var(--gap, 0.3rem);
+  gap: var(--gap, var(--default-gap));
 
   & > li {
-    display: block;
     list-style-type: none;
   }
 }`

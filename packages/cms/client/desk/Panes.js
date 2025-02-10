@@ -2,7 +2,7 @@ import { loop } from '#ui/dynamic.js'
 import { css } from '#ui/tags.js'
 import { context } from '../context.js'
 import { $pathname } from '../machinery/history.js'
-import { FlexSectionHorizontal } from '../ui/FlexSection.js'
+import { FlexSectionBorderedHorizontal } from '../ui/FlexSection.js'
 import { DocumentListPane } from './panes/DocumentListPane.js'
 import { DocumentPane } from './panes/DocumentPane.js'
 import { ImagePane } from './panes/ImagePane.js'
@@ -10,7 +10,7 @@ import { ImagesPane } from './panes/ImagesPane.js'
 import { ListPane } from './panes/ListPane.js'
 
 Panes.style = css`
-  min-height: 0; /* 'display: flex' sets it to auto */
+  overflow-x: auto;
 
   & > *:not(:last-child) {
     flex-shrink: 0;
@@ -27,7 +27,7 @@ export function Panes({ firstPane }) {
   })
 
   return (
-    FlexSectionHorizontal({ className: 'Panes' },
+    FlexSectionBorderedHorizontal({ className: 'Panes' },
       Panes.style,
       loop(
         $panesWithPath,

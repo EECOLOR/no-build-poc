@@ -50,8 +50,10 @@ function Login({ basePath }) {
 }
 
 CmsWithContext.style = css`
-  --default-padding: 0.5rem;
-  --default-gap: var(--default-padding);
+  --default-spacing: 0.75rem;
+  --default-padding: var(--default-spacing);
+  --default-gap: var(--default-spacing);
+  --default-border: 1px solid lightgray;
 
   & > .Desk {
     height: 100%;

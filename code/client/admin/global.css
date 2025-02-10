@@ -47,7 +47,7 @@ input {
 
 body {
   font-family: Verdana, sans-serif;
-  min-height: 100vh;
+  height: 100%;
   line-height: 1.5;
 }
 

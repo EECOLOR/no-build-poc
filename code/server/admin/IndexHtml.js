@@ -23,7 +23,7 @@ export function IndexHtml({ importMap }) {
       head(
         ImportMap({ importMap }),
         HydrateComponents(),
-        link({ rel: 'stylesheet', type: 'text/css', href: '/static/client/admin/reset.css' })
+        link({ rel: 'stylesheet', type: 'text/css', href: '/static/client/admin/global.css' })
       ),
       body(
         Island('/client/admin/ConfiguredCms.js', ConfiguredCms, { basePath })

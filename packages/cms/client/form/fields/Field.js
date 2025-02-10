@@ -1,3 +1,7 @@
+import { renderOnValue } from '#cms/client/machinery/renderOnValue.js'
+import { ButtonChevron } from '#cms/client/ui/Button.js'
+import { FlexSectionHorizontal, FlexSectionVertical } from '#cms/client/ui/FlexSection.js'
+import { createSignal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
 import { createUniqueId } from '#ui/utils.js'
 import { ArrayField } from './ArrayField.js'
@@ -18,10 +22,6 @@ const fieldRenderers = /** @type {const} */({
   default: ObjectField,
 })
 
-Field.style = css`
-  display: flex;
-  flex-direction: column;
-`
 export function Field({ document, field, $path }) {
   let renderer = fieldRenderers[field.type]
   if (!renderer && 'fields' in field)
@@ -30,12 +30,31 @@ export function Field({ document, field, $path }) {
     return div({ style: { backgroundColor: 'lightcoral' } }, `Unknown field type '${field.type}'`)
 
   const id = createUniqueId()
+  const [$expanded, setExpanded] = createSignal(true)
 
   return (
-    div(
-      Field.style,
+    FlexSectionVertical({ className: 'Field' },
+      Label({ id, field, renderer, $expanded, onExpandClick: _ => setExpanded(x => !x) }),
+      renderOnValue($expanded, _ =>
+        renderer({ document, field, $path, id })
+      )
+    )
+  )
+}
+
+Label.style = css`
+  justify-content: space-between;
+`
+function Label({ id, field, renderer, $expanded, onExpandClick }) {
+  return (
+    FlexSectionHorizontal({ className: 'Label' },
+      Label.style,
       label({ htmlFor: id }, span(field.title)),
-      renderer({ document, field, $path, id })
+      renderer.canCollapse && field.options?.collapsible &&
+        ButtonChevron({
+          onClick: onExpandClick,
+          rotation: $expanded.derive(x => x ? 0 : 180)
+        })
     )
   )
 }

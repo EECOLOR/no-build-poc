@@ -10,9 +10,18 @@ ListItem.style = css`
   color: inherit;
   justify-content: space-between;
   gap: 1ex;
+  position: relative;
+  isolation: isolate;
 
   &:hover, &.active {
-    background-color: lightblue;
+    &::before {
+      position: absolute;
+      inset: calc(-1 * var(--default-padding) / 4);
+      display: block;
+      content: '';
+      background-color: lightblue;
+      z-index: -1;
+    }
   }
 
   & > button {

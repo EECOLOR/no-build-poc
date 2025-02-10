@@ -9,13 +9,11 @@ import { conditional, useOnDestroy } from '#ui/dynamic.js'
 import { useCombined, useElementSize } from '#ui/hooks.js'
 import { createSignal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
+import { FlexSectionHorizontal } from '#cms/client/ui/FlexSection.js'
 
-const { div, img } = tags
+const { img } = tags
 
 ImagePane.style = css`& {
-  display: flex;
-  gap: var(--default-gap);
-
   & > .ImageEditor,
   & > .ImagePreview {
     flex-basis: 50%;
@@ -41,7 +39,7 @@ export function ImagePane({ id: filename, path }) {
   )
 
   return (
-    div(
+    FlexSectionHorizontal({ className: 'ImagePane' },
       ImagePane.style,
       ImageEditor({
         src,
@@ -81,10 +79,8 @@ function ImageEditor({ src, $serverMetadata, onCropChange, onHotspotChange }) {
 }
 
 ImagePreview.style = css`& {
-  display: flex;
   align-items: flex-start;
   flex-wrap: wrap;
-  gap: var(--default-gap);
 
   & > * { flex-grow: 1; flex-basis:30%; }
   & > :last-child { flex-basis: 100%; }
@@ -92,7 +88,7 @@ ImagePreview.style = css`& {
 function ImagePreview({ filename, $metadata }) {
 
   return (
-    scrollable.div({ className: 'ImagePreview' },
+    scrollable(FlexSectionHorizontal)({ className: 'ImagePreview' },
       ImagePreview.style,
       PreviewImage({ filename, aspectRatio: '3 / 4', $metadata }),
       PreviewImage({ filename, aspectRatio: '1 / 1', $metadata }),
