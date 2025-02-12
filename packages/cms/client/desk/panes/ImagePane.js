@@ -39,8 +39,7 @@ export function ImagePane({ id: filename, path }) {
   )
 
   return (
-    FlexSectionHorizontal({ className: 'ImagePane' },
-      ImagePane.style,
+    FlexSectionHorizontal({ className: 'ImagePane', css: ImagePane.style },
       ImageEditor({
         src,
         $serverMetadata,
@@ -88,8 +87,7 @@ ImagePreview.style = css`& {
 function ImagePreview({ filename, $metadata }) {
 
   return (
-    scrollable(FlexSectionHorizontal)({ className: 'ImagePreview' },
-      ImagePreview.style,
+    scrollable(FlexSectionHorizontal)({ className: 'ImagePreview', css: ImagePreview.style },
       PreviewImage({ filename, aspectRatio: '3 / 4', $metadata }),
       PreviewImage({ filename, aspectRatio: '1 / 1', $metadata }),
       PreviewImage({ filename, aspectRatio: '16 / 9', $metadata }),

@@ -77,8 +77,7 @@ function CmsWithContext({ basePath, deskStructure, documentSchemas, documentView
   })
 
   return (
-    div(
-      CmsWithContext.style,
+    div({ css: CmsWithContext.style },
       Desk({ deskStructure, auth }),
     )
   )

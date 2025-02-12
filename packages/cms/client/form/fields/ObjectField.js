@@ -39,8 +39,7 @@ ObjectHeader.style = css`
   align-items: center;
 `
 function ObjectHeader({ title }) {
-  return FlexSectionHorizontal({ className: 'ObjectHeader' },
-    ObjectHeader.style,
+  return FlexSectionHorizontal({ className: 'ObjectHeader', css: ObjectHeader.style },
     strong(title),
   )
 }

@@ -42,8 +42,7 @@ export function DocumentPane({ id, schemaType }) {
   const [$showHistory, setShowHistory] = createSignal(false)
 
   return (
-    div({ className: 'DocumentPane' },
-      DocumentPane.style,
+    div({ className: 'DocumentPane', css: DocumentPane.style },
       conditional($document, doc => doc !== connecting, _ => [
         DocumentHeader({ document, $showHistory, onShowHistoryClick: _ => setShowHistory(x => !x) }),
         DocumentForm({ document }),
@@ -63,8 +62,7 @@ function DocumentHeader({ document, $showHistory, onShowHistoryClick }) {
   const $title = document.$value.derive(doc => document.schema.preview(doc).title)
 
   return (
-    FlexSectionHorizontal({ className: 'DocumentHeader' },
-      DocumentHeader.style,
+    FlexSectionHorizontal({ className: 'DocumentHeader', css: DocumentHeader.style },
       h1($title),
       div(
         ButtonDelete({ onClick: handleDeleteClick }),

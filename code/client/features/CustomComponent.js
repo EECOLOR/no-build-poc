@@ -85,7 +85,7 @@ function StyledComponent1({ $count }) {
   )
 }
 
-StyledComponent2.style = css`& {
+StyledComponent2.style = css`
   display: flex;
   gap: 1rem;
 
@@ -93,15 +93,14 @@ StyledComponent2.style = css`& {
     background-color: lightcoral;
     color: unset;
   }
-}
 
-div {
-  background-color: lightseagreen;
-}`
+  & > div {
+    background-color: lightseagreen;
+  }
+`
 function StyledComponent2({ $count , nested = false }) {
   return (
-    div(
-      StyledComponent2.style,
+    div({ css: StyledComponent2.style },
       div('Locally styled 1'),
       StyledComponent1({ $count }),
       div('Locally styled ', $count),

@@ -4,8 +4,8 @@ import { Signal } from '#ui/signal.js'
 
 const { a } = tags
 
-export function Link({ href, className = undefined }, ...children) {
-  return a({ className, href, onClick: linkClick(href) }, ...children)
+export function Link({ href, className = undefined, css }, ...children) {
+  return a({ className, css, href, onClick: linkClick(href) }, ...children)
 }
 
 function linkClick(to) {

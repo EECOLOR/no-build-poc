@@ -25,8 +25,7 @@ export function ListItem({ href, title }) {
     const activeHref = href instanceof Signal ? href.get() : href
     return pathname.startsWith(activeHref) ? 'active' : ''
   })
-  return Link({ className: $className, href },
-    ListItem.style,
+  return Link({ className: $className, css: ListItem.style, href },
     title,
     ButtonChevronRight({ disabled: true })
   )

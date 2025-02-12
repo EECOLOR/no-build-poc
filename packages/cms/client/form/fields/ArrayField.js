@@ -25,8 +25,7 @@ export function ArrayField({ document, field, $path }) {
   const $valueFromDocument = $documentAndPath.derive(([doc, path]) => getAtPath(doc, path) || [])
 
   return (
-    indented(FlexSectionBorderedVertical)({ className: 'ArrayField' },
-      ArrayField.style,
+    indented(FlexSectionBorderedVertical)({ className: 'ArrayField', css: ArrayField.style },
       loop(
         $valueFromDocument,
         (item) => item._key,
@@ -89,8 +88,7 @@ function ArrayItem({ $isFirst, $isLast, document, $arrayPath, $index, field, onM
   const $path = $arrayPathAndIndex.derive(([arrayPath, index]) => `${arrayPath}/${index}`)
 
   return (
-    FlexSectionHorizontal({ className: 'ArrayItem' },
-      ArrayItem.style,
+    FlexSectionHorizontal({ className: 'ArrayItem', css: ArrayItem.style },
       Object({ document, field, $path }),
       ArrayItemActions({
         upDisabled: $isFirst,

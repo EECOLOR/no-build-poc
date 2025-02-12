@@ -27,8 +27,7 @@ export function Panes({ firstPane }) {
   })
 
   return (
-    FlexSectionBorderedHorizontal({ className: 'Panes' },
-      Panes.style,
+    FlexSectionBorderedHorizontal({ className: 'Panes', css: Panes.style },
       loop(
         $panesWithPath,
         x => x.path.join('/'),

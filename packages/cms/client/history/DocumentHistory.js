@@ -19,13 +19,13 @@ export function DocumentHistory({ id, schemaType }) {
     ListSignal(
       {
         className: 'DocumentHistory',
+        css: DocumentHistory.style,
         signal: $history,
         getKey: historyItem => historyItem.key,
         renderItem: $historyItem => derive($historyItem, historyItem =>
           HistoryItem({ historyItem, schema })
         )
       },
-      DocumentHistory.style,
     )
   )
 }
@@ -59,8 +59,7 @@ HistoryItemHeader.style = css`
 function HistoryItemHeader({ historyItem, schema }) {
 
   return (
-    div(
-      HistoryItemHeader.style,
+    div({ css: HistoryItemHeader.style },
       div({ className: 'dateAndAuthor'},
         DateTime({ timestamp: historyItem.timestampStart }),
         Author({ clientId: historyItem.clientId }),
@@ -143,8 +142,7 @@ DateTime.style = css`
 function DateTime({ timestamp }) {
   const [dateString, timeString] = new Date(timestamp).toISOString().split('T')
   return (
-    span(
-      DateTime.style,
+    span({ css: DateTime.style },
       time(dateString),
       time(timeString.slice(0, 5)),
     )
@@ -159,9 +157,7 @@ Author.style = css`
   background-color: var(--color);
 `
 function Author({ clientId }) {
-  return span({ style: { '--color': `#${clientId.slice(0, 6)}` }, title: clientId },
-    Author.style,
-  )
+  return span({ style: { '--color': `#${clientId.slice(0, 6)}` }, css: Author.style, title: clientId })
 }
 
 StringItem.style = css`
@@ -173,8 +169,7 @@ function StringItem({ historyItem, schema }) {
   const merged = mergeChanges(difference)
 
   return (
-    span(
-      StringItem.style,
+    span({ css: StringItem.style },
       merged.map(x =>
         x.added ? ins(x.value) :
         x.removed ? del(x.value) :

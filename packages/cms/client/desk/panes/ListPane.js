@@ -11,6 +11,7 @@ export function ListPane({ items, path }) {
     List(
       {
         className: 'ListPane',
+        css: ListPane.style,
         items: items.map(item =>
           ListItem({
             href: [context.basePath, ...path, item.slug].join('/'),
@@ -18,7 +19,6 @@ export function ListPane({ items, path }) {
           })
         )
       },
-      ListPane.style,
     )
   )
 }

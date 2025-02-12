@@ -9,9 +9,9 @@ const apiVersion = '2024-10-25'
 // Experiment in overriding styling of elements
 Desk.style = [
   Desk.style,
-  css`& {
+  css`
     background-color: ghostwhite;
-  }`
+  `
 ]
 
 export function ConfiguredCms({ basePath }) {

@@ -17,11 +17,11 @@ export function ImagesPane({ path }) {
     ListSignal(
       {
         className: 'ImagesPane',
+        css: ImagesPane.style,
         signal: $images,
         getKey: image => image.filename,
         renderItem: ($image, key) => ImageItem({ filename: key, path })
       },
-      ImagesPane.style,
     )
   )
 }

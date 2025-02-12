@@ -93,8 +93,7 @@ export function RichTextEditor({ id, initialValue, $steps, synchronize, schema }
   })
 
   return (
-    div(
-      RichTextEditor.style,
+    div({ css: RichTextEditor.style },
       raw(view.dom),
     )
   )

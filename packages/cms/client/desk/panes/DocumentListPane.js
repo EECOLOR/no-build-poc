@@ -26,8 +26,7 @@ export function DocumentListPane({ schemaType, path }) {
   const { $documents, setFilter } = useFilteredDocuments({ schema })
 
   return (
-    FlexSectionVertical({ className: 'DocumentListPane' },
-      DocumentListPane.style,
+    FlexSectionVertical({ className: 'DocumentListPane', css: DocumentListPane.style },
       DocumentListHeader({ schema, onFilterChange: handleFilterChange, onAddClick: handleAddClick }),
       DocumentListItems({ $documents, schema, path })
     )
@@ -52,8 +51,7 @@ DocumentListHeader.style = css`
 `
 function DocumentListHeader({ schema, onFilterChange, onAddClick }) {
   return (
-    FlexSectionHorizontal({ className: 'DocumentListHeader' },
-      DocumentListHeader.style,
+    FlexSectionHorizontal({ className: 'DocumentListHeader', css: DocumentListHeader.style },
       input({ type: 'text', onInput: e => onFilterChange(e.currentTarget.value) }),
       ButtonAdd({ title: `Add ${schema.title}`, onClick: onAddClick }),
     )

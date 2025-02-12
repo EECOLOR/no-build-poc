@@ -23,8 +23,7 @@ export function ImageField({ document, field, $path }) {
   const $imgSrc = useImgSrc({ $filename: $value, sizeInRem: 25 })
 
   return (
-    FlexSectionVertical({ className: 'ImageField' },
-      ImageField.style,
+    FlexSectionVertical({ className: 'ImageField', css: ImageField.style },
       renderOnValue($imgSrc, () => img({ src: $imgSrc })),
       renderOnValue($imgSrc, () => Button({ label: 'Clear image', onClick: () => setValue(null) })),
       ImageSelector({ onSelect: image => setValue(image.filename) }),

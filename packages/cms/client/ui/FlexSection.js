@@ -1,4 +1,4 @@
-import { css, tags } from '#ui/tags.js'
+import { combineCss, css, tags } from '#ui/tags.js'
 
 const { div } = tags
 
@@ -6,8 +6,8 @@ FlexSectionHorizontal.style = css`
   display: flex;
   gap: var(--default-gap);
 `
-export function FlexSectionHorizontal({ className }, ...children) {
-  return div({ className }, FlexSectionHorizontal.style, ...children)
+export function FlexSectionHorizontal({ className, css }, ...children) {
+  return div({ className, css: combineCss(FlexSectionHorizontal.style, css) }, ...children)
 }
 
 FlexSectionVertical.style = css`
@@ -16,7 +16,7 @@ FlexSectionVertical.style = css`
   gap: var(--default-gap);
 `
 export function FlexSectionVertical({ className }, ...children) {
-  return div({ className }, FlexSectionVertical.style, ...children)
+  return div({ className, css: combineCss(FlexSectionVertical.style, css) }, ...children)
 }
 
 FlexSectionProperties.style = css`
@@ -25,7 +25,7 @@ FlexSectionProperties.style = css`
   gap: calc(var(--default-gap) * 2);
 `
 export function FlexSectionProperties({ className }, ...children) {
-  return div({ className }, FlexSectionProperties.style, ...children)
+  return div({ className, css: combineCss(FlexSectionProperties.style, css) }, ...children)
 }
 
 FlexSectionBorderedHorizontal.style = css`
@@ -38,7 +38,7 @@ FlexSectionBorderedHorizontal.style = css`
   }
 `
 export function FlexSectionBorderedHorizontal({ className }, ...children) {
-  return div({ className }, FlexSectionBorderedHorizontal.style, ...children)
+  return div({ className, css: combineCss(FlexSectionBorderedHorizontal.style, css) }, ...children)
 }
 
 FlexSectionBorderedVertical.style = css`
@@ -51,6 +51,6 @@ FlexSectionBorderedVertical.style = css`
     border-bottom: var(--default-border);
   }
 `
-export function FlexSectionBorderedVertical({ className }, ...children) {
-  return div({ className }, FlexSectionBorderedVertical.style, ...children)
+export function FlexSectionBorderedVertical({ className, css }, ...children) {
+  return div({ className, css: combineCss(FlexSectionBorderedVertical.style, css) }, ...children)
 }

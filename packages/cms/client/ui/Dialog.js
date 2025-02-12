@@ -33,8 +33,7 @@ Dialog.style = css`
 export function Dialog({ controller }, ...children) {
 
   return (
-    dialog({ ref: controller.ref },
-      Dialog.style,
+    dialog({ ref: controller.ref, css: Dialog.style },
       ...children,
     )
   )

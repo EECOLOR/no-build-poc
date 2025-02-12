@@ -16,8 +16,7 @@ Desk.style = css`
 `
 export function Desk({ deskStructure, auth }) {
   return (
-    FlexSectionBorderedVertical({ className: 'Desk' },
-      Desk.style,
+    FlexSectionBorderedVertical({ className: 'Desk', css: Desk.style },
       DeskHeader({ auth }),
       Panes({ firstPane: deskStructure.pane }),
     )
@@ -35,8 +34,7 @@ DeskHeader.style = css`
   }
 `
 function DeskHeader({ auth }) {
-  return div({ className: 'DeskHeader' },
-    DeskHeader.style,
+  return div({ className: 'DeskHeader', css: DeskHeader.style },
     'CMS',
     span(
       span(auth.user.name),

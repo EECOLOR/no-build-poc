@@ -81,7 +81,7 @@ function ImagesAndDetails({ onChoose }) {
   )
 }
 
-Details.style = css`& {
+Details.style = css`
   align-items: center;
   padding: var(--default-padding);
 
@@ -92,11 +92,10 @@ Details.style = css`& {
   & > .Image {
     align-self: center;
   }
-}`
+`
 function Details({ $selected, onSelect, onChoose }) {
   return (
-    scrollable(FlexSectionVertical)({ className: 'Details' },
-      Details.style,
+    scrollable(FlexSectionVertical)({ className: 'Details', css: Details.style },
       conditional($selected, x => x === newImage,
         () => SelectFile({ onChange: handleFileChange }),
       ),
@@ -148,7 +147,7 @@ function SelectFile({ onChange }) {
   )
 }
 
-Images.style = css`& {
+Images.style = css`
   flex-wrap: wrap;
   align-items: center;
 
@@ -156,13 +155,12 @@ Images.style = css`& {
     max-width: 25rem;
     height: 15rem;
   }
-}`
+`
 function Images({ $selected, onSelect, onNewClick }) {
   const $images = useImages()
 
   return (
-    scrollable(FlexSectionHorizontal)({ className: 'Images' },
-      Images.style,
+    scrollable(FlexSectionHorizontal)({ className: 'Images', css: Images.style },
       Button({
         label: AddLabel(),
         onClick: onNewClick
@@ -180,19 +178,18 @@ function Images({ $selected, onSelect, onNewClick }) {
   )
 }
 
-AddLabel.styles = css`& {
+AddLabel.styles = css`
   justify-content: center;
   align-items: center;
-}`
+`
 function AddLabel() {
-  return FlexSectionVertical({ className: 'AddLabel' },
-    AddLabel.styles,
+  return FlexSectionVertical({ className: 'AddLabel', css: AddLabel.styles },
     withIcon(plus).span(),
     'Upload new image'
   )
 }
 
-ImageItem.style = css`&{
+ImageItem.style = css`
   & > img {
     border: 1px solid gray;
   }
@@ -202,11 +199,10 @@ ImageItem.style = css`&{
       border: 1px solid black;
     }
   }
-}`
+`
 function ImageItem({ image, $selected, onClick }) {
   return (
-    div({ className: $selected.derive(x => x ? 'selected' : '' ) },
-      ImageItem.style,
+    div({ className: $selected.derive(x => x ? 'selected' : '' ), css: ImageItem.style },
       Image({ image, onClick })
     )
   )

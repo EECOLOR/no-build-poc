@@ -13,8 +13,7 @@ DocumentForm.style = css`
 `
 export function DocumentForm({ document }) {
   return (
-    scrollable.div({ className: 'DocumentForm' }, // TODO: use context.documentView
-      DocumentForm.style,
+    scrollable.div({ className: 'DocumentForm', css: DocumentForm.style }, // TODO: use context.documentView
       DocumentFields({ document }),
     )
   )

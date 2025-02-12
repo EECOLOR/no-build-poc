@@ -9,7 +9,7 @@ const { div, img } = tags
 
 const connecting = Symbol('connecting')
 
-ImageCropAndHotspot.style = css`& {
+ImageCropAndHotspot.style = css`
   --handle-size: 1rem;
 
   display: grid;
@@ -26,7 +26,7 @@ ImageCropAndHotspot.style = css`& {
 
     position: relative;
   }
-}`
+`
 export function ImageCropAndHotspot({ src, $metadata, onCropChange, onHotspotChange }) {
   const { ref, $size } = useElementSize()
 
@@ -35,8 +35,7 @@ export function ImageCropAndHotspot({ src, $metadata, onCropChange, onHotspotCha
   const { $crop, $hotspot, resizeToActualSize } = useDerivedLocalValues({ $metadata, $displaySize })
 
   return (
-    div({ className: 'ImageCropAndHotspot' },
-      ImageCropAndHotspot.style,
+    div({ className: 'ImageCropAndHotspot', css: ImageCropAndHotspot.style },
       img({ ref, src }),
       conditional($displaySize, displaySize => displaySize !== connecting, _ =>
         HotspotAndCropOverlay({
@@ -139,7 +138,7 @@ function ellipseAsClipPath($ellipse) {
   )
 }
 
-HotspotEllipse.style = css`& {
+HotspotEllipse.style = css`
   pointer-events: none;
   position: relative;
 
@@ -150,18 +149,17 @@ HotspotEllipse.style = css`& {
 
   & > * { cursor: move; }
   & > .handle { cursor: nwse-resize; }
-}`
+`
 function HotspotEllipse({ center, handle, $ellipse }) {
   return (
-    div(
-      HotspotEllipse.style,
+    div({ css: HotspotEllipse.style },
       HotspotArea({ onMouseDown: center.handleMouseDown, $ellipse }),
       Handle({ handle, type: 'circle' })
     )
   )
 }
 
-HotspotArea.style = css`& {
+HotspotArea.style = css`
   overflow: visible;
   width: 0;
   height: 0;
@@ -174,7 +172,7 @@ HotspotArea.style = css`& {
     transform: translate(-50%, -50%);
     clip-path: var(--clipPath);
   }
-}`
+`
 function HotspotArea({ onMouseDown, $ellipse }) {
   const $localEllipse = $ellipse.derive(({ xAxis, yAxis }) =>
     ({ centerX: xAxis, centerY: yAxis, xAxis, yAxis })
@@ -189,10 +187,10 @@ function HotspotArea({ onMouseDown, $ellipse }) {
     '--clipPath': $clipPath,
   }
 
-  return div({ className: 'HotspotArea', onMouseDown, style }, HotspotArea.style)
+  return div({ className: 'HotspotArea', css: HotspotArea.style, onMouseDown, style })
 }
 
-Shadow.style = css`& {
+Shadow.style = css`
   width: 100%;
   height: 100%;
   pointer-events: none;
@@ -204,7 +202,7 @@ Shadow.style = css`& {
   mask-size: 100%, var(--rectangle-size);
   mask-position: 0 0, var(--rectangle-position);
   mask-composite: subtract;
-}`
+`
 function Shadow({ $hotspotEllipse, $cropArea }) {
   const style = {
     '--ellipse': $hotspotEllipse.derive(ellipse =>
@@ -213,10 +211,10 @@ function Shadow({ $hotspotEllipse, $cropArea }) {
     '--rectangle-size': $cropArea.derive(crop => `${crop.width}px ${crop.height}px`),
     '--rectangle-position': $cropArea.derive(crop => `${crop.x}px ${crop.y}px`),
   }
-  return div({ style }, Shadow.style)
+  return div({ style, css: Shadow.style })
 }
 
-CropRectangle.style = css`& {
+CropRectangle.style = css`
   position: relative;
   pointer-events: none;
 
@@ -228,11 +226,10 @@ CropRectangle.style = css`& {
   & > * { cursor: move; }
   & > .tl, & > .br { cursor: nwse-resize; }
   & > .tr, & > .bl { cursor: nesw-resize; }
-}`
+`
 function CropRectangle({ corners, rectangle, $inset }) {
   return (
-    div(
-      CropRectangle.style,
+    div({ css: CropRectangle.style },
       CropArea({ onMouseDown: rectangle.handleMouseDown, $inset }),
       corners.map(handle => Handle({ handle })),
     )
@@ -250,7 +247,7 @@ function CropArea({ onMouseDown, $inset }) {
   return div({ className: 'CropArea', onMouseDown, style })
 }
 
-Handle.style = css`& {
+Handle.style = css`
   will-change: transform;
 
   width: 0;
@@ -266,7 +263,7 @@ Handle.style = css`& {
     background-color: turquoise;
     border-radius: var(--borderRadius);
   }
-}`
+`
 /** @param {{ handle: any, type?: 'square' | 'circle' }} props */
 function Handle({ handle, type = 'square' }) {
   const { id, handleMouseDown, $translate, $position } = handle
@@ -277,6 +274,7 @@ function Handle({ handle, type = 'square' }) {
       {
         onMouseDown: handleMouseDown,
         className: id,
+        css: Handle.style,
         style: {
           transform: $transformStyle,
           left: handleX,
@@ -284,7 +282,6 @@ function Handle({ handle, type = 'square' }) {
           '--borderRadius': type === 'circle' ? '50%' : '0',
         }
       },
-      Handle.style
     )
   )
 }

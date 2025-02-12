@@ -1,7 +1,7 @@
 /** @import { Attributes } from '#ui/tags.js' */
 
 import { arrowDown, arrowUp, chevronDown, chevronLeft, chevronRight, chevronUp, plus, trash } from '#cms/client/ui/icons.js'
-import { tags, css, Tag } from '#ui/tags.js'
+import { tags, css, Tag, combineCss } from '#ui/tags.js'
 import { withIcon } from './icon.js'
 
 const { button } = tags
@@ -30,6 +30,7 @@ export function Button({ label, ...props }) {
 function createIconButton(icon, { rotation = 0 } = {}) {
   /** @param {Attributes<'button'> & { rotation?: number }} props */
   return function IconButton(props) {
-    return withIcon(icon, { rotation: props.rotation || rotation }).button({ type: 'button', ...props }, Button.style)
+    return withIcon(icon, { rotation: props.rotation || rotation })
+      .button({ ...props, type: 'button', css: combineCss(Button.style, props.css) })
   }
 }

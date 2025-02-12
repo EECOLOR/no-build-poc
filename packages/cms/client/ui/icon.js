@@ -1,5 +1,5 @@
 import { Signal } from '#ui/signal.js'
-import { tags, css } from '#ui/tags.js'
+import { tags, css, combineCss } from '#ui/tags.js'
 import { separatePropsAndChildren } from '#ui/utils.js'
 
 /**
@@ -53,7 +53,17 @@ Icon.style = ({ icon }) => css`
  * @returns {ReturnType<T>} */
 function Icon(icon, { rotation }, element, ...params) {
   const { props, children } = separatePropsAndChildren(params)
-  return element({ ...props, style: { ...props?.style, '--rotation': map(rotation, x => `${x}deg`) } }, Icon.style({ icon }), ...children)
+  return element(
+    {
+      ...props,
+      style: {
+        ...props?.style,
+        '--rotation': map(rotation, x => `${x}deg`)
+      },
+      css: combineCss(Icon.style({ icon }), props?.css)
+    },
+    ...children
+  )
 }
 
 function map(x, f) {
