@@ -13,13 +13,13 @@ import { FlexSectionHorizontal } from '#cms/client/ui/FlexSection.js'
 
 const { img } = tags
 
-ImagePane.style = css`& {
+ImagePane.style = css`
   & > .ImageEditor,
   & > .ImagePreview {
     flex-basis: 50%;
     width: 50%;
   }
-}`
+`
 export function ImagePane({ id: filename, path }) {
   const src = context.api.images.single({ filename })
 
@@ -77,13 +77,13 @@ function ImageEditor({ src, $serverMetadata, onCropChange, onHotspotChange }) {
   )
 }
 
-ImagePreview.style = css`& {
+ImagePreview.style = css`
   align-items: flex-start;
   flex-wrap: wrap;
 
   & > * { flex-grow: 1; flex-basis:30%; }
   & > :last-child { flex-basis: 100%; }
-}`
+`
 function ImagePreview({ filename, $metadata }) {
 
   return (

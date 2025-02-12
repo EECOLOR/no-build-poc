@@ -6,10 +6,10 @@ import { ListItem } from './list/ListItem.js'
 
 const { div, img } = tags
 
-ImagesPane.style = css`& {
+ImagesPane.style = css`
   max-width: 10rem;
   min-width: 10rem;
-}`
+`
 export function ImagesPane({ path }) {
   const $images = useImages()
 
@@ -31,15 +31,17 @@ function ImageItem({ filename, path }) {
     ListItem({
       href: [context.basePath, ...path, filename].join('/'),
       title: div(
-        css`& {
-          max-height: 5rem;
-          width: 5rem;
-          padding: calc(var(--default-padding * 2));
+        {
+          css: css`
+            max-height: 5rem;
+            width: 5rem;
+            padding: calc(var(--default-padding * 2));
 
-          & > img {
-            max-height: 100%;
-          }
-        }`,
+            & > img {
+              max-height: 100%;
+            }
+          `
+        },
         img({ src: context.api.images.single({ filename }) }),
       )
      })

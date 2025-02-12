@@ -4,7 +4,7 @@ import { scrollable } from './scrollable.js'
 
 const { li } = tags
 
-List.style = css`& {
+List.style = css`
   display: flex;
   flex-direction: column;
   gap: var(--gap, var(--default-gap));
@@ -12,7 +12,7 @@ List.style = css`& {
   & > li {
     list-style-type: none;
   }
-}`
+`
 export function List({ className = undefined, css, items }, ...children) {
   return scrollable.ul({ className, css: combineCss(List.style, css) },
     ...children,
