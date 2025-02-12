@@ -10,22 +10,14 @@ ListItem.style = css`
   color: inherit;
   justify-content: space-between;
   gap: 1ex;
-  position: relative;
-  isolation: isolate;
 
   &:hover, &.active {
-    &::before {
-      position: absolute;
-      inset: calc(-1 * var(--default-padding) / 4);
-      display: block;
-      content: '';
-      background-color: lightblue;
-      z-index: -1;
-    }
+      background-color: lightgray;
   }
 
   & > button {
     border: none;
+
   }
 `
 export function ListItem({ href, title }) {

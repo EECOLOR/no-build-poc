@@ -15,10 +15,9 @@ export const scrollable = new Proxy(/** @type {any} */ (function(){}), {
 
 Scrollable.styles = css`
   overflow-y: auto;
-  overflow-x: visible; /* TODO: does not work, visible is computed as auto when overflow-y is not set to visible, seems we need a wrapper so that we have overflow-x and overflow-y on different elements  */
 
   &[data-has-scrollbar=true] {
-    padding-right: var(--scrollbarPadding, 0.5rem);
+    padding-right: var(--default-padding);
   }
 `
 function Scrollable(element, ...params) {
