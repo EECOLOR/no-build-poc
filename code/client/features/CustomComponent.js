@@ -34,8 +34,7 @@ export function CustomComponent({ title, content }) {
   const countDownToThree = 3
 
   return div(
-    h1(
-      css`& { color: #009922; user-select: none; }`,
+    h1({ css: css`color: #009922; user-select: none;` },
       title, ' ', $count, ' ', clientConfig.testValue
     ),
     p(content),
@@ -160,7 +159,7 @@ function ArrayBasedLastFiveCounts({ $count }) {
         lastFiveCounts
           .map(count => TwoDigitCount({ count }))
           .map((x, i) =>
-            [Boolean(i) && ' - ', span(x)]
+            [Boolean(i) && ' - ', span({ css: css`background-color: lightsteelblue;` }, x)]
           )
       ),
       ' - ',
@@ -182,7 +181,7 @@ function SlotBasedLastFiveCounts({ $count }) {
         (i) => i,
         ($i, key) => [
           Boolean(key) && ' - ',
-          span(
+          span({ css: css`background-color: lightsteelblue;` },
             derive(
               useCombined($count, $slots),
               ([count, slots]) => TwoDigitCount({ count: count - (slots.length - key - 1) })

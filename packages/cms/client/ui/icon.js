@@ -35,7 +35,7 @@ Icon.style = ({ icon }) => css`
     height: 100%;
 
     background-origin: content-box;
-    background-image: url('data:image/svg+xml;utf8,${icon}');
+    background-image: url('data:image/svg+xml;utf8,${icon}'); /* TODO: can we do this dynamic part with a var?  */
     background-position: center;
     background-repeat: no-repeat;
 

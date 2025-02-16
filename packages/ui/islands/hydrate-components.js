@@ -1,5 +1,6 @@
 import { writeToDom } from '#ui/domInteraction.js'
 import { render } from '#ui/render/clientRenderer.js'
+import { startStyleHandling } from '#ui/styles/client.js'
 import { raw } from '#ui/tags.js'
 import { containerMarker } from './containerMarker.js'
 
@@ -11,6 +12,8 @@ const extractServerRendereredComponentsSteps = [
   [not(isEnd), addNodeToCollection('nodes'), repeat],
   [isEnd, addNode('endNode'), commitAndRestart]
 ]
+
+startStyleHandling()
 
 await Promise.all(
   findAllComponents().map(async ({ info, nodes }) => {

@@ -37,7 +37,7 @@ FlexSectionBorderedHorizontal.style = css`
     border-right: var(--default-border);
   }
 `
-export function FlexSectionBorderedHorizontal({ className }, ...children) {
+export function FlexSectionBorderedHorizontal({ className, css }, ...children) {
   return div({ className, css: combineCss(FlexSectionBorderedHorizontal.style, css) }, ...children)
 }
 

@@ -3,6 +3,7 @@ import { createCms } from '#cms/server/cms.js'
 import { tags } from '#ui/tags.js'
 import { ImportMap, HydrateComponents } from '#ui/islands/setup.js'
 import { Island } from '#ui/islands/Island.js'
+import { ServerStyles } from '#ui/styles/server.js'
 
 const { html, head, body, link } = tags
 
@@ -23,10 +24,13 @@ export function IndexHtml({ importMap }) {
       head(
         ImportMap({ importMap }),
         HydrateComponents(),
-        link({ rel: 'stylesheet', type: 'text/css', href: '/static/client/admin/global.css' })
+        link({ rel: 'stylesheet', type: 'text/css', href: '/static/client/admin/global.css' }),
+        link({ rel: 'icon', href: '/static/client/admin/favicon.ico' }),
       ),
       body(
-        Island('/client/admin/ConfiguredCms.js', ConfiguredCms, { basePath })
+        ServerStyles(() =>
+          Island('/client/admin/ConfiguredCms.js', ConfiguredCms, { basePath })
+        )
       ),
     )
   )

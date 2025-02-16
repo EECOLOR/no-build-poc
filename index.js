@@ -6,6 +6,7 @@ await startServer({
     '#ui',
     '#cms/client',
     '#routing',
+    '#utils/createHash.js',
   ],
   allowedLibraries: [
     'three',

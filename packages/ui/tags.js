@@ -1,12 +1,11 @@
 import { Component } from './component.js'
 import { Dynamic } from './dynamic.js'
 import { Signal } from './signal.js'
+import { useStyle } from './styles/shared.js'
 import { separatePropsAndChildren } from './utils.js'
 
 export class Raw { constructor(value) { this.value = value } }
 export function raw(value) { return new Raw(value) }
-
-/** @template T @typedef {import('./signal.js').Signal<T>} Signal */
 
 /**
  * @typedef {'children' | 'key' | 'ref' | 'dangerouslySetInnerHTML' |
@@ -30,7 +29,7 @@ export function raw(value) { return new Raw(value) }
  * @template {TagNames} tagName
  * @typedef {AllowSignalValueAndCustomProperty<
  *   Omit<JSX.IntrinsicElements[tagName], ForbiddenJsxProperties | ExcludeTagSpecific<tagName>>
- * > & { ref?: (element: Element) => void } & { [k: `data-${string}`]: any }} Attributes
+ * > & { ref?: (element: Element) => void } & { [k: `data-${string}`]: any } & { css: string || Array<string> }} Attributes
  */
 
 /**
@@ -58,8 +57,6 @@ export function raw(value) { return new Raw(value) }
  * @typedef {T extends PlainObject ? Attributes<tagName> : Child<T>} ChildOrAttributes
  */
 
-const styles = new Set()
-
 export const tags = new Proxy(
   /**
    * @type {{
@@ -74,12 +71,8 @@ export const tags = new Proxy(
       return function tag(...params) {
         const { props, children } = separatePropsAndChildren(params)
         if (props?.css) {
-          const cssString = Array.isArray(props.css) ? props.css.join('') : props.css
-          const hash = fnv1aHash(cssString)
-          const className = 'c_' + hash
-          if (!styles.has(hash)) {
-            children.unshift(tags.style(raw(`.${className} { ${cssString} }`)))
-          }
+          const className = useStyle(props.css)
+
           props.className = (
             !props.className ? className :
             props.className instanceof Signal ? props.className.derive(x => x + ' ' + className) :
@@ -113,21 +106,8 @@ export class Tag {
  */
 export function css(...args) {
   return String.raw(...args)
-  // return tags.style(raw(`@scope to (*:has(> style) > *) { :scope { ${String.raw(...args)} } }`))
 }
 
 export function combineCss(...args) {
   return args.flat().filter(Boolean)
-}
-
-const fnv1aOffset = 2166136261
-const fnv1aPrime = 16777619
-
-function fnv1aHash(str) {
-  let hash = fnv1aOffset >>> 0
-  for (let i = 0; i < str.length; i++) {
-    hash = hash ^ (str.charCodeAt(i) >>> 0)
-    hash = (hash * fnv1aPrime) >>> 0
-  }
-  return hash.toString(16)
 }

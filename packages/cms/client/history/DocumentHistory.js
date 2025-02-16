@@ -116,7 +116,7 @@ function HistoryItemBody({ historyItem, schema }) {
 
 function UnsupportedTypeItem({ historyItem, schema }) {
   return (
-    pre(css`& { max-width: 35rem; overflow: scroll; max-height: 20rem; }`,
+    pre({ css: css`max-width: 35rem; overflow: scroll; max-height: 20rem;` },
       code(
         `Unsupported type ${historyItem.details.type}\n`,
         JSON.stringify(historyItem.details),

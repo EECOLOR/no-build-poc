@@ -4,6 +4,10 @@
 /** @template T */
 export class Signal {
 
+  constructor() {
+    throw new Error(`Use 'createSignal' to create a signal`)
+  }
+
   /** @returns {T} */
   get() { return null }
 

@@ -27,7 +27,7 @@ export const emptyValues = [false, undefined, null]
 /**
  * @template T
  * @param {RendererConstructor<T>} constructor
- * @returns {(f: () => Tag<any> | Component<any>) => ({ destroy(): void, result: T })}
+ * @returns {(f: () => any) => ({ destroy(): void, result: T })}
  */
 export function createRenderer(constructor) {
   const renderer = constructor({ renderValue })

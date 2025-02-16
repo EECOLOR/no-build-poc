@@ -11,11 +11,12 @@
   "compilerOptions": {
     "module": "NodeNext",
     "moduleResolution": "nodenext",
-    "target": "es2023",
+    "target": "esnext",
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "lib": [
       "dom",
+      "dom.iterable",
       "esnext"
     ],
     "jsx": "react-jsx",
