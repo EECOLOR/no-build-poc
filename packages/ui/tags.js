@@ -1,3 +1,4 @@
+/** @import { TypeOrArrayOfType } from '#ui/types.ts' */
 import { Dynamic } from './dynamic.js'
 import { Signal } from './signal.js'
 import { useStyle } from './styles/shared.js'
@@ -28,7 +29,7 @@ export function raw(value) { return new Raw(value) }
  * @template {TagNames} tagName
  * @typedef {AllowSignalValueAndCustomProperty<
  *   Omit<JSX.IntrinsicElements[tagName], ForbiddenJsxProperties | ExcludeTagSpecific<tagName>>
- * > & { ref?: (element: Element) => void } & { [k: `data-${string}`]: any } & { css?: string | Array<string> }} Attributes
+ * > & { ref?: (element: Element) => void } & { [k: `data-${string}`]: any } & { css?: TypeOrArrayOfType<string> }} Attributes
  */
 
 /**
@@ -105,9 +106,4 @@ export class Tag {
  */
 export function css(...args) {
   return String.raw(...args)
-}
-
-/** @param {Array<string | Array<string>>} args */
-export function combineCss(...args) {
-  return args.flat().filter(Boolean)
 }

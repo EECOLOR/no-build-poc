@@ -1,4 +1,4 @@
-import { tags, css, combineCss } from '#ui/tags.js'
+import { tags, css } from '#ui/tags.js'
 import { loop } from '#ui/dynamic.js'
 import { scrollable } from './scrollable.js'
 
@@ -14,14 +14,14 @@ List.style = css`
   }
 `
 export function List({ className = undefined, css = undefined, items }, ...children) {
-  return scrollable.ul({ className, css: combineCss(List.style, css) },
+  return scrollable.ul({ className, css: [List.style, css] },
     ...children,
     items.map(x => li(x))
   )
 }
 
 export function ListSignal({ className = undefined, css = undefined, signal, getKey, renderItem }, ...children) {
-  return scrollable.ul({ className, css: combineCss(List.style, css) },
+  return scrollable.ul({ className, css: [List.style, css] },
     ...children,
     loop(signal, getKey, ($item, key) => li(renderItem($item, key))),
   )

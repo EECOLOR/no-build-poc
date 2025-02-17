@@ -1,4 +1,4 @@
-import { tags, css, Tag, combineCss } from '#ui/tags.js'
+import { tags, css, Tag } from '#ui/tags.js'
 import { separatePropsAndChildren } from '#ui/utils.js'
 
 /** @type {typeof tags & (<T extends (...args:any[]) => any>(element: T) => (...args: Parameters<T>) => Tag<any>)} */
@@ -19,7 +19,7 @@ Indented.styles = css`
 function Indented(element, ...params) {
   const { props, children } = separatePropsAndChildren(params)
   return (
-    element({ ...props, css: combineCss(props?.css, Indented.styles) },
+    element({ ...props, css: [Indented.styles, props?.css] },
       ...children,
     )
   )

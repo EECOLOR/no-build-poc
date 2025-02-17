@@ -1,4 +1,4 @@
-import { tags, css, Tag, combineCss } from '#ui/tags.js'
+import { tags, css, Tag } from '#ui/tags.js'
 import { combineRefs, separatePropsAndChildren } from '#ui/utils.js'
 import { useElementSize } from '#ui/hooks.js'
 
@@ -31,7 +31,7 @@ function Scrollable(element, ...params) {
         ...props,
         ref: combinedRef,
         'data-has-scrollbar': $hasScrollbar,
-        css: combineCss(Scrollable.styles, props?.css)
+        css: [Scrollable.styles, props?.css]
       },
       ...children,
     )

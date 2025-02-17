@@ -1,3 +1,4 @@
+/** @import { TypeOrArrayOfType } from '#ui/types.ts' */
 import { useOnDestroy } from '#ui/dynamic.js'
 import { createHash } from '#utils/createHash.js'
 
@@ -12,6 +13,7 @@ import { createHash } from '#utils/createHash.js'
  *  >}
  */
 const capturedStyles = []
+const MAX_FLAT = 100 // Something is probably wrong if we go beyond a 100 deep
 
 /**
  * @param {{
@@ -51,14 +53,14 @@ export function startStyleCapture(props) {
   }
 }
 
-/** @param {string | Array<String>} style */
-export function useStyle(style) {
+/** @param {TypeOrArrayOfType<string>} styleOrStyles Can actually be arrays nested to infinity, but that can not be expressed in JSdoc, we might want to do that in a .ts file */
+export function useStyle(styleOrStyles) {
   const target = capturedStyles[capturedStyles.length - 1]
   if (!target)
     throw new Error(`useStyle was called while not capturing styles. On the server make sure you have ServerStyles wrapped around the components that use style`)
 
-  const styles = Array.isArray(style) ? style : [style]
-  const styleInfo = styles.map(getClassNameAndContent)
+  const styles = Array.isArray(styleOrStyles) ? styleOrStyles : [styleOrStyles]
+  const styleInfo = styles.flat(MAX_FLAT).filter(Boolean).map(getClassNameAndContent)
   const classNames = []
   for (const { className, content } of styleInfo) {
     target.addStyle(className, content)

@@ -1,4 +1,4 @@
-import { combineCss, css, tags } from '#ui/tags.js'
+import { css, tags } from '#ui/tags.js'
 
 const { div } = tags
 
@@ -7,7 +7,7 @@ FlexSectionHorizontal.style = css`
   gap: var(--default-gap);
 `
 export function FlexSectionHorizontal({ className, css }, ...children) {
-  return div({ className, css: combineCss(FlexSectionHorizontal.style, css) }, ...children)
+  return div({ className, css: [FlexSectionHorizontal.style, css] }, ...children)
 }
 
 FlexSectionVertical.style = css`
@@ -16,7 +16,7 @@ FlexSectionVertical.style = css`
   gap: var(--default-gap);
 `
 export function FlexSectionVertical({ className, css }, ...children) {
-  return div({ className, css: combineCss(FlexSectionVertical.style, css) }, ...children)
+  return div({ className, css: [FlexSectionVertical.style, css] }, ...children)
 }
 
 FlexSectionProperties.style = css`
@@ -25,7 +25,7 @@ FlexSectionProperties.style = css`
   gap: calc(var(--default-gap) * 2);
 `
 export function FlexSectionProperties({ className, css }, ...children) {
-  return div({ className, css: combineCss(FlexSectionProperties.style, css) }, ...children)
+  return div({ className, css: [FlexSectionProperties.style, css] }, ...children)
 }
 
 FlexSectionBorderedHorizontal.style = css`
@@ -38,7 +38,7 @@ FlexSectionBorderedHorizontal.style = css`
   }
 `
 export function FlexSectionBorderedHorizontal({ className, css }, ...children) {
-  return div({ className, css: combineCss(FlexSectionBorderedHorizontal.style, css) }, ...children)
+  return div({ className, css: [FlexSectionBorderedHorizontal.style, css] }, ...children)
 }
 
 FlexSectionBorderedVertical.style = css`
@@ -52,5 +52,5 @@ FlexSectionBorderedVertical.style = css`
   }
 `
 export function FlexSectionBorderedVertical({ className, css }, ...children) {
-  return div({ className, css: combineCss(FlexSectionBorderedVertical.style, css) }, ...children)
+  return div({ className, css: [FlexSectionBorderedVertical.style, css] }, ...children)
 }
