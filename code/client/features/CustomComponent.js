@@ -1,6 +1,5 @@
 import { raw, tags, css } from '#ui/tags.js'
 import { createSignal, Signal } from '#ui/signal.js'
-import { component, createContext } from '#ui/component.js'
 import { clientConfig } from '#ui/islands/clientConfig.js'
 import { derive, loop } from '#ui/dynamic.js'
 
@@ -11,10 +10,6 @@ import { serverTimestamp } from 'firebase/database'
 
 import { Runtime } from './Runtime.js'
 import { useCombined } from '#ui/hooks.js'
-
-const customContext = createContext()
-const CustomProvider = customContext.Provider
-const useCustom = customContext.consume
 
 const { div, p, h1, button, strong, span, input, ul, li, template, style } = tags
 
@@ -109,21 +104,20 @@ function StyledComponent2({ $count , nested = false }) {
 
 function TestRealComponent({ start, title }) {
   const [$counter, setCounter] = createSignal(start)
+  const $value = $counter.derive(counter => `${title} - ${counter}`)
 
   if (typeof window !== 'undefined')
     setInterval(() => setCounter(x => x + start), 1000)
 
   return (
-    CustomProvider({ value: $counter.derive(counter => `${title} - ${counter}`) },
-      div(
-        p(title),
-        List(),
-      )
+    div(
+      p(title),
+      List({ $value }),
     )
   )
 }
 
-function List() {
+function List({ $value }) {
   const [$counter, setCounter] = createSignal(1)
 
   if (typeof window !== 'undefined')
@@ -132,21 +126,20 @@ function List() {
   return (
     ul(
       li(
-        TestRealChild({ title: $counter.derive(counter =>`[${counter}] Child of:`) })
+        TestRealChild({ title: $counter.derive(counter =>`[${counter}] Child of:`), $value })
       )
     )
   )
 }
 
-const TestRealChild = component(({ title }) => {
-  const $value = useCustom()
+function TestRealChild({ title, $value }) {
   return (
     div(
       p(title),
       $value
     )
   )
-})
+}
 
 function ArrayBasedLastFiveCounts({ $count }) {
   const $lastFiveCounts = $count.derive(

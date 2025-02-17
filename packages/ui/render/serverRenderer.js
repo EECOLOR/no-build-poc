@@ -8,31 +8,31 @@ export const render = createRenderer(
   /** @type {import('./renderer.js').RendererConstructor<string>} */
   ({ renderValue }) => {
     return {
-      renderRaw(raw, context) {
+      renderRaw(raw) {
         return [raw.value]
       },
       renderString(value) {
         return escapeHtml(value)
       },
-      renderSignal(signal, context) {
+      renderSignal(signal) {
         const value = signal.get()
         const result = [].concat(emptyComment(), value, emptyComment())
-        return renderValue(result, context)
+        return renderValue(result)
       },
-      renderTag({ tagName, attributes, children }, context) {
+      renderTag({ tagName, attributes, children }) {
         return (
           `<${[tagName, renderServerAttributes(attributes)].join(' ')}>` +
-          renderValue(children, context).join('') +
+          renderValue(children).join('') +
           `</${tagName}>`
         )
       },
-      renderDynamic(dynamic, context) {
+      renderDynamic(dynamic) {
         const value = dynamic.signal.get().map(item => {
           const [$item] = createSignal(item)
           return dynamic.renderItem($item, dynamic.getKey(item))
         })
         const result = [].concat(emptyComment(), value, emptyComment())
-        return renderValue(result, context)
+        return renderValue(result)
       },
     }
   }

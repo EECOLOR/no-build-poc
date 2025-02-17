@@ -22,7 +22,7 @@ await Promise.all(
     const params = (info.props ? [info.props] : []).concat(raw(childrenPlaceholder))
     const rendered = render(() => Component(...params))
 
-    const nodeReplacements = [].concat(rendered.result)
+    const nodeReplacements = rendered.result
 
     if (placeholderWasUsedAtIn(nodeReplacements, childrenPlaceholder))
       replacePlaceholderIn(nodeReplacements, childrenPlaceholder, nodes)

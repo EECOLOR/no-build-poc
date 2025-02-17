@@ -45,7 +45,7 @@ export async function startServer({ indexFiles, allowedPackages, allowedLibrarie
 
     const { result, destroy } = render(() => IndexComponent({ importMap }))
     destroy()
-    return serve(res, 200, 'text/html;charset=UTF-8', result)
+    return serve(res, 200, 'text/html;charset=UTF-8', result.join(''))
   }
 
   function handleStaticFile(req, res) {

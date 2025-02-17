@@ -1,4 +1,3 @@
-import { Component } from './component.js'
 import { Dynamic } from './dynamic.js'
 import { Signal } from './signal.js'
 import { useStyle } from './styles/shared.js'
@@ -43,7 +42,7 @@ export function raw(value) { return new Raw(value) }
 
 /**
  * @template T
- * @typedef {T extends (Tag<any> | Signal<any> | Component<any> | Dynamic<any> | Array<any> | Raw | string | number | boolean | null | undefined) ? T : never} Child
+ * @typedef {T extends (Tag<any> | Signal<any> | Dynamic<any> | Array<any> | Raw | string | number | boolean | null | undefined) ? T : never} Child
  */
 
 /**

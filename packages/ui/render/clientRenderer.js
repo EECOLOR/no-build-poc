@@ -17,21 +17,21 @@ export const render = createRenderer(
   /** @type {import('./renderer.js').RendererConstructor<Node>} */
   ({ renderValue }) => {
     return {
-      renderRaw(raw, context) {
+      renderRaw(raw) {
         const { value } = raw
-        return value instanceof Node ? [value] : renderValue(value, context)
+        return value instanceof Node ? [value] : renderValue(value)
       },
       renderString(value) {
         return document.createTextNode(value)
       },
-      renderSignal(signal, context) {
+      renderSignal(signal) {
         const marker = comment()
         const value = [].concat(raw(marker), signal.get(), raw(comment()))
-        const nodes = renderValue(value, context)
+        const nodes = renderValue(value)
 
         const unsubscribe = signal.subscribeDirect(newValue => {
           try {
-            const newNodes = renderValue(newValue, context)
+            const newNodes = renderValue(newValue)
             const oldNodes = nodes.slice(1, -1)
 
             swapNodesInDom(marker, newNodes, oldNodes)
@@ -45,7 +45,7 @@ export const render = createRenderer(
 
         return nodes
       },
-      renderDynamic(dynamic, context) {
+      renderDynamic(dynamic) {
         const marker = comment()
         /** @type {Map<string, { callbacks: any[], nodes: Node[], setItem(item): void }>} */
         const infoByKey = new Map()
@@ -104,14 +104,14 @@ export const render = createRenderer(
           const [$item, setItem] = createSignal(item)
           const [nodes, callbacks] = withOnDestroyCapture(() => {
             const rendered = dynamic.renderItem($item, key)
-            return renderValue(rendered, context)
+            return renderValue(rendered)
           })
 
           infoByKey.set(key, { callbacks, nodes, setItem })
           return nodes
         }
       },
-      renderTag({ tagName, attributes, children }, context) {
+      renderTag({ tagName, attributes, children }) {
         const element = document.createElement(tagName)
         const subscriptions = []
 
@@ -128,7 +128,7 @@ export const render = createRenderer(
             else setAttributeOrProperty(element, k, v)
           }
 
-        const nodes = children.flatMap(x => renderValue(x, context))
+        const nodes = children.flatMap(x => renderValue(x))
 
         for (const node of nodes) {
           if (isTemplateTag(tagName)) handleTemplateTagChild(element, node)
