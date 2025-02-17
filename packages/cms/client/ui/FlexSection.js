@@ -15,7 +15,7 @@ FlexSectionVertical.style = css`
   flex-direction: column;
   gap: var(--default-gap);
 `
-export function FlexSectionVertical({ className }, ...children) {
+export function FlexSectionVertical({ className, css }, ...children) {
   return div({ className, css: combineCss(FlexSectionVertical.style, css) }, ...children)
 }
 
@@ -24,7 +24,7 @@ FlexSectionProperties.style = css`
   flex-direction: column;
   gap: calc(var(--default-gap) * 2);
 `
-export function FlexSectionProperties({ className }, ...children) {
+export function FlexSectionProperties({ className, css }, ...children) {
   return div({ className, css: combineCss(FlexSectionProperties.style, css) }, ...children)
 }
 

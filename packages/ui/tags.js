@@ -29,7 +29,7 @@ export function raw(value) { return new Raw(value) }
  * @template {TagNames} tagName
  * @typedef {AllowSignalValueAndCustomProperty<
  *   Omit<JSX.IntrinsicElements[tagName], ForbiddenJsxProperties | ExcludeTagSpecific<tagName>>
- * > & { ref?: (element: Element) => void } & { [k: `data-${string}`]: any } & { css: string || Array<string> }} Attributes
+ * > & { ref?: (element: Element) => void } & { [k: `data-${string}`]: any } & { css?: string | Array<string> }} Attributes
  */
 
 /**
@@ -108,6 +108,7 @@ export function css(...args) {
   return String.raw(...args)
 }
 
+/** @param {Array<string | Array<string>>} args */
 export function combineCss(...args) {
   return args.flat().filter(Boolean)
 }

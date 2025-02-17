@@ -24,7 +24,7 @@ Button.style = css`
  * @returns {Tag<'button'>}
  */
 export function Button({ label, ...props }) {
-  return button({ type: 'button', ...props, css: combineCss(props.css, Button.style) }, label)
+  return button({ ...props, type: 'button', css: combineCss(Button.style, props.css) }, label)
 }
 
 function createIconButton(icon, { rotation = 0 } = {}) {

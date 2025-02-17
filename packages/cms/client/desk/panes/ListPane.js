@@ -8,17 +8,15 @@ ListPane.style = css`
 `
 export function ListPane({ items, path }) {
   return (
-    List(
-      {
-        className: 'ListPane',
-        css: ListPane.style,
-        items: items.map(item =>
-          ListItem({
-            href: [context.basePath, ...path, item.slug].join('/'),
-            title: item.label,
-          })
-        )
-      },
-    )
+    List({
+      className: 'ListPane',
+      css: ListPane.style,
+      items: items.map(item =>
+        ListItem({
+          href: [context.basePath, ...path, item.slug].join('/'),
+          title: item.label,
+        })
+      )
+    })
   )
 }

@@ -20,6 +20,12 @@ Dialog.style = css`
     margin: auto;
     box-shadow: 4px 4px 8px rgb(0 0 0 / 50%);
     height: 100%;
+    display: grid;
+    place-items: stretch;
+
+    & > * {
+      min-height: 0;
+    }
   }
 
   &::backdrop {

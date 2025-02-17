@@ -43,14 +43,13 @@ ImageSelectorDialogContent.style = css`
   align-items: end;
 `
 function ImageSelectorDialogContent({ onChoose, onCloseClick }) {
-  return FlexSectionVertical({ className: 'ImageSelectorDialogContent' },
-    ImageSelectorDialogContent.style,
+  return FlexSectionVertical({ className: 'ImageSelectorDialogContent', css: ImageSelectorDialogContent.style },
     ButtonClose({ onClick: onCloseClick }),
     ImagesAndDetails({ onChoose }),
   )
 }
 
-ImagesAndDetails.style = css`&{
+ImagesAndDetails.style = css`
   display: flex;
   min-height: 0;
 
@@ -62,13 +61,12 @@ ImagesAndDetails.style = css`&{
     min-width: 30%;
     width: 30%;
   }
-}`
+`
 function ImagesAndDetails({ onChoose }) {
   const [$selected, setSelected] = createSignal(null)
 
   return (
-    div({ className: 'ImagesAndDetails '},
-      ImagesAndDetails.style,
+    div({ className: 'ImagesAndDetails', css: ImagesAndDetails.style },
       Images({
         $selected,
         onSelect: image => setSelected(image),

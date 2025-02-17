@@ -14,10 +14,6 @@ const { div } = tags
 ArrayField.style = css`
   & > .ArrayActions {
     margin-top: 1rem;
-
-    & > button {
-      width: 100%;
-    }
   }
 `
 export function ArrayField({ document, field, $path }) {

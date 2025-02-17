@@ -13,7 +13,6 @@ const { input } = tags
 
 DocumentListPane.style = css`
   max-width: 20rem;
-  --gap: var(--default-gap);
 
   & > :last-child {
     flex-grow: 1;

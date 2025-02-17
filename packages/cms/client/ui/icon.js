@@ -1,4 +1,5 @@
 import { Signal } from '#ui/signal.js'
+import { useStyle } from '#ui/styles/shared.js'
 import { tags, css, combineCss } from '#ui/tags.js'
 import { separatePropsAndChildren } from '#ui/utils.js'
 
@@ -15,7 +16,7 @@ export function withIcon(icon, props = {}) {
   })
 }
 
-Icon.style = ({ icon }) => css`
+Icon.style = css`
   --width: 1.5rem;
   --height: 1.5rem;
   padding: 0.25rem;
@@ -35,7 +36,7 @@ Icon.style = ({ icon }) => css`
     height: 100%;
 
     background-origin: content-box;
-    background-image: url('data:image/svg+xml;utf8,${icon}'); /* TODO: can we do this dynamic part with a var?  */
+    background-image: var(--icon-url);
     background-position: center;
     background-repeat: no-repeat;
 
@@ -53,14 +54,18 @@ Icon.style = ({ icon }) => css`
  * @returns {ReturnType<T>} */
 function Icon(icon, { rotation }, element, ...params) {
   const { props, children } = separatePropsAndChildren(params)
+
+  const iconClassName = useStyle(css`--icon-url: url('data:image/svg+xml;utf8,${icon}');`)
+
   return element(
     {
       ...props,
+      className: iconClassName,
       style: {
         ...props?.style,
         '--rotation': map(rotation, x => `${x}deg`)
       },
-      css: combineCss(Icon.style({ icon }), props?.css)
+      css: combineCss(Icon.style, props?.css)
     },
     ...children
   )

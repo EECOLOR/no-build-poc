@@ -48,7 +48,7 @@ Label.style = css`
 function Label({ id, field, renderer, $expanded, onExpandClick }) {
   return (
     FlexSectionHorizontal({ className: 'Label', css: Label.style },
-      label({ htmlFor: id }, span(field.title)),
+      label({ htmlFor: id }, field.title),
       renderer.canCollapse && field.options?.collapsible &&
         ButtonChevron({
           onClick: onExpandClick,

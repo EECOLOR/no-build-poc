@@ -13,14 +13,14 @@ List.style = css`
     list-style-type: none;
   }
 `
-export function List({ className = undefined, css, items }, ...children) {
+export function List({ className = undefined, css = undefined, items }, ...children) {
   return scrollable.ul({ className, css: combineCss(List.style, css) },
     ...children,
     items.map(x => li(x))
   )
 }
 
-export function ListSignal({ className = undefined, css, signal, getKey, renderItem }, ...children) {
+export function ListSignal({ className = undefined, css = undefined, signal, getKey, renderItem }, ...children) {
   return scrollable.ul({ className, css: combineCss(List.style, css) },
     ...children,
     loop(signal, getKey, ($item, key) => li(renderItem($item, key))),

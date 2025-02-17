@@ -51,33 +51,36 @@ export function startStyleCapture(props) {
   }
 }
 
+/** @param {string | Array<String>} style */
 export function useStyle(style) {
   const target = capturedStyles[capturedStyles.length - 1]
   if (!target)
     throw new Error(`useStyle was called while not capturing styles. On the server make sure you have ServerStyles wrapped around the components that use style`)
 
-  const [className, content] = getClassNameAndContent(style)
+  const styles = Array.isArray(style) ? style : [style]
+  const styleInfo = styles.map(getClassNameAndContent)
+  const classNames = []
+  for (const { className, content } of styleInfo) {
+    target.addStyle(className, content)
+    classNames.push(className)
+  }
 
-  target.addStyle(className, content)
-  useOnDestroy(() =>
-    target.removeStyle(className)
-  )
+  useOnDestroy(() => {
+    for (const className of classNames) {
+      target.removeStyle(className) // TODO: should we actually remove the styles? From a purist point of view we do, but it doesn't actually make a lot of sense. It's more computationally expensive to remove and add them while it probably does not make a significant impact on memory usage.
+    }
+  })
 
-  return className
+  return classNames.join(' ')
 }
 
-function getClassNameAndContent(style) {
-    const content = Array.isArray(style) ? style.join('\n') : style
+function getClassNameAndContent(content) {
     const hash = createHash(content)
     const className = 'c_' + hash
 
-    return [className, content]
+    return { className, content }
 }
 
 function wrapInClass(className, content) {
-  return (
-    `.${className} {\n` +
-    `  ${content.split('\n').join('\n  ')}\n` +
-    `}`
-  )
+  return `.${className} {${content}}`
 }
