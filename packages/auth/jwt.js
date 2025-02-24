@@ -50,10 +50,6 @@ export function createJwt(kid, body, privateKey) {
   return `${unsignedToken}.${signature}`
 }
 
-function invalid(hint) {
-  return { valid: false, hint }
-}
-
 function encodeJson(json) {
   const jsonString = JSON.stringify(json)
   return encodeRaw(jsonString)
@@ -61,6 +57,10 @@ function encodeJson(json) {
 
 function encodeRaw(value) {
   return Buffer.from(value).toString('base64url')
+}
+
+function invalid(hint) {
+  return { valid: false, hint }
 }
 
 function decodeJson(encoded) {

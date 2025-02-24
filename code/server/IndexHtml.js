@@ -8,6 +8,7 @@ import { UniversalContainer2 } from '/client/features/UniversalContainer2.js'
 import { ClientConfigProvider, ImportMap, HydrateComponents } from '#ui/islands/setup.js'
 import { Island } from '#ui/islands/Island.js'
 import { ServerStyles } from '#ui/styles/server.js'
+import { importModuleScript } from '#ui/importModuleScript.js'
 
 const { html, head, body, b, p, i, br } = tags
 
@@ -18,6 +19,7 @@ export function IndexHtml({ importMap }) {
         ClientConfigProvider(),
         ImportMap({ importMap }),
         HydrateComponents(),
+        importModuleScript('/client/register-service-worker.js'),
       ),
       body(
         ServerStyles(() => [

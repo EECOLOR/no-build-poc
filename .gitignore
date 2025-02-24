@@ -3,3 +3,7 @@ static/
 node_modules/
 cmsStorage/
 config/local.js
+*.pem
+*.der
+*.key
+*key*.json

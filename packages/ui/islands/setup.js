@@ -1,3 +1,4 @@
+import { importModuleScript } from '#ui/importModuleScript.js'
 import { raw, tags } from '#ui/tags.js'
 import { safeJsonStringify } from '#utils/safeJsonStringify.js'
 import { clientConfig, clientConfigId } from './clientConfig.js'
@@ -13,5 +14,5 @@ export function ImportMap({ importMap }) {
 }
 
 export function HydrateComponents() {
-  return script({ type: 'module', defer: true }, raw(`import '#ui/islands/hydrate-components.js'`))
+  return importModuleScript('#ui/islands/hydrate-components.js')
 }
