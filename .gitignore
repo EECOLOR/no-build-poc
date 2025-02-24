@@ -3,3 +3,4 @@ static/
 node_modules/
 cmsStorage/
 config/local.js
+*key*.json
