@@ -43,9 +43,10 @@ export function CustomComponent({ title, content }) {
     input({ type: 'text', value: $count }),
     TestRealComponent({ start: 3, title: 'Real component test 1' }),
     TestRealComponent({ start: 6, title: 'Real component test 2' }),
-    $count
-      .derive(count => count >= countDownToThree)
-      .derive(show => show ? ThreeScene() : CountDown({ $count, countDownToThree })),
+    derive(
+      $count.derive(count => count >= countDownToThree),
+      show => show ? ThreeScene() : CountDown({ $count, countDownToThree }),
+    )
   )
 
   function handlePointerDown(e) {

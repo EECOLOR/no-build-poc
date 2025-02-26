@@ -139,13 +139,37 @@ export function createSignal(initialValue, isEqual = defaultIsEqual) {
  * @returns {Signal<X>}
  */
 function derived(signal, deriveValue) {
-  const [newSignal, setValue] = createSignal(() => deriveValue(signal.get()))
+  const e = new Error()
 
-  signal.subscribeDirect(value => {
-    setValue(oldValue => deriveValue(value, oldValue))
-  })
+  const derivedSignal = {
+    constructor: Signal,
 
-  return newSignal
+    get() {
+      return deriveValue(signal.get())
+    },
+
+    subscribe(callback) {
+      return signal.subscribe(wrapCallback(callback))
+    },
+
+    subscribeDirect(callback) {
+      return signal.subscribeDirect(wrapCallback(callback))
+    },
+
+    derive(f) {
+      return derived(derivedSignal, f)
+    },
+
+    get stack() {
+      return e.stack
+    },
+  }
+
+  return derivedSignal
+
+  function wrapCallback(callback) {
+    return (value, oldValue) => callback(deriveValue(value), deriveValue(oldValue))
+  }
 }
 
 /**
