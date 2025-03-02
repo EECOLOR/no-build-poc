@@ -67,7 +67,8 @@ function CmsWithContext({ basePath, deskStructure, documentSchemas, documentView
     documentSchemas,
     documentView,
     basePath,
-    clientId: auth.user.id,
+    userId: auth.user.id,
+    clientId: crypto.randomUUID(),
     api,
     events: createMessageBroker({ api, onError }),
     handleError(e) {

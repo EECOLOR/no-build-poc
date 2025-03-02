@@ -44,9 +44,9 @@ export function createRichTextHandler({ databaseActions, streams, patchDocument 
         return internalServerError(res)
       }
 
-      const { clientId, steps, documentVersion, value, valueVersion, fieldType } = body
+      const { userId, clientId, steps, documentVersion, value, valueVersion, fieldType } = body
 
-      if (clientId !== auth.user.id)
+      if (userId !== auth.user.id)
         return notAuthorized(res)
 
       const stored = eventStreamCollection.getValue(type, id, encodedFieldPath)

@@ -135,7 +135,7 @@ export function createSignal(initialValue, isEqual = defaultIsEqual) {
 /**
  * @template T @template X
  * @param {Signal<T>} signal
- * @param {(value: T, previous?: X) => X} deriveValue
+ * @param {(value: T) => X} deriveValue
  * @returns {Signal<X>}
  */
 function derived(signal, deriveValue) {

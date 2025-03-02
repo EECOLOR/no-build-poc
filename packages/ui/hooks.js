@@ -1,6 +1,7 @@
 import { useOnDestroy } from './dynamic.js'
 import { createSignal } from './signal.js'
 
+/** @import { Signal } from './signal.js' */
 
 /**
  * @template {HTMLElement} T
@@ -70,4 +71,28 @@ export function useCombined(...signals) {
   })
 
   return $combined
+}
+
+/**
+ * @template T
+ * @param {Signal<T>} signal
+ * @param {(value: T) => Boolean} predicate If true, use the left rignal
+ * @returns
+ */
+export function useSplitSignal(signal, predicate) {
+  const initialValue = signal.get()
+  const [left, right] = predicate(initialValue)
+    ? [initialValue, null]
+    : [null, initialValue]
+
+  const [$left, setLeft] = createSignal(left)
+  const [$right, setRight] = createSignal(right)
+  const unsubscribe = signal.subscribeDirect(value => {
+    if (predicate(value)) setLeft(value)
+    else setRight(value)
+  })
+
+  useOnDestroy(unsubscribe)
+
+  return [$left, $right]
 }

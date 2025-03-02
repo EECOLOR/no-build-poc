@@ -1,6 +1,7 @@
 import { context } from '#cms/client/context.js'
 import { renderOnValue } from '#cms/client/machinery/renderOnValue.js'
 import { useEventSourceAsSignal } from '#cms/client/machinery/useEventSourceAsSignal.js'
+import { useSplitSignal } from '#ui/hooks.js'
 import { RichTextEditor } from '../richTextEditor/RichTextEditor.js'
 
 export function RichTextField({ document, field, $path, id }) {
@@ -13,15 +14,16 @@ export function RichTextField({ document, field, $path, id }) {
     events: ['initialValue', 'steps'],
   })
 
-  const $initialValue = $events.derive((value, previous) =>
-    value?.event === 'initialValue'
-      ? { value: RichTextEditor.fromJson(schema, value.data.value), version: value.data.version }
-      : previous
+  const [$initialValueEvents, $stepsEvents] = useSplitSignal(
+    $events,
+    value => value?.event === 'initialValue',
   )
-  const $steps = $events.derive((value, previous) =>
-    value?.event === 'steps' ? parseStepsData(value, schema) :
-    previous ? previous :
-    { steps: [], clientIds: [] }
+
+  const $initialValue = $initialValueEvents.derive(value =>
+    value && { value: RichTextEditor.fromJson(schema, value.data.value), version: value.data.version }
+  )
+  const $steps = $stepsEvents.derive(value =>
+    value ? parseStepsData(value, schema) : { steps: [], clientIds: [] }
   )
 
   // This might be an interesting performance optimization if that is needed:
@@ -45,6 +47,7 @@ export function RichTextField({ document, field, $path, id }) {
         signal: controller.signal,
         body: JSON.stringify({
           clientId,
+          userId: context.userId,
           steps: steps.map(RichTextEditor.stepToJson),
           documentVersion: document.$value.get().version,
           valueVersion: version,

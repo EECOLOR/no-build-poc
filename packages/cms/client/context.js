@@ -7,6 +7,7 @@
  *   documentSchemas: any
  *   documentView: any
  *   basePath: any
+ *   userId: string
  *   clientId: string
  *   api: ProvideParamsToRouteMap<typeof routeMap, { version: string }>['api']['versioned']
  *   events: MessageBroker
