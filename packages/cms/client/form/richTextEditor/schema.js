@@ -161,17 +161,21 @@ schema.content = function content(...nodeTypes) {
  * @param {({ id: string, $selected }) => Tag<any>} Component
  */
 schema.customComponent = function createCustomNodeView(name, Component) {
- return schema.nodeViewNode(name, node => {
-   const [$selected, setSelected] = createSignal(false)
+  return schema.nodeViewNode(name, node => {
+    const [$selected, setSelected] = createSignal(false)
 
-   const { result, destroy } = render(() => Component({ id: node.attrs.id, $selected }))
+    const { result, destroy } = render(() => Component({ id: node.attrs.id, $selected }))
 
-   return {
-     dom: result,
-     destroy,
-     selectNode() { setSelected(true) },
-     deselectNode() { setSelected(false) },
-   }
+    const [dom, ...rest] = result
+    if (rest.length)
+      throw new Error(`Component '${Component.name}' should return a single DOM node`)
+
+    return {
+      dom,
+      destroy,
+      selectNode() { setSelected(true) },
+      deselectNode() { setSelected(false) },
+    }
  })
 }
 
