@@ -15,7 +15,7 @@ FlexSectionVertical.style = css`
   flex-direction: column;
   gap: var(--default-gap);
 `
-export function FlexSectionVertical({ className, css }, ...children) {
+export function FlexSectionVertical({ className, css = undefined }, ...children) {
   return div({ className, css: [FlexSectionVertical.style, css] }, ...children)
 }
 

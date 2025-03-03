@@ -62,7 +62,7 @@ function HistoryItemHeader({ historyItem, schema }) {
     div({ css: HistoryItemHeader.style },
       div({ className: 'dateAndAuthor'},
         DateTime({ timestamp: historyItem.timestampStart }),
-        Author({ clientId: historyItem.clientId }),
+        Author({ userId: historyItem.userId }),
       ),
       div({ className: 'pathAndAction' },
         Action({ details: historyItem.details }),
@@ -156,8 +156,8 @@ Author.style = css`
   border-radius: 1.5rem;
   background-color: var(--color);
 `
-function Author({ clientId }) {
-  return span({ style: { '--color': `#${clientId.slice(0, 6)}` }, css: Author.style, title: clientId })
+function Author({ userId }) {
+  return span({ style: { '--color': `#${userId.slice(0, 6)}` }, css: Author.style, title: userId })
 }
 
 StringItem.style = css`

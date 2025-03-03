@@ -6,7 +6,7 @@ import { internalServerError, notAuthorized, respondJson } from './machinery/res
 
 /** @import { DeepReadonly } from '#typescript/utils.ts' */
 
-/** @typedef {ReturnType<typeof createDocumentsHandler>['patchDocument']} PatchDocument */
+/** @typedef {ReturnType<typeof createDocumentsHandler>['__for_typescript__patchDocument']} PatchDocument */
 /** @typedef {DeepReadonly<ReturnType<typeof createDocumentsHandler>>} DocumentsHandler */
 
 /** @param {{ databaseActions: import('./database.js').Actions, streams: import('./machinery/eventStreams.js').Streams }} params */
@@ -31,6 +31,8 @@ export function createDocumentsHandler({ databaseActions, streams }) {
     handlePatchDocument,
     documentsEventStreams,
     documentEventStreams,
+
+    __for_typescript__patchDocument: patchDocument,
   }
 
   function handlePatchDocument(req, res, { type, id, auth }) {
@@ -40,29 +42,30 @@ export function createDocumentsHandler({ databaseActions, streams }) {
         console.error(error)
         return internalServerError(res)
       }
-      const { version, patch, clientId, fieldType } = body
+      const { version, patch, userId, fieldType } = body
 
-      if (clientId !== auth.user.id)
+      if (userId !== auth.user.id)
         return notAuthorized(res)
 
-      const result = patchDocument({ clientId, type, id, version, patch, fieldType })
+      const result = patchDocument({ userId, type, id, version, patch, fieldType, fieldInfo: undefined })
 
       respondJson(res, result.success ? 200 : 400, result)
     })
   }
 
   /**
+   * @template {string} T
    * @param {{
-   *   clientId: string,
+   *   userId: string,
    *   type: string,
    *   id: string,
    *   version: number,
    *   patch: any,
-   *   fieldType: string,
-   *   steps?: Array<any>
+   *   fieldType: T,
+   *   fieldInfo: import('./documents/history.js').FieldSpecificInfo<T>, // TODO: move this type somewhere else
    * }} props
    */
-  function patchDocument({ clientId, type, id, version, patch, fieldType, steps = undefined }) {
+  function patchDocument({ userId, type, id, version, patch, fieldType, fieldInfo }) {
     const documentFromDatabase = getDocumentById({ id })
     const isUpdate = Boolean(documentFromDatabase)
     const document = documentFromDatabase || { _id: id, _type: type, version: 0 }
@@ -81,20 +84,26 @@ export function createDocumentsHandler({ databaseActions, streams }) {
 
     if (result.operation === 'remove-document') {
       deleteDocumentById({ type, id })
-      historyHandler.updateDocumentHistory(clientId, type, id, '', { fieldType: 'document', patch, oldValue: document, newValue: null })
+      historyHandler.updateDocumentHistory(userId, type, id, '',
+        { fieldType: 'document', patch, oldValue: document, newValue: null },
+        undefined,
+      )
       return { success: true }
     }
 
     if (isUpdate) updateDocumentById({ type, id, document })
     else insertDocument({ type, id, document})
 
-    historyHandler.updateDocumentHistory(clientId, type, id, patch.path, {
-      fieldType,
-      patch,
-      oldValue: result.oldValue,
-      newValue: result.newValue,
-      steps,
-    })
+    historyHandler.updateDocumentHistory(
+      userId, type, id, patch.path,
+      {
+        fieldType,
+        patch,
+        oldValue: result.oldValue,
+        newValue: result.newValue,
+      },
+      fieldInfo
+    )
 
     return { success: true }
   }

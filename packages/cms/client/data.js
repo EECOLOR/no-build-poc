@@ -58,7 +58,7 @@ export function patchDocument(params) {
    body: JSON.stringify({
      version: document.$value.get()?.version ?? 0,
      patch: { op, path, value, from },
-     clientId: context.clientId,
+     userId: context.userId,
      fieldType,
    })
  }).catch(context.handleError)

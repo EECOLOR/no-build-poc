@@ -24,14 +24,14 @@ export function createDatabase(file) {
   )
   // database.exec(`DROP TABLE history`)
   database.exec( // TODO: foreign key to documents
-  `CREATE TABLE IF NOT EXISTS history (
-    documentId BLOB NOT NULL,
-    fieldPath TEXT NOT NULL,
-    clientId TEXT NOT NULL,
-    timestampStart NUMERIC NOT NULL,
-    timestampEnd NUMERIC NOT NULL,
-    details TEXT NOT NULL,
-    PRIMARY KEY (documentId, clientId, fieldPath, timestampStart)
+    `CREATE TABLE IF NOT EXISTS history (
+      documentId BLOB NOT NULL,
+      fieldPath TEXT NOT NULL,
+      userId TEXT NOT NULL,
+      timestampStart NUMERIC NOT NULL,
+      timestampEnd NUMERIC NOT NULL,
+      details TEXT NOT NULL,
+      PRIMARY KEY (documentId, userId, fieldPath, timestampStart)
     )`
   )
 
@@ -159,7 +159,7 @@ function createHistoryActions({ database, streams }) {
   function listHistoryByDocumentId({ documentId }) {
     const result = database
       .prepare(`
-        SELECT fieldPath, clientId, timestampStart, timestampEnd, details
+        SELECT fieldPath, userId, timestampStart, timestampEnd, details
         FROM history
         WHERE documentId = :documentId
         ORDER BY timestampStart DESC
@@ -168,15 +168,15 @@ function createHistoryActions({ database, streams }) {
 
     return result.map(/** @param {any} x */ x => ({
       fieldPath: x.fieldPath,
-      clientId: x.clientId,
+      userId: x.userId,
       timestampStart: x.timestampStart,
       timestampEnd: x.timestampEnd,
       details: JSON.parse(x.details),
-      key: `${x.clientId}:${x.fieldPath}:${x.timestampStart}`,
+      key: `${x.userId}:${x.fieldPath}:${x.timestampStart}`,
     }))
   }
 
-  function getFieldHistoryChangedInTheLastMinute({ documentId, clientId, fieldPath }) {
+  function getFieldHistoryChangedInTheLastMinute({ documentId, userId, fieldPath }) {
     const timestamp = Date.now()
 
     /** @type {any} */
@@ -185,13 +185,13 @@ function createHistoryActions({ database, streams }) {
         SELECT timestampStart, details
         FROM history
         WHERE documentId = :documentId
-        AND clientId = :clientId
+        AND userId = :userId
         AND fieldPath = :fieldPath
         AND timestampEnd > :timestamp - 60000
         ORDER BY timestampEnd DESC
         LIMIT 1
       `)
-      .get({ documentId, clientId, timestamp, fieldPath })
+      .get({ documentId, userId, timestamp, fieldPath })
 
     return result && {
       timestampStart: result.timestampStart,
@@ -200,16 +200,16 @@ function createHistoryActions({ database, streams }) {
   }
 
   function insertHistory({
-    type, documentId, fieldPath, clientId,
+    type, documentId, fieldPath, userId,
     timestampStart, timestampEnd, details
   }) {
     const result = database
       .prepare(`
-        INSERT INTO history (documentId, fieldPath, clientId, timestampStart, timestampEnd, details)
-        VALUES (:documentId, :fieldPath, :clientId, :timestampStart, :timestampEnd, :details)
+        INSERT INTO history (documentId, fieldPath, userId, timestampStart, timestampEnd, details)
+        VALUES (:documentId, :fieldPath, :userId, :timestampStart, :timestampEnd, :details)
       `)
       .run({
-        documentId, fieldPath, clientId,
+        documentId, fieldPath, userId,
         timestampStart, timestampEnd, details: JSON.stringify(details)
       })
 
@@ -220,7 +220,7 @@ function createHistoryActions({ database, streams }) {
 
   function updateHistory({
     type,
-    select: { documentId, clientId, fieldPath, timestampStart },
+    select: { documentId, userId, fieldPath, timestampStart },
     update: { timestampEnd, details }
   }) {
     const result = database
@@ -230,12 +230,12 @@ function createHistoryActions({ database, streams }) {
           timestampEnd = :timestampEnd,
           details = :details
         WHERE documentId = :documentId
-        AND clientId = :clientId
+        AND userId = :userId
         AND fieldPath = :fieldPath
         AND timestampStart = :timestampStart
       `)
       .run({
-        documentId, fieldPath, clientId, timestampStart,
+        documentId, fieldPath, userId, timestampStart,
         timestampEnd, details: JSON.stringify(details)
       })
 

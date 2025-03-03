@@ -46,6 +46,9 @@ export function createRichTextHandler({ databaseActions, streams, patchDocument 
 
       const { userId, clientId, steps, documentVersion, value, valueVersion, fieldType } = body
 
+      if (!strictEqual(fieldType, 'rich-text'))
+        return respondJson(res, 400, { success: false, reason: `Given field type was not 'rich-text'`})
+
       if (userId !== auth.user.id)
         return notAuthorized(res)
 
@@ -57,10 +60,10 @@ export function createRichTextHandler({ databaseActions, streams, patchDocument 
       stored.version += steps.length
 
       const patch = { op: 'replace', path: fieldPath, value }
-      const result = patchDocument({
-        clientId, type, id, version: documentVersion, fieldType,
-        patch, steps
-      })
+      const result = patchDocument(/** @type {const} */ ({
+        userId, type, id, version: documentVersion, patch,
+        fieldType, fieldInfo: { steps }
+      }))
 
       if (!result.success)
         return respondJson(res, 400, result)
@@ -72,4 +75,14 @@ export function createRichTextHandler({ databaseActions, streams, patchDocument 
       respondJson(res, 200, result)
     })
   }
+}
+
+/**
+ * @template T
+ * @param {any} value
+ * @param {T} expected
+ * @returns {value is T}
+ */
+function strictEqual(value, expected) {
+  return value === expected
 }
