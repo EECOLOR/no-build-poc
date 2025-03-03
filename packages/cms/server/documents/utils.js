@@ -9,7 +9,7 @@ export function setAt(o, path, value, { insertIfArray = false } = {}) {
     const isLast = i === keys.length - 1
     if (isLast) {
       if (insertIfArray && isNumber(key)) target.splice(key, 0, value)
-      else target[key] = value
+      else target[key] = value // TODO: this is a security vulnerability
       return
     }
 
