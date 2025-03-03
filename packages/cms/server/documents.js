@@ -71,7 +71,7 @@ export function createDocumentsHandler({ databaseActions, streams }) {
     if (version !== expectedVersion)
       return {
         success: false,
-        message: `Incompatible document version, expeced version ${expectedVersion}`
+        message: `Incompatible document version, expeced version: ${expectedVersion}`
       }
 
     const result = applyPatch(document, patch)
