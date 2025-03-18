@@ -16,7 +16,7 @@ const publicKeyProviders = mapValues(config.auth, x => x.web.withPublicKeys)
 
 export function createCms({ basePath, storagePath }) {
   const imagesPath = path.join(storagePath, 'images')
-  if (!fs.existsSync(imagesPath)) fs.mkdirSync(imagesPath)
+  if (!fs.existsSync(imagesPath)) fs.mkdirSync(imagesPath, { recursive: true })
 
   const apiPath = `${basePath}/api/`
 
