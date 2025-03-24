@@ -1,31 +1,16 @@
+import { context } from '#cms/client/context.js'
 import { renderOnValue } from '#cms/client/machinery/renderOnValue.js'
 import { ButtonChevron } from '#cms/client/ui/Button.js'
 import { FlexSectionHorizontal, FlexSectionVertical } from '#cms/client/ui/FlexSection.js'
 import { createSignal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
 import { createUniqueId } from '#ui/utils.js'
-import { ArrayField } from './ArrayField.js'
-import { ImageField } from './ImageField.js'
-import { ObjectField } from './ObjectField.js'
-import { ReferenceField } from './ReferenceField.js'
-import { RichTextField } from './RichTextField.js'
-import { StringField } from './StringField.js'
+/** @import { DocumentSchema, FieldTypes } from '#cms/client/cmsConfigTypes.ts' */
 
-const { div, label, span } = tags
-
-const fieldRenderers = /** @type {const} */({
-  'string': StringField,
-  'rich-text': RichTextField,
-  'array': ArrayField,
-  'image': ImageField,
-  'reference': ReferenceField,
-  default: ObjectField,
-})
+const { div, label } = tags
 
 export function Field({ document, field, $path }) {
-  let renderer = fieldRenderers[field.type]
-  if (!renderer && 'fields' in field)
-    renderer = fieldRenderers.default
+  const renderer = getRenderField(context.fieldTypes, field)
   if (!renderer)
     return div({ style: { backgroundColor: 'lightcoral' } }, `Unknown field type '${field.type}'`)
 
@@ -56,4 +41,14 @@ function Label({ id, field, renderer, $expanded, onExpandClick }) {
         })
     )
   )
+}
+
+/**
+ * @template {DocumentSchema.FieldTypes} T
+ * @param {FieldTypes} fieldTypes
+ * @param {DocumentSchema.Field<T>} field
+ */
+function getRenderField(fieldTypes, field) {
+  const info = fieldTypes[field.type]
+  return info?.renderField
 }

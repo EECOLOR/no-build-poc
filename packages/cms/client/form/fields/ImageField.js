@@ -11,6 +11,8 @@ import { useFieldValue } from './useFieldValue.js'
 
 const { img } = tags
 
+/** @typedef {{}} ImageFieldConfig */
+
 ImageField.style = css`
   align-items: start;
 `

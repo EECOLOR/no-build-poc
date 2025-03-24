@@ -1,10 +1,15 @@
-/** @import { MessageBroker } from './machinery/messageBroker.js' */
-/** @import { routeMap } from './routeMap.js' */
-/** @import { ProvideParamsToRouteMap } from './types.ts' */
+/**
+ * @import { MessageBroker } from './machinery/messageBroker.js'
+ * @import { routeMap } from './routeMap.js'
+ * @import { ProvideParamsToRouteMap } from './machinery/routeMapTypes.ts'
+ * @import { FieldTypes } from './cmsConfigTypes.ts'
+ */
+
 
 /**
  * @typedef {{
  *   documentSchemas: any
+ *   fieldTypes: FieldTypes
  *   documentView: any
  *   basePath: any
  *   userId: string

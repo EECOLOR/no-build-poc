@@ -1,4 +1,7 @@
-/** @import { CmsConfig, DocumentSchema, DeskStructure, AsReturnType, Simplify, RequiredParams } from './cmsConfigTypes.ts' */
+/**
+ * @import { CmsConfig, DocumentSchema, DeskStructure, AsReturnType, Simplify, RequiredParams } from './cmsConfigTypes.ts'
+ * @import { ArrayObjectConfig } from './form/fields/ArrayField.js'
+ */
 
 /** @param {CmsConfig} config */
 export function cmsConfig(config) {
@@ -32,15 +35,17 @@ export function listItem(slug, props) {
  * @returns {Simplify<Required<DocumentSchema.DocumentSchema>>}
  */
 export function document(type, props) {
+  // @ts-ignore
   return { ...props, title: props.title ?? capitalize(type), type }
 }
 
 /**
  * @param {string} type
- * @param {Omit<DocumentSchema.ArrayObject, 'type'>} props
- * @returns {Simplify<Required<DocumentSchema.ArrayObject>>}
+ * @param {Omit<ArrayObjectConfig, 'type'>} props
+ * @returns {Simplify<Required<ArrayObjectConfig>>}
  */
 export function arrayObject(type, props) {
+  // @ts-ignore
   return { ...props, title: props.title ?? capitalize(type), type }
 }
 
@@ -58,7 +63,7 @@ export function field(name, type, ...typeParams) {
 
 /**
  * @param {DocumentSchema.FieldTypes} type
- * @returns {AsReturnType<DocumentSchema.FieldTypeProps<typeof type>>}
+ * @returns {AsReturnType<DocumentSchema.FieldConfig<typeof type>>}
  */
 function defaults(type) {
   switch (type) {

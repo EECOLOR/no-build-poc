@@ -3,6 +3,13 @@ import { renderOnValue } from '#cms/client/machinery/renderOnValue.js'
 import { useEventSourceAsSignal } from '#cms/client/machinery/useEventSourceAsSignal.js'
 import { useSplitSignal } from '#ui/hooks.js'
 import { RichTextEditor } from '../richTextEditor/RichTextEditor.js'
+import { Schema as ProsemirrorSchema } from 'prosemirror-model'
+
+/**
+ * @typedef {{
+ *   schema: ProsemirrorSchema,
+ * }} RichTextFieldConfig
+ */
 
 export function RichTextField({ document, field, $path, id }) {
   const { schema } = field

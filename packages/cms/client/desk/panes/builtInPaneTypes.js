@@ -13,30 +13,25 @@ import { renderDocumentPane } from './DocumentPane.js'
 
 export const builtInPaneTypes = /** @type {const} */ ({
   list: {
-    type: 'list',
     Type: /** @type {ListPaneConfig} */ (null),
     resolvePane: resolveListPane,
     renderPane: renderListPane,
   },
   documentList: {
-    type: 'documentList',
     Type: /** @type {DocumentListPaneConfig} */ (null),
     resolvePane: resolveDocumentListPane,
     renderPane: renderDocumentListPane,
   },
   document: {
-    type: 'document',
     Type: /** @type {DocumentPaneConfig} */ (null),
     renderPane: renderDocumentPane,
   },
   images: {
-    type: 'images',
     Type: /** @type {ImagesPaneConfig} */ (null),
     resolvePane: resolveImagesPane,
     renderPane: renderImagesPane,
   },
   image: {
-    type: 'image',
     Type: /** @type {ImagePaneConfig} */ (null),
     renderPane: renderImagePane,
   }

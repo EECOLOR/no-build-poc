@@ -1,5 +1,6 @@
-import * as prosemirror from 'prosemirror-model'
+import { Signal } from '#ui/signal.js'
 import { builtInPaneTypes } from './desk/panes/builtInPaneTypes.js'
+import { builtInFieldTypes } from './form/fields/builtInFieldTypes.js'
 
 // TODO: Think about adding types for custom panes and fields in user/developer space,
 // maybe an interface that is mixed in, maybe use the same technique as jsx. We now
@@ -8,6 +9,7 @@ export interface CmsConfig {
   deskStructure: DeskStructure
   paneTypes: PaneTypes
   documentSchemas: DocumentSchemas
+  fieldTypes: FieldTypes
   documentView: DocumentView
 }
 
@@ -17,10 +19,16 @@ interface DeskStructure {
 
 export type PaneTypes = {
   readonly [P in DeskStructure.PaneTypes]: {
-    readonly type: P
     readonly Type: DeskStructure.PaneConfig<P>,
     readonly resolvePane?: DeskStructure.PaneResolver<DeskStructure.PaneConfig<P>>,
     readonly renderPane: DeskStructure.PaneRenderer<DeskStructure.PaneConfig<P>>,
+  }
+}
+
+export type FieldTypes = {
+  readonly [P in DocumentSchema.FieldTypes]: {
+    readonly Type: DocumentSchema.FieldConfig<P>,
+    readonly renderField: DocumentSchema.FieldRenderer<DocumentSchema.FieldConfig<P>>,
   }
 }
 
@@ -30,10 +38,7 @@ interface DocumentView {
 
 }
 
-
 export namespace DeskStructure {
-  type MapValueToKey<O extends { [key: string]: { [P in K]: any } }, K extends string> =
-    { [P in keyof O]: O[P][K] }
 
   type Panes = MapValueToKey<typeof builtInPaneTypes, 'Type'>
 
@@ -51,32 +56,8 @@ export namespace DeskStructure {
 }
 
 export namespace DocumentSchema {
-  interface Fields {
-    string: {},
 
-    object: {
-      fields: Array<Field<FieldTypes>>,
-      options?: {
-        collapsible?: boolean,
-        showObjectHeader?: boolean,
-      },
-    },
-
-    image: {},
-
-    'rich-text': {
-      schema: prosemirror.Schema,
-    },
-
-    array: {
-      of: Array<ArrayObject>,
-    },
-
-    reference: {
-      title: string,
-      to: Array<string>,
-    }
-  }
+  type Fields = MapValueToKey<typeof builtInFieldTypes, 'Type'>
 
   export type DocumentSchema =
     { type: string, title?: string, fields: Array<Field<FieldTypes>>, preview(doc: any): { title: string } }
@@ -84,13 +65,13 @@ export namespace DocumentSchema {
   export type FieldTypes = keyof Fields
 
   export type Field<T extends FieldTypes> =
-    { name: string, type: T, title?: string } & FieldTypeProps<T>
+    { name: string, type: T, title?: string } & FieldConfig<T>
 
-  export type FieldTypeProps<T extends FieldTypes> =
+  export type FieldConfig<T extends FieldTypes> =
     {} & Fields[T]
 
-  export type ArrayObject =
-    { type: string, title?: string } & Fields['object']
+  export type FieldRenderer<T> =
+    (props: { document: any, field: T, $path: Signal<string>, id: string }) => any
 }
 
 export type Simplify<T> =
@@ -113,5 +94,7 @@ export type Simplify<T> =
 
 export type AsReturnType<T> = Simplify<DeepRequired<T>>
 
-
 export type RequiredParams<T> = Partial<T> extends T ? [] | [T] : [T]
+
+type MapValueToKey<O extends { [key: string]: { [P in K]: any } }, K extends string> =
+  { [P in keyof O]: O[P][K] }

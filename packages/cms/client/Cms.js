@@ -12,11 +12,11 @@ const { div } = tags
 
 const apiVersion = '2024-09-07'
 
-export function Cms({ basePath, deskStructure, paneTypes, documentSchemas, documentView, onError }) {
+export function Cms({ basePath, deskStructure, paneTypes, documentSchemas, fieldTypes, documentView, onError }) {
   return div(
     typeof window === 'undefined'
       ? CmsLoader()
-      : CmsOrLogin({ basePath, deskStructure, paneTypes, documentSchemas, documentView, onError })
+      : CmsOrLogin({ basePath, deskStructure, paneTypes, documentSchemas, fieldTypes, documentView, onError })
   )
 }
 
@@ -24,7 +24,7 @@ function CmsLoader() {
   return div('Loading...')
 }
 
-function CmsOrLogin({ basePath, deskStructure, paneTypes, documentSchemas, documentView, onError }) {
+function CmsOrLogin({ basePath, deskStructure, paneTypes, documentSchemas, fieldTypes, documentView, onError }) {
   const $auth = useAuth({ endpoint: basePath + routeMap.api.versioned.me({ version: apiVersion }) })
 
   return derive($auth, auth => {
@@ -42,6 +42,7 @@ function CmsOrLogin({ basePath, deskStructure, paneTypes, documentSchemas, docum
       deskStructure,
       paneTypes,
       documentSchemas,
+      fieldTypes,
       documentView,
       onError,
       auth
@@ -63,12 +64,13 @@ CmsWithContext.style = css`
     height: 100%;
   }
 `
-function CmsWithContext({ basePath, deskStructure, paneTypes, documentSchemas, documentView, onError, auth }) {
+function CmsWithContext({ basePath, deskStructure, paneTypes, documentSchemas, fieldTypes, documentView, onError, auth }) {
   const versionedRouteMap = withParamsAndPrefix(basePath, routeMap, { version: apiVersion })
   const api = versionedRouteMap.api.versioned
 
   setContext({
     documentSchemas,
+    fieldTypes,
     documentView,
     basePath,
     userId: auth.user.id,

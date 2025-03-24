@@ -8,8 +8,19 @@ import { Object } from './ObjectField.js'
 import { getAtPath } from './utils.js'
 import { FlexSectionBorderedVertical, FlexSectionHorizontal, FlexSectionVertical } from '#cms/client/ui/FlexSection.js'
 import { indented } from '#cms/client/ui/indented.js'
+/** @import { ObjectFieldConfig } from './ObjectField.js' */
 
 const { div } = tags
+
+/**
+ * @typedef {{
+ *   of: Array<ArrayObjectConfig>,
+ * }} ArrayFieldConfig
+ */
+
+/**
+ * @typedef {{ type: string, title?: string } & ObjectFieldConfig} ArrayObjectConfig
+ */
 
 ArrayField.style = css`
   & > .ArrayActions {

@@ -3,11 +3,6 @@ import { css } from '#ui/tags.js'
 import { context } from '../context.js'
 import { $pathname } from '../machinery/history.js'
 import { FlexSectionBorderedHorizontal } from '../ui/FlexSection.js'
-import { DocumentListPane } from './panes/DocumentListPane.js'
-import { DocumentPane } from './panes/DocumentPane.js'
-import { ImagePane } from './panes/ImagePane.js'
-import { ImagesPane } from './panes/ImagesPane.js'
-import { ListPane } from './panes/ListPane.js'
 /** @import { DeskStructure, PaneTypes } from '../cmsConfigTypes.ts' */
 
 Panes.style = css`

@@ -2,6 +2,7 @@ import { schema } from '#cms/client/form/richTextEditor/schema.js'
 import { arrayObject, cmsConfig, field, listItem, pane, document } from '#cms/client/cmsConfig.js'
 import { builtInPaneTypes } from '#cms/client/desk/panes/builtInPaneTypes.js'
 import { css, tags } from '#ui/tags.js'
+import { builtInFieldTypes } from '#cms/client/form/fields/builtInFieldTypes.js'
 
 const { div } = tags
 
@@ -78,7 +79,7 @@ export function createCmsConfig() {
         preview: doc => ({ title: 'General settings' })
       })
     ],
-
+    fieldTypes: builtInFieldTypes,
     documentView,
   })
 }

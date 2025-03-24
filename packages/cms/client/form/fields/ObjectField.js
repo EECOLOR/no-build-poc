@@ -2,8 +2,19 @@ import { css, tags } from '#ui/tags.js'
 import { Field } from './Field.js'
 import { FlexSectionHorizontal, FlexSectionProperties, FlexSectionVertical } from '#cms/client/ui/FlexSection.js'
 import { indented } from '#cms/client/ui/indented.js'
+/** @import { DocumentSchema } from '../../cmsConfigTypes.ts' */
 
-const { div, strong } = tags
+const { strong } = tags
+
+/**
+ * @typedef {{
+ *   fields: Array<DocumentSchema.Field<DocumentSchema.FieldTypes>>,
+ *   options?: {
+ *     collapsible?: boolean,
+ *     showObjectHeader?: boolean,
+ *   },
+ * }} ObjectFieldConfig
+ */
 
 ObjectField.canCollapse = true
 export function ObjectField({ document, field, $path }) {

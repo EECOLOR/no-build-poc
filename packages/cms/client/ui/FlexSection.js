@@ -24,7 +24,7 @@ FlexSectionProperties.style = css`
   flex-direction: column;
   gap: calc(var(--default-gap) * 2);
 `
-export function FlexSectionProperties({ className, css }, ...children) {
+export function FlexSectionProperties({ className, css = undefined }, ...children) {
   return div({ className, css: [FlexSectionProperties.style, css] }, ...children)
 }
 

@@ -7,6 +7,13 @@ import { useFieldValue } from './useFieldValue.js'
 
 const { select, option } = tags
 
+/**
+ * @typedef {{
+ *   title: string,
+ *   to: Array<string>,
+ * }} ReferenceFieldConfig
+ */
+
 export function ReferenceField({ document, field, $path, id }) {
   const [$value, setValue] = useFieldValue({ document, field, $path, initialValue: null })
 
