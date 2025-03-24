@@ -8,8 +8,21 @@ import { conditional, derive } from '#ui/dynamic.js'
 import { createSignal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
 import { FlexSectionHorizontal } from '#cms/client/ui/FlexSection.js'
+/** @import { DeskStructure } from '../../cmsConfigTypes.ts' */
 
 const { div, h1 } = tags
+
+/**
+ * @typedef {{
+ *   schemaType: string,
+ *   id: string,
+ * }} DocumentPaneConfig
+ */
+
+/** @type {DeskStructure.PaneRenderer<DocumentPaneConfig>} */
+export function renderDocumentPane({ pane, path }) {
+  return DocumentPane({ id: pane.id, schemaType: pane.schemaType })
+}
 
 DocumentPane.style = css`
   display: grid;

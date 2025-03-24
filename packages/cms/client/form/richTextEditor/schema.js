@@ -1,8 +1,8 @@
-import { render } from '#ui/render/clientRenderer.js';
-import { createSignal } from '#ui/signal.js';
-import { Tag } from '#ui/tags.js';
-import { Schema } from 'prosemirror-model';
-import { Plugin } from 'prosemirror-state';
+import { render } from '#ui/render/clientRenderer.js'
+import { createSignal } from '#ui/signal.js'
+import { Tag } from '#ui/tags.js'
+import { Schema } from 'prosemirror-model'
+import { Plugin } from 'prosemirror-state'
 
 // move to RichTextEditor and use plugin with appendTransaction to assign uuid (https://discuss.prosemirror.net/t/how-i-can-attach-attribute-with-dynamic-value-when-new-paragraph-is-inserted/751/3)
 export const generateUuid = Symbol('generateUuid')
@@ -36,7 +36,7 @@ export function schema({ nodes = {}, marks = {} } = {}) {
         attrs: { node: {} },
         atom: true,
         toDOM(node) {
-          return ['pre', { style: 'background-color: lightcoral; outline: 2px solid black;'},
+          return ['pre', { style: 'background-color: lightcoral outline: 2px solid black'},
             `Unknown node type:\n${JSON.stringify(node.attrs.node, null, 2)}`
           ]
         },
@@ -89,7 +89,7 @@ function createUuidPlugin(schema) {
         modified = true
       })
 
-      return modified ? tr : null;
+      return modified ? tr : null
     },
   })
 

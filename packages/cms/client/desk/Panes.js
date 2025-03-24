@@ -8,6 +8,7 @@ import { DocumentPane } from './panes/DocumentPane.js'
 import { ImagePane } from './panes/ImagePane.js'
 import { ImagesPane } from './panes/ImagesPane.js'
 import { ListPane } from './panes/ListPane.js'
+/** @import { DeskStructure, PaneTypes } from '../cmsConfigTypes.ts' */
 
 Panes.style = css`
   overflow-x: auto;
@@ -20,10 +21,10 @@ Panes.style = css`
     flex-grow: 1;
   }
 `
-export function Panes({ firstPane }) {
+export function Panes({ firstPane, paneTypes }) {
   const $panesWithPath = $pathname.derive(pathname => {
     const pathSegments = pathname.replace(context.basePath, '').slice(1).split('/')
-    return resolvePanes(firstPane, pathSegments)
+    return resolvePanes(firstPane, pathSegments, paneTypes)
   })
 
   return (
@@ -31,58 +32,74 @@ export function Panes({ firstPane }) {
       loop(
         $panesWithPath,
         x => x.path.join('/'),
-        $paneWithPath => renderPane($paneWithPath.get())
+        $paneWithPath => renderPane($paneWithPath.get(), paneTypes)
       )
     )
   )
 }
 
-/** @returns {Array<{ pane: any, path: Array<string> }>} */
-function resolvePanes(pane, pathSegments, path = []) {
-  if (!pathSegments.length) return [{ pane, path }]
+/**
+ * @param {DeskStructure.Pane<DeskStructure.PaneTypes>} firstPane
+ * @param {PaneTypes} paneTypes
+ * @returns {Array<{ pane: any, path: Array<string> }>}
+ */
+function resolvePanes(firstPane, pathSegments, paneTypes) {
+  let pane = firstPane
+  let path = []
+  let remainingPathSegments = pathSegments
 
-  const [nextPathSegment, ...otherPathSegments] = pathSegments
+  const panes = [{ pane, path }]
 
-  if (pane.type === 'list') {
-    const item = pane.items.find(x => x.slug === nextPathSegment)
-    return [{ pane, path }].concat(
-      item
-        ? resolvePanes(item.child, otherPathSegments, path.concat(nextPathSegment))
-        : []
-    )
+  while (remainingPathSegments.length) {
+    const [nextPathSegment, ...otherPathSegments] = remainingPathSegments
+
+    const resolvePane = getResolvePane(paneTypes, pane)
+    if (!resolvePane)
+      break
+
+    const { child } = resolvePane({ config: pane, context: { nextPathSegment } })
+
+    if (!child)
+      break
+
+    pane = child
+    path = path.concat(nextPathSegment)
+    panes.push({ pane: child, path })
+
+    remainingPathSegments = otherPathSegments
   }
 
-  if (pane.type === 'documentList') {
-    return [
-      { pane, path },
-      {
-        pane: { type: 'document', id: nextPathSegment, schemaType: pane.schemaType },
-        path: path.concat(nextPathSegment),
-      }
-    ]
-  }
-
-  if (pane.type === 'images') {
-    return [
-      { pane, path },
-      {
-        pane: { type: 'image', id: nextPathSegment },
-        path: path.concat(nextPathSegment),
-      }
-    ]
-  }
-
-  return [{ pane, path }]
+  return panes
 }
 
-function renderPane({ pane, path }) {
-  const { type } = pane
-  return (
-    type === 'list' ? ListPane({ items: pane.items, path }) :
-    type === 'documentList' ? DocumentListPane({ schemaType: pane.schemaType, path }) :
-    type === 'document' ? DocumentPane({ id: pane.id, schemaType: pane.schemaType }) :
-    type === 'images' ? ImagesPane({ path }) :
-    type === 'image' ? ImagePane({ id: pane.id, path }) :
-    `Unknown pane type '${type}'`
-  )
+/**
+ * @param {{ pane: DeskStructure.Pane<DeskStructure.PaneTypes>, path: Array<string> }} info
+ * @param {PaneTypes} paneTypes
+ */
+function renderPane({ pane, path }, paneTypes) {
+  const renderPane = getRenderPane(paneTypes, pane)
+  if (!renderPane)
+    return `Unknown pane type '${pane.type}'`
+
+  return renderPane({ pane, path })
+}
+
+/**
+ * @template {DeskStructure.PaneTypes} T
+ * @param {PaneTypes} paneTypes
+ * @param {DeskStructure.Pane<T>} pane
+ */
+function getResolvePane(paneTypes, pane) {
+  const info = paneTypes[pane.type]
+  return info?.resolvePane
+}
+
+/**
+ * @template {DeskStructure.PaneTypes} T
+ * @param {PaneTypes} paneTypes
+ * @param {DeskStructure.Pane<T>} pane
+ */
+function getRenderPane(paneTypes, pane) {
+  const info = paneTypes[pane.type]
+  return info?.renderPane
 }

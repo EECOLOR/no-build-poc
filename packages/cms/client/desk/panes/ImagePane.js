@@ -10,8 +10,16 @@ import { useCombined, useElementSize } from '#ui/hooks.js'
 import { createSignal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
 import { FlexSectionHorizontal } from '#cms/client/ui/FlexSection.js'
+/** @import { DeskStructure } from '../../cmsConfigTypes.ts' */
 
 const { img } = tags
+
+/** @typedef {{ id: string }} ImagePaneConfig */
+
+/** @type {DeskStructure.PaneRenderer<ImagePaneConfig>} */
+export function renderImagePane({ pane, path }) {
+  return ImagePane({ id: pane.id, path })
+}
 
 ImagePane.style = css`
   & > .ImageEditor,

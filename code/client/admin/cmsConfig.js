@@ -1,31 +1,85 @@
 import { schema } from '#cms/client/form/richTextEditor/schema.js'
+import { arrayObject, cmsConfig, field, listItem, pane, document } from '#cms/client/cmsConfig.js'
+import { builtInPaneTypes } from '#cms/client/desk/panes/builtInPaneTypes.js'
 import { css, tags } from '#ui/tags.js'
 
 const { div } = tags
 
 export function createCmsConfig() {
-  return { deskStructure, documentSchemas, documentView }
-}
+  return cmsConfig({
 
-const deskStructure = {
-  pane: pane('list', {
-    items: [
-      item('pages', {
-        child: pane('documentList', { schemaType: 'page' }),
-      }),
-      item('settings', {
-        child: pane('list', {
-          items: [
-            item('general', {
-              child: pane('document', { schemaType: 'generalSettings', id: 'general' })
+    deskStructure: {
+      pane: pane('list', {
+        items: [
+          listItem('pages', {
+            child: pane('documentList', { schemaType: 'page' }),
+          }),
+          listItem('settings', {
+            child: pane('list', {
+              items: [
+                listItem('general', {
+                  child: pane('document', { schemaType: 'generalSettings', id: 'general' })
+                })
+              ]
             })
-          ]
-        })
-      }),
-      item('images', {
-        child: pane('images')
+          }),
+          listItem('images', {
+            child: pane('images')
+          })
+        ]
       })
-    ]
+    },
+    paneTypes: builtInPaneTypes,
+    documentSchemas: [
+      document('page', {
+        fields: [
+          field('title', 'string'),
+          field('meta', 'object', {
+            title: 'Metadata',
+            fields: [
+              field('author', 'string'),
+              field('readTime', 'string'),
+            ],
+          }),
+          field('heroImage', 'image'),
+          field('content', 'rich-text', {
+            schema: schema({
+              nodes: {
+                custom: schema.customComponent('custom', Custom)
+              }
+            })
+          }),
+          field('items', 'array', {
+            of: [
+              arrayObject('item', {
+                fields: [
+                  field('label', 'string'),
+                  field('value', 'string'),
+                ],
+                options: {
+                  collapsible: false,
+                  showObjectHeader: true,
+                }
+              })
+            ]
+          }),
+          field('nextItem', 'reference', { title: 'Next item', to: ['page', 'generalSettings']}),
+          // next up (don't forget to check for relevant TODO's):
+          // - arrays - they present problems when indexes change and with that paths into documents for different kinds of fields
+          // - references - can be tricky when we want to keep integrity (prevent removal for referenced documents)
+        ],
+        preview: doc => ({ title: doc?.title || '[no title yet]' })
+      }),
+      document('generalSettings', {
+        title: 'General settings',
+        fields: [
+          field('organization', 'string'),
+        ],
+        preview: doc => ({ title: 'General settings' })
+      })
+    ],
+
+    documentView,
   })
 }
 
@@ -38,55 +92,6 @@ function documentView({ schemaType }) {
     ]
   }
 }
-
-const documentSchemas = [
-  type('page', {
-    fields: [
-      field('title', 'string'),
-      field('meta', 'object', {
-        title: 'Metadata',
-        fields: [
-          field('author', 'string'),
-          field('readTime', 'string'),
-        ],
-      }),
-      field('heroImage', 'image'),
-      field('content', 'rich-text', {
-        schema: schema({
-          nodes: {
-            custom: schema.customComponent('custom', Custom)
-          }
-        })
-      }),
-      field('items', 'array', {
-        of: [
-          type('item', {
-            fields: [
-              field('label', 'string'),
-              field('value', 'string'),
-            ],
-            options: {
-              collapsible: false,
-              showObjectHeader: true,
-            }
-          })
-        ]
-      }),
-      field('nextItem', 'reference', { title: 'Next item', to: ['page', 'generalSettings']}),
-      // next up (don't forget to check for relevant TODO's):
-      // - arrays - they present problems when indexes change and with that paths into documents for different kinds of fields
-      // - references - can be tricky when we want to keep integrity (prevent removal for referenced documents)
-    ],
-    preview: doc => ({ title: doc?.title || '[no title yet]' })
-  }),
-  type('generalSettings', {
-    title: 'General settings',
-    fields: [
-      field('organization', 'string'),
-    ],
-    preview: doc => ({ title: 'General settings' })
-  })
-]
 
 function Custom({ id, $selected }) {
   return (
@@ -103,41 +108,4 @@ function Custom({ id, $selected }) {
 
 function CustomItem({ title, backgroundColor }) {
   return div({ style: { color: 'white', padding: '0.2rem', backgroundColor } }, title)
-}
-
-function pane(type, props) {
-  return { type, ...props }
-}
-
-function item(slug, props = {}) {
-  if (!props.label) props.label = capitalize(slug)
-  return { slug, ...props }
-}
-
-function type(type, props = {}) {
-  if (!props.title) props.title = capitalize(type)
-  return { type, ...props }
-}
-
-function field(name, type, props = {}) {
-  if (!props.title) props.title = capitalize(name)
-  return { type, name, ...defaults(type), ...props }
-}
-
-function defaults(type) {
-  switch (type) {
-    case 'object':
-      return {
-        options: {
-          collapsible: true,
-          showObjectHeader: false,
-        }
-      }
-    default:
-      return {}
-  }
-}
-
-function capitalize(s) {
-  return s && s[0].toUpperCase() + s.slice(1)
 }

@@ -1,3 +1,4 @@
+import { pane } from '#cms/client/cmsConfig.js'
 import { context, getSchema } from '#cms/client/context.js'
 import { useDocuments } from '#cms/client/data.js'
 import { pushState } from '#cms/client/machinery/history.js'
@@ -8,8 +9,26 @@ import { useCombined } from '#ui/hooks.js'
 import { createSignal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
 import { ListItem } from './list/ListItem.js'
+/** @import { DeskStructure } from '../../cmsConfigTypes.ts' */
 
 const { input } = tags
+
+/**
+ * @typedef {{
+ *   schemaType: string,
+ * }} DocumentListPaneConfig
+ */
+
+/** @type {DeskStructure.PaneResolver<DocumentListPaneConfig>} */
+export function resolveDocumentListPane({ config, context }) {
+  const child = pane('document', { id: context.nextPathSegment, schemaType: config.schemaType })
+  return { child }
+}
+
+/** @type {DeskStructure.PaneRenderer<DocumentListPaneConfig>} */
+export function renderDocumentListPane({ pane, path }) {
+  return DocumentListPane({ schemaType: pane.schemaType, path })
+}
 
 DocumentListPane.style = css`
   max-width: 20rem;

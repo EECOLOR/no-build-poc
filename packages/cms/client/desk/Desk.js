@@ -14,11 +14,11 @@ Desk.style = css`
     min-height: 0;
   }
 `
-export function Desk({ deskStructure, auth }) {
+export function Desk({ deskStructure, paneTypes, auth }) {
   return (
     FlexSectionBorderedVertical({ className: 'Desk', css: Desk.style },
       DeskHeader({ auth }),
-      Panes({ firstPane: deskStructure.pane }),
+      Panes({ firstPane: deskStructure.pane, paneTypes }),
     )
   )
 }

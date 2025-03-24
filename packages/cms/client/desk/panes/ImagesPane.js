@@ -3,8 +3,25 @@ import { context } from '#cms/client/context.js'
 import { useImages } from '#cms/client/data.js'
 import { css, tags } from '#ui/tags.js'
 import { ListItem } from './list/ListItem.js'
+import { pane } from '#cms/client/cmsConfig.js'
+/** @import { DeskStructure } from '../../cmsConfigTypes.ts' */
 
 const { div, img } = tags
+
+/**
+ * @typedef {{}} ImagesPaneConfig
+ */
+
+/** @type {DeskStructure.PaneResolver<ImagesPaneConfig>} */
+export function resolveImagesPane({ config, context }) {
+  const child = pane('image', { id: context.nextPathSegment })
+  return { child }
+}
+
+/** @type {DeskStructure.PaneRenderer<ImagesPaneConfig>} */
+export function renderImagesPane({ pane, path }) {
+  return ImagesPane({ path })
+}
 
 ImagesPane.style = css`
   max-width: 10rem;
