@@ -5,23 +5,23 @@ import { context } from '../context.js'
 /**
  * @template T
  * @param {({ args: any[] } | { argsSignal: Signal<any[]> }) &
- *   { channel: string, events: Array<string>, initialValue?: T }
+ *   { channel: string, events: Array<string>, initialValue?: T, info?: any }
  * } params
  * @returns {Signal<T | { event: string, data: any }>}
  */
 export function useEventSourceAsSignal(params) {
-  const { channel, events, initialValue = null } = params
+  const { channel, events, initialValue = null, info = null } = params
 
   const argsIsSignal = 'argsSignal' in params
 
   const [$signal, setValue] = createSignal(initialValue)
 
   const args = argsIsSignal ? params.argsSignal.get() : params.args
-  let unsubscribeEvents = subscribeToEvents(channel, args, events, setValue)
+  let unsubscribeEvents = subscribeToEvents(channel, args, info, events, setValue)
 
   const unsubscribeSignal = argsIsSignal && params.argsSignal.subscribe(args => {
     unsubscribeEvents()
-    unsubscribeEvents = subscribeToEvents(channel, args, events, setValue)
+    unsubscribeEvents = subscribeToEvents(channel, args, info, events, setValue)
   })
 
   useOnDestroy(() => {
@@ -32,6 +32,6 @@ export function useEventSourceAsSignal(params) {
   return $signal
 }
 
-function subscribeToEvents(channel, args, events, callback) {
-  return context.events.subscribe(channel, args, events, callback)
+function subscribeToEvents(channel, args, info, events, callback) {
+  return context.events.subscribe(channel, args, info, events, callback)
 }

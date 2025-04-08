@@ -1,8 +1,8 @@
 import { context } from '#cms/client/context.js'
 import { renderOnValue } from '#cms/client/machinery/renderOnValue.js'
 import { useEventSourceAsSignal } from '#cms/client/machinery/useEventSourceAsSignal.js'
-import { useSplitSignal } from '#ui/hooks.js'
 import { RichTextEditor } from '../richTextEditor/RichTextEditor.js'
+import { useFieldValue } from './useFieldValue.js'
 import { Schema as ProsemirrorSchema } from 'prosemirror-model'
 
 /**
@@ -15,36 +15,44 @@ export function RichTextField({ document, field, $path, id }) {
   const { schema } = field
   const $richTextArgs = $path.derive(path => getRichTextArgs({ document, fieldPath: path }))
 
+  const [$value, setValue] = useFieldValue({ document, field, $path, initialValue: null })
+
   const $events = useEventSourceAsSignal({
     channel: 'document/rich-text',
     argsSignal: $richTextArgs,
-    events: ['initialValue', 'steps'],
+    events: ['steps'],
+    info: { version: $value.get()?.attrs?.version || 0 },
   })
 
-  const [$initialValueEvents, $stepsEvents] = useSplitSignal(
-    $events,
-    value => value?.event === 'initialValue',
+  const $steps = $events.derive(value =>
+    value && parseStepsData(value, schema)
   )
 
-  const $initialValue = $initialValueEvents.derive(value =>
-    value && { value: RichTextEditor.fromJson(schema, value.data.value), version: value.data.version }
-  )
-  const $steps = $stepsEvents.derive(value =>
-    value ? parseStepsData(value, schema) : { steps: [], clientIds: [] }
-  )
+  // TODO: we only want to render when document and step versions line up
 
   // This might be an interesting performance optimization if that is needed:
   // https://discuss.prosemirror.net/t/current-state-of-the-art-on-syncing-data-to-backend/5175/4
-  return renderOnValue($initialValue, initialValue =>
-    RichTextEditor({ id, initialValue, $steps, synchronize, schema }),
+  return renderOnValue($steps, ({ version }) =>
+    RichTextEditor({
+      id,
+      initialValue: RichTextEditor.fromJson(schema, $value.get()),
+      $steps,
+      synchronize,
+      schema,
+      onChange: handleChange
+    }),
   )
 
-  function synchronize({ clientId, steps, version, value }) {
+  function handleChange(doc) {
+    setValue(doc)
+  }
+
+  function synchronize({ clientId, steps, version }) {
     const controller = new AbortController()
     const [type, id, encodedFieldPath] = $richTextArgs.get()
 
     const result = fetch(
-      context.api.documents.single.richText({ type, id, encodedFieldPath }),
+      context.api.documents.single.richText({ type, id }),
       {
         method: 'POST',
         headers: {
@@ -56,10 +64,9 @@ export function RichTextField({ document, field, $path, id }) {
           clientId,
           userId: context.userId,
           steps: steps.map(RichTextEditor.stepToJson),
-          documentVersion: document.$value.get().version,
           valueVersion: version,
-          value: RichTextEditor.toJson(value),
           fieldType: field.type,
+          encodedFieldPath,
         })
       }
     ).then(x => x.json())
@@ -76,7 +83,8 @@ export function RichTextField({ document, field, $path, id }) {
 function parseStepsData(value, schema) {
   return {
     steps: value.data.steps.map(step => RichTextEditor.stepFromJson(schema, step)),
-    clientIds: value.data.clientIds
+    clientIds: value.data.clientIds,
+    version: value.data.version,
   }
 }
 

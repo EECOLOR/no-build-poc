@@ -69,7 +69,7 @@ export function createRequestHandlers({ basePath, documents, images, streams }) 
           withRequestJsonBody(req, (body, e) => {
 
             // TODO: error handling
-            const { channel, args } = body
+            const { channel, args, info } = body
 
             // TODO: incorrect args for channel handling
 
@@ -80,7 +80,7 @@ export function createRequestHandlers({ basePath, documents, images, streams }) 
 
             const { action } = params
             if (action === 'subscribe')
-              eventStreams.subscribe(connectId, args)
+              eventStreams.subscribe(connectId, args, info)
             if (action === 'unsubscribe')
               eventStreams.unsubscribe(connectId, args)
 

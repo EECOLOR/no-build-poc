@@ -1,7 +1,5 @@
 /** @typedef {ReturnType<typeof createStreams>} Streams */
 
-import { noContent, notFound } from './response.js'
-
 export function createStreams() {
 
   const streams = {}
@@ -52,7 +50,7 @@ export function createStreams() {
 /**
  * @template {readonly string[]} X
  * @typedef {{
- *   subscribe(connectId: string, args: X): void
+ *   subscribe(connectId: string, args: X, info: any): void
  *   unsubscribe(connectId: string, args: X): void
  *   isValid(connectId: string): boolean
  *   channel: string
@@ -81,8 +79,8 @@ export function createStreams() {
 
   return {
     /** @param {X} args */
-    subscribe(connectId, args) {
-      collection.subscribe(connectId, args)
+    subscribe(connectId, args, info) {
+      collection.subscribe(connectId, args, info)
     },
 
     /** @param {X} args */
@@ -102,8 +100,11 @@ export function createStreams() {
     channel,
   }
 
-  /** @param {X} args */
-  function noValue(...args) {
+  /**
+   * @param {any} info
+   * @param {X} args
+   */
+  function noValue(info, ...args) {
     return null
   }
 
@@ -118,7 +119,7 @@ export function createStreams() {
  * @template Y
  * @param {{
  *   channel: string
- *   createInitialValue(...args: X): Y
+ *   createInitialValue(info: any, ...args: X): Y
  *   subscribeEvent: string
  *   getSubscribeData(value: Y, args: X): any
  *   notifyEvent: string
@@ -137,8 +138,8 @@ export function createCustomEventStreamCollection({
 
   return {
     /** @param {X} args */
-    subscribe(connectId, args) {
-      const { value, listeners } = createOrGetAt(() => createValue(...args), collection, args)
+    subscribe(connectId, args, info) {
+      const { value, listeners } = createOrGetAt(() => createValue(info, args), collection, args)
       streams.addListener(connectId, listeners, function cleanup() {
         deleteAt(collection, args)
       })
@@ -183,11 +184,14 @@ export function createCustomEventStreamCollection({
     return `${base}-${channel}-${args.join('|')}`
   }
 
-  /** @param {X} args */
-  function createValue(...args) {
+  /**
+   * @param {any} info
+   * @param {X} args
+   */
+  function createValue(info, args) {
     return {
       listeners: new Set(),
-      value: createInitialValue(...args)
+      value: createInitialValue(info, ...args)
     }
   }
 }

@@ -17,7 +17,7 @@ export const routeMap = asRouteMap({
           data: handler(x => x.documents.single.patch),
 
           richText: {
-            path: 'rich-text/:encodedFieldPath',
+            path: 'rich-text',
             data: handler(x => x.documents.single.richText.post),
           },
         }

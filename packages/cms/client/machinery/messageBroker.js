@@ -32,15 +32,16 @@ export function createMessageBroker({ api, onError }) {
      *
      * @param {Channel} channel
      * @param {Args} args
+     * @param {any} info
      * @param {Array<EventName>} events
      * @param {Callback} callback
      */
-    subscribe(channel, args, events, callback) {
+    subscribe(channel, args, info, events, callback) {
       const eventSourceSubscriptions = []
       for (const event of events)
         eventSourceSubscriptions.push(subscribeToEventSource(event, channel, args, callback))
 
-      const unsubscribeFromServer = subscribeToServer(channel, args)
+      const unsubscribeFromServer = subscribeToServer(channel, args, info)
 
       return function unsubscribe() {
         for (const unsubscribe of eventSourceSubscriptions)
@@ -109,7 +110,7 @@ export function createMessageBroker({ api, onError }) {
     }
   }
 
-  function subscribeToServer(channel, args) {
+  function subscribeToServer(channel, args, info) {
     const key = `${channel}-${args.join('|')}`
 
     const existingSubscription = serverSubscriptions.get(key)
@@ -125,7 +126,7 @@ export function createMessageBroker({ api, onError }) {
     }
 
     serverSubscriptions.set(key, { count: 1, channel, args })
-    updateServerSubscription('subscribe', channel, args)
+    updateServerSubscription('subscribe', channel, args, info)
 
     return unsubscribeFromServer
 
@@ -136,16 +137,16 @@ export function createMessageBroker({ api, onError }) {
         return
 
       serverSubscriptions.delete(key)
-      updateServerSubscription('unsubscribe', channel, args)
+      updateServerSubscription('unsubscribe', channel, args, info)
     }
   }
 
-  function updateServerSubscription(action, channel, args) {
+  function updateServerSubscription(action, channel, args, info) {
     serverQueue.add(connectId =>
       fetch(api.events.subscription({ action }), {
         method: 'POST',
-        headers: { 'X-connect-id': connectId },
-        body: JSON.stringify({ channel, args }),
+        headers: { 'X-connect-id': connectId }, // TODO: think: should this be done using a cookie, otherwise we might subscrube to channels that are not our own
+        body: JSON.stringify({ channel, args, info }),
       }).then(r => r.text() /* If we don't read the response, Chrome thinks we failed, also we might trigger an open pipe error */)
     )
   }

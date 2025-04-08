@@ -23,7 +23,7 @@ export function createDocumentsHandler({ databaseActions, streams }) {
   } = databaseActions.documents
 
   const historyHandler = createHistoryHandler({ databaseActions })
-  const richTextHandler = createRichTextHandler({ databaseActions, streams, patchDocument })
+  const richTextHandler = createRichTextHandler({ streams })
 
   return {
     richText: richTextHandler,

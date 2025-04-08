@@ -237,5 +237,11 @@ schema.link = function link(spec) {
 }
 
 schema.doc = function doc(content) {
-  return { content }
+  return {
+    content,
+    attrs: {
+      version: { default: 0 },
+      lastEditClientId: { default: '' },
+    },
+  }
 }
