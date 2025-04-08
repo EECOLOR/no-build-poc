@@ -50,7 +50,7 @@ function createStringDetails(change, details) {
  */
 function createRichTextDetails(change, details, info) {
   return {
-    steps: details.steps ? details.steps.concat(info.steps) : info.steps,
+
   }
 }
 

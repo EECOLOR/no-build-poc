@@ -17,7 +17,7 @@ export class Signal {
   /** @param {(value: T, oldValue: T) => void} callback @returns {() => void} */
   subscribeDirect(callback){ return null }
 
-  /** @template X @param {(value: T, previous?: X) => X} f @returns {Signal<X>} */
+  /** @template X @param {(value: T) => X} f @returns {Signal<X>} */
   derive(f) { return null }
 
   /** @returns {string} */

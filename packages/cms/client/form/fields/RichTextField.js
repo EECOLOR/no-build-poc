@@ -1,8 +1,9 @@
 import { context } from '#cms/client/context.js'
 import { renderOnValue } from '#cms/client/machinery/renderOnValue.js'
 import { useEventSourceAsSignal } from '#cms/client/machinery/useEventSourceAsSignal.js'
+import { useCombined } from '#ui/hooks.js'
 import { RichTextEditor } from '../richTextEditor/RichTextEditor.js'
-import { useFieldValue } from './useFieldValue.js'
+import { useConditionalDerive, useFieldValue } from './useFieldValue.js'
 import { Schema as ProsemirrorSchema } from 'prosemirror-model'
 
 /**
@@ -28,14 +29,14 @@ export function RichTextField({ document, field, $path, id }) {
     value && parseStepsData(value, schema)
   )
 
-  // TODO: we only want to render when document and step versions line up
+  const $initialValue = useInitialValue($value, $steps)
 
   // This might be an interesting performance optimization if that is needed:
   // https://discuss.prosemirror.net/t/current-state-of-the-art-on-syncing-data-to-backend/5175/4
-  return renderOnValue($steps, ({ version }) =>
+  return renderOnValue($initialValue, initialValue =>
     RichTextEditor({
       id,
-      initialValue: RichTextEditor.fromJson(schema, $value.get()),
+      initialValue: RichTextEditor.fromJson(schema, initialValue),
       $steps,
       synchronize,
       schema,
@@ -91,4 +92,23 @@ function parseStepsData(value, schema) {
 function getRichTextArgs({ document, fieldPath }) {
   // instead of using path as an id for prosemirror document handing, we should probably use a unique id for each document, that would prevent problems handling stuff nested in arrays
   return [document.schema.type, document.id, encodeURIComponent(fieldPath)]
+}
+
+function useInitialValue($fieldValue, $steps) {
+
+  // This signal only has a value once both versions align
+  const $allignedDocumentAndSteps = useCombined($fieldValue, $steps)
+    .derive(([value, steps]) => {
+      return (value?.attrs?.version || 0) === steps?.version && value
+    })
+
+  // This signal will return the first aligned value and then keep it at that first value
+  const $stableAlignedDocumentAndSteps = useConditionalDerive(
+    $allignedDocumentAndSteps,
+    function shouldUpdate(newValue, oldValue) {
+      return !oldValue && newValue
+    }
+  )
+
+  return $stableAlignedDocumentAndSteps
 }

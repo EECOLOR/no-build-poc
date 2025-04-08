@@ -75,7 +75,7 @@ export function RichTextEditor({ id, initialValue, $steps, synchronize, onChange
       //     }))
       //   })
       const stepsWereSent = tryToSynchronize(view)
-      if (!stepsWereSent && newState.doc.attrs.lastEditClientId === context.clientId) {
+      if (transaction.docChanged && !stepsWereSent && newState.doc.attrs.lastEditClientId === context.clientId) {
         onChange(view.state.doc)
       }
     },
