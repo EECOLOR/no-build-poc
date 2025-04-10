@@ -1,9 +1,10 @@
 import { context } from '#cms/client/context.js'
 import { renderOnValue } from '#cms/client/machinery/renderOnValue.js'
 import { useEventSourceAsSignal } from '#cms/client/machinery/useEventSourceAsSignal.js'
-import { useSplitSignal } from '#ui/hooks.js'
+import { useCombined } from '#ui/hooks.js'
 import { RichTextEditor } from '../richTextEditor/RichTextEditor.js'
-import { Schema as ProsemirrorSchema } from 'prosemirror-model'
+import { useConditionalDerive, useFieldValue } from './useFieldValue.js'
+import { DOMSerializer, Schema as ProsemirrorSchema } from 'prosemirror-model'
 
 /**
  * @typedef {{
@@ -15,36 +16,58 @@ export function RichTextField({ document, field, $path, id }) {
   const { schema } = field
   const $richTextArgs = $path.derive(path => getRichTextArgs({ document, fieldPath: path }))
 
+  const [$value, setValue] = useFieldValue({
+    document, field, $path, initialValue: null,
+    serializeValue: RichTextEditor.toJson,
+    extractValueForDiff,
+  })
+
   const $events = useEventSourceAsSignal({
     channel: 'document/rich-text',
     argsSignal: $richTextArgs,
-    events: ['initialValue', 'steps'],
+    events: ['steps'],
+    info: { version: $value.get()?.attrs?.version || 0 },
   })
 
-  const [$initialValueEvents, $stepsEvents] = useSplitSignal(
-    $events,
-    value => value?.event === 'initialValue',
+  const $steps = $events.derive(value =>
+    value && parseStepsData(value, schema)
   )
 
-  const $initialValue = $initialValueEvents.derive(value =>
-    value && { value: RichTextEditor.fromJson(schema, value.data.value), version: value.data.version }
-  )
-  const $steps = $stepsEvents.derive(value =>
-    value ? parseStepsData(value, schema) : { steps: [], clientIds: [] }
-  )
+  const $initialValue = useInitialValue($value, $steps)
 
   // This might be an interesting performance optimization if that is needed:
   // https://discuss.prosemirror.net/t/current-state-of-the-art-on-syncing-data-to-backend/5175/4
   return renderOnValue($initialValue, initialValue =>
-    RichTextEditor({ id, initialValue, $steps, synchronize, schema }),
+    RichTextEditor({
+      id,
+      initialValue: RichTextEditor.fromJson(schema, initialValue),
+      $steps,
+      synchronize,
+      schema,
+      onChange: handleChange
+    }),
   )
 
-  function synchronize({ clientId, steps, version, value }) {
+  function handleChange(doc) {
+    setValue(doc)
+  }
+
+  function extractValueForDiff(value) {
+    const serializer = DOMSerializer.fromSchema(schema)
+    const content = serializer.serializeFragment(value.content)
+    const div = window.document.createElement('div')
+    div.appendChild(content)
+    const serialized = div.innerHTML
+
+    return serialized
+  }
+
+  function synchronize({ clientId, steps, version }) {
     const controller = new AbortController()
     const [type, id, encodedFieldPath] = $richTextArgs.get()
 
     const result = fetch(
-      context.api.documents.single.richText({ type, id, encodedFieldPath }),
+      context.api.documents.single.richText({ type, id }),
       {
         method: 'POST',
         headers: {
@@ -56,10 +79,9 @@ export function RichTextField({ document, field, $path, id }) {
           clientId,
           userId: context.userId,
           steps: steps.map(RichTextEditor.stepToJson),
-          documentVersion: document.$value.get().version,
           valueVersion: version,
-          value: RichTextEditor.toJson(value),
           fieldType: field.type,
+          encodedFieldPath,
         })
       }
     ).then(x => x.json())
@@ -76,11 +98,31 @@ export function RichTextField({ document, field, $path, id }) {
 function parseStepsData(value, schema) {
   return {
     steps: value.data.steps.map(step => RichTextEditor.stepFromJson(schema, step)),
-    clientIds: value.data.clientIds
+    clientIds: value.data.clientIds,
+    version: value.data.version,
   }
 }
 
 function getRichTextArgs({ document, fieldPath }) {
   // instead of using path as an id for prosemirror document handing, we should probably use a unique id for each document, that would prevent problems handling stuff nested in arrays
   return [document.schema.type, document.id, encodeURIComponent(fieldPath)]
+}
+
+function useInitialValue($fieldValue, $steps) {
+
+  // This signal only has a value once both versions align
+  const $allignedDocumentAndSteps = useCombined($fieldValue, $steps)
+    .derive(([value, steps]) => {
+      return (value?.attrs?.version || 0) === steps?.version && (value || { type: 'doc' })
+    })
+
+  // This signal will return the first aligned value and then keep it at that first value
+  const $stableAlignedDocumentAndSteps = useConditionalDerive(
+    $allignedDocumentAndSteps,
+    function shouldUpdate(newValue, oldValue) {
+      return !oldValue && newValue
+    }
+  )
+
+  return $stableAlignedDocumentAndSteps
 }

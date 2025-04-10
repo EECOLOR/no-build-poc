@@ -1,29 +1,21 @@
 import { createCustomEventStreamCollection } from '../machinery/eventStreams.js'
 import { withRequestJsonBody } from '../machinery/request.js'
-import { internalServerError, notAuthorized, respondJson } from '../machinery/response.js'
+import { internalServerError, noContent, notAuthorized, respondJson } from '../machinery/response.js'
 import { getAt } from './utils.js'
 
 /**
  * @param {{
- *   databaseActions: import('../database.js').Actions
  *   streams: import('../machinery/eventStreams.js').Streams
- *   patchDocument: import('../documents.js').PatchDocument
  * }} params
  */
-export function createRichTextHandler({ databaseActions, streams, patchDocument }) {
-
-  const { getDocumentById } = databaseActions.documents
+export function createRichTextHandler({ streams }) {
 
   const eventStreamCollection = createCustomEventStreamCollection({
     channel: `document/rich-text`,
-    createInitialValue(type, id, encodedFieldPath) {
-      const fieldPath = decodeURIComponent(encodedFieldPath)
-      return {
-        value: getAt(getDocumentById({ id }), fieldPath),
-        version: 0,
-      }
+    createInitialValue(info, type, id, encodedFieldPath) {
+      return { version: info.version, steps: [], clientIds: [] }
     },
-    subscribeEvent: 'initialValue',
+    subscribeEvent: 'steps',
     notifyEvent: 'steps',
     getSubscribeData(value, args) { return value },
     streams,
@@ -35,8 +27,7 @@ export function createRichTextHandler({ databaseActions, streams, patchDocument 
   }
 
   /** @param {import('node:http').ServerResponse} res */
-  function handlePostRichText(req, res, { type, id, encodedFieldPath, auth }) {
-    const fieldPath = decodeURIComponent(encodedFieldPath)
+  function handlePostRichText(req, res, { type, id, auth }) {
     withRequestJsonBody(req, (body, error) => {
       // TODO: error handling
       if (error) {
@@ -44,7 +35,7 @@ export function createRichTextHandler({ databaseActions, streams, patchDocument 
         return internalServerError(res)
       }
 
-      const { userId, clientId, steps, documentVersion, value, valueVersion, fieldType } = body
+      const { userId, clientId, steps, valueVersion, fieldType, encodedFieldPath } = body
 
       if (!strictEqual(fieldType, 'rich-text'))
         return respondJson(res, 400, { success: false, reason: `Given field type was not 'rich-text'`})
@@ -56,23 +47,13 @@ export function createRichTextHandler({ databaseActions, streams, patchDocument 
       if (stored.version !== valueVersion)
         return respondJson(res, 400, { success: false, reason: 'Version mismatch' })
 
-      stored.value = value
       stored.version += steps.length
 
-      const patch = { op: 'replace', path: fieldPath, value }
-      const result = patchDocument(/** @type {const} */ ({
-        userId, type, id, version: documentVersion, patch,
-        fieldType, fieldInfo: { steps }
-      }))
-
-      if (!result.success)
-        return respondJson(res, 400, result)
-
       eventStreamCollection.notify(
-        { steps, clientIds: steps.map(_ => clientId) },
+        { steps, clientIds: steps.map(_ => clientId), version: stored.version },
         [type, id, encodedFieldPath]
       )
-      respondJson(res, 200, result)
+      respondJson(res, 200, { success: true })
     })
   }
 }

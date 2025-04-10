@@ -11,13 +11,17 @@ export class Signal {
   /** @returns {T} */
   get() { return null }
 
+  // TODO: both callbacks accept `oldValue`, this is a perfomance penalty to derived signals
+  //       I think we should make a separate set of methods if `oldValue` is used so that the
+  //       performance penalty is only paid when needed.
+
   /** @param {(value: T, oldValue: T) => void} callback @returns {() => void} */
   subscribe(callback){ return null }
 
   /** @param {(value: T, oldValue: T) => void} callback @returns {() => void} */
   subscribeDirect(callback){ return null }
 
-  /** @template X @param {(value: T, previous?: X) => X} f @returns {Signal<X>} */
+  /** @template X @param {(value: T) => X} f @returns {Signal<X>} */
   derive(f) { return null }
 
   /** @returns {string} */

@@ -40,14 +40,14 @@ export function useImageMetadata({ filename }) {
 }
 
 /**
- * @param {{ document, fieldType } & (
+ * @param {{ document, fieldType, valueForDiff } & (
 *   { op?: 'replace', path: string, value: any } |
 *   { op: 'move', from: string, path: string } |
 *   { op: 'remove', path: string }
 * )} params
 */
 export function patchDocument(params) {
- const { document, fieldType } = params
+ const { document, fieldType, valueForDiff } = params
  const { op = 'replace', path, value, from } = /** @type {typeof params & { value?: any, from?: any }} */ (params)
  // TODO: add retries if the versions do not match
  fetch(context.api.documents.single({ type: document.schema.type, id: document.id }), {
@@ -60,6 +60,7 @@ export function patchDocument(params) {
      patch: { op, path, value, from },
      userId: context.userId,
      fieldType,
+     valueForDiff,
    })
  }).catch(context.handleError)
 }

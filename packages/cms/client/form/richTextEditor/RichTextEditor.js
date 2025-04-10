@@ -17,7 +17,7 @@ import { nodeView, schemaPlugins } from './schema.js'
 const { div } = tags
 
 /**
- * @typedef {(data: { clientId, steps: readonly Step[], version: number, value: Node }) => {
+ * @typedef {(data: { clientId, steps: readonly Step[], version: number }) => {
  *   result: Promise<{ success: boolean }>,
  *   abort(reason?: string): void,
  * }} Synchronize
@@ -42,13 +42,14 @@ RichTextEditor.style = css`
 /**
  * @param {{
  *  id: string,
- *  initialValue: { value: Node, version: number },
- *  $steps: Signal<{ steps: Step[], clientIds: Array<number | string> }>,
+ *  initialValue: Node,
+ *  $steps: Signal<{ steps: Step[], clientIds: Array<number | string>, version: number }>,
  *  synchronize: Synchronize,
+ *  onChange(doc: Node): void,
  *  schema: Schema,
  * }} props
  */
-export function RichTextEditor({ id, initialValue, $steps, synchronize, schema }) {
+export function RichTextEditor({ id, initialValue, $steps, synchronize, onChange, schema }) {
   // TODO: show the cursors of other people with an overlay using https://prosemirror.net/docs/ref/#view.EditorView.coordsAtPos
 
   const { tryToSynchronize } = useSynchronization({ synchronize })
@@ -56,12 +57,12 @@ export function RichTextEditor({ id, initialValue, $steps, synchronize, schema }
   const plugins = [
     history(),
     ...createKeymaps({ schema }),
-    collab.collab({ version: initialValue.version, clientID: context.clientId }),
+    collab.collab({ version: initialValue.attrs.version, clientID: context.clientId }),
     ...schemaPlugins(schema),
   ]
   const view = new EditorView(null, {
     attributes: { id },
-    state: EditorState.create({ doc: initialValue.value, schema, plugins, }),
+    state: EditorState.create({ doc: initialValue, schema, plugins, }),
     dispatchTransaction(transaction) {
       const newState = view.state.apply(transaction)
       view.updateState(newState)
@@ -73,7 +74,10 @@ export function RichTextEditor({ id, initialValue, $steps, synchronize, schema }
       //       invert: x.invert(docBeforeChange).toJSON()
       //     }))
       //   })
-      tryToSynchronize(view)
+      const stepsWereSent = tryToSynchronize(view)
+      if (transaction.docChanged && !stepsWereSent && newState.doc.attrs.lastEditClientId === context.clientId) {
+        onChange(view.state.doc)
+      }
     },
     nodeViews: Object.fromEntries(
       Object.entries(schema.nodes).map(([name, node]) =>
@@ -81,10 +85,14 @@ export function RichTextEditor({ id, initialValue, $steps, synchronize, schema }
       )                             // if link does not jump (https://github.com/orgs/community/discussions/139005#discussioncomment-11092579)
     )                               // src/schema.ts line 432
   })
-  const unsubscribe = $steps.subscribe(({ steps, clientIds }) => {
-    view.dispatch(
-      collab.receiveTransaction(view.state, steps, clientIds, { mapSelectionBackward: true })
-    )
+  const unsubscribe = $steps.subscribe(({ steps, clientIds, version }) => { // TODO: rename version to sessionVersion
+    const tr = collab.receiveTransaction(view.state, steps, clientIds, { mapSelectionBackward: true })
+    tr.setDocAttribute('version', version)
+    const [lastEditClientId] = clientIds.slice(-1)
+    if (lastEditClientId) {
+      tr.setDocAttribute('lastEditClientId', lastEditClientId)
+    }
+    view.dispatch(tr)
   })
 
   useOnDestroy(() => {
@@ -112,11 +120,15 @@ function useSynchronization({ synchronize }) {
 
   return { tryToSynchronize }
 
-  /** @param {EditorView} view */
-  async function tryToSynchronize(view, retries = 5) {
+  /**
+   * @param {EditorView} view
+   * @returns {Boolean} Indicating that steps were sent to the server
+   */
+  function tryToSynchronize(view, retries = 5) {
     try {
       const sendable = collab.sendableSteps(view.state)
-      if (!sendable) return
+      if (!sendable)
+        return
 
       if (synchronizationRequest) {
         synchronizationRequest.abort('Aborting: new steps available')
@@ -124,7 +136,7 @@ function useSynchronization({ synchronize }) {
       }
 
       const { clientID, steps, version } = sendable
-      const { result, abort } = synchronize({ clientId: clientID, steps, version, value: view.state.doc })
+      const { result, abort } = synchronize({ clientId: clientID, steps, version })
       let aborted = false
       synchronizationRequest = {
         abort(reason) {
@@ -134,17 +146,27 @@ function useSynchronization({ synchronize }) {
         }
       }
 
-      const { success } = await result
-      synchronizationRequest = null
-      if (aborted) return
-      if (success) return // no need to do anything else, steps will come in via the other channel
+      result
+        .then(({ success }) => {
+          synchronizationRequest = null
+          if (aborted)
+            return
 
-      if (!retries)
-        throw new Error(`Failed to synchronize and no more retries left`)
+          if (success)
+            return // no need to do anything else, steps will come in via the other channel
 
-      console.log('Retrying synchronization')
+          if (!retries)
+            throw new Error(`Failed to synchronize and no more retries left`)
 
-      tryToSynchronize(view, retries - 1)
+          console.log('Retrying synchronization')
+
+          tryToSynchronize(view, retries - 1)
+        })
+        .catch(e => {
+          console.error(e)
+        })
+
+      return true // steps were sent (maybe not successful)
     } catch (e) {
       console.error(e)
     }
@@ -167,7 +189,7 @@ RichTextEditor.toJson = function toJson(doc) {
 RichTextEditor.fromJson = function fromJson(schema, json) {
   if (!json) return json
 
-  const checkedContent = json.content.map(x =>
+  const checkedContent = json.content?.map(x =>
     x.type in schema.nodes ? x : { type: 'unknown', attrs: { node: x } }
   )
   return Node.fromJSON(schema, { ...json, content: checkedContent })

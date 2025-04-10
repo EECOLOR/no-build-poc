@@ -58,16 +58,17 @@ export function ArrayField({ document, field, $path }) {
       document,
       fieldType: field.type,
       path: `${$path.get()}/${$valueFromDocument.get().length}`,
-      value: { _type: type, _key: crypto.randomUUID() }
+      value: { _type: type, _key: crypto.randomUUID() },
+      valueForDiff: null,
     })
   }
 
   function handleMove({ from, to }) {
-    patchDocument({ document, fieldType: field.type, from, path: to, op: 'move' })
+    patchDocument({ document, fieldType: field.type, from, path: to, op: 'move', valueForDiff: null })
   }
 
   function handleDelete({ path }) {
-    patchDocument({ document, fieldType: field.type, path, op: 'remove' })
+    patchDocument({ document, fieldType: field.type, path, op: 'remove', valueForDiff: null })
   }
 }
 
