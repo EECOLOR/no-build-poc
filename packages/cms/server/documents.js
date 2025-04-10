@@ -6,7 +6,6 @@ import { internalServerError, notAuthorized, respondJson } from './machinery/res
 
 /** @import { DeepReadonly } from '#typescript/utils.ts' */
 
-/** @typedef {ReturnType<typeof createDocumentsHandler>['__for_typescript__patchDocument']} PatchDocument */
 /** @typedef {DeepReadonly<ReturnType<typeof createDocumentsHandler>>} DocumentsHandler */
 
 /** @param {{ databaseActions: import('./database.js').Actions, streams: import('./machinery/eventStreams.js').Streams }} params */
@@ -31,8 +30,6 @@ export function createDocumentsHandler({ databaseActions, streams }) {
     handlePatchDocument,
     documentsEventStreams,
     documentEventStreams,
-
-    __for_typescript__patchDocument: patchDocument,
   }
 
   function handlePatchDocument(req, res, { type, id, auth }) {
@@ -42,12 +39,12 @@ export function createDocumentsHandler({ databaseActions, streams }) {
         console.error(error)
         return internalServerError(res)
       }
-      const { version, patch, userId, fieldType } = body
+      const { version, patch, userId, fieldType, valueForDiff } = body
 
       if (userId !== auth.user.id)
         return notAuthorized(res)
 
-      const result = patchDocument({ userId, type, id, version, patch, fieldType, fieldInfo: undefined })
+      const result = patchDocument({ userId, type, id, version, patch, fieldType, valueForDiff })
 
       respondJson(res, result.success ? 200 : 400, result)
     })
@@ -62,10 +59,10 @@ export function createDocumentsHandler({ databaseActions, streams }) {
    *   version: number,
    *   patch: any,
    *   fieldType: T,
-   *   fieldInfo: import('./documents/history.js').FieldSpecificInfo<T>, // TODO: move this type somewhere else
+   *   valueForDiff: any,
    * }} props
    */
-  function patchDocument({ userId, type, id, version, patch, fieldType, fieldInfo }) {
+  function patchDocument({ userId, type, id, version, patch, fieldType, valueForDiff }) {
     const documentFromDatabase = getDocumentById({ id })
     const isUpdate = Boolean(documentFromDatabase)
     const document = documentFromDatabase || { _id: id, _type: type, version: 0 }
@@ -82,11 +79,11 @@ export function createDocumentsHandler({ databaseActions, streams }) {
     if (!result.success)
       return result
 
+    // TODO: this should probably be a DELETE endpoint
     if (result.operation === 'remove-document') {
       deleteDocumentById({ type, id })
       historyHandler.updateDocumentHistory(userId, type, id, '',
-        { fieldType: 'document', patch, oldValue: document, newValue: null },
-        undefined,
+        { fieldType: 'document', patch, valueForDiff: null },
       )
       return { success: true }
     }
@@ -99,10 +96,8 @@ export function createDocumentsHandler({ databaseActions, streams }) {
       {
         fieldType,
         patch,
-        oldValue: result.oldValue,
-        newValue: result.newValue,
-      },
-      fieldInfo
+        valueForDiff,
+      }
     )
 
     return { success: true }
@@ -110,6 +105,7 @@ export function createDocumentsHandler({ databaseActions, streams }) {
 }
 
 function applyPatch(document, patch) {
+  // TODO: I think this should always invalid. If you remove the document it is no longer a 'patch'
   if (patch.path === '' && patch.op !== 'remove')
     return /** @type const */ ({
       success: false,
@@ -139,16 +135,12 @@ function applyPatch(document, patch) {
   if (!applyPatch)
     throw new Error(`Operation '${patch.op}' not implmented`)
 
-  const oldValue = getAt(document, patch.from || patch.path)
   applyPatch(patch)
-  const newValue = getAt(document, patch.path)
 
   document.version = (document.version ?? 0) + 1
 
   return /** @type const */ ({
     success: true,
     operation: 'update-document',
-    oldValue,
-    newValue,
   })
 }

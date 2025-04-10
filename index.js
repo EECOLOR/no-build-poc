@@ -32,5 +32,7 @@ await startServer({
       'orderedmap',
       'rope-sequence',
       'w3c-keyname',
+
+    'diff',
   ],
 })

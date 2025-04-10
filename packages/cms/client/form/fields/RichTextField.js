@@ -4,7 +4,7 @@ import { useEventSourceAsSignal } from '#cms/client/machinery/useEventSourceAsSi
 import { useCombined } from '#ui/hooks.js'
 import { RichTextEditor } from '../richTextEditor/RichTextEditor.js'
 import { useConditionalDerive, useFieldValue } from './useFieldValue.js'
-import { Schema as ProsemirrorSchema } from 'prosemirror-model'
+import { DOMSerializer, Schema as ProsemirrorSchema } from 'prosemirror-model'
 
 /**
  * @typedef {{
@@ -16,7 +16,11 @@ export function RichTextField({ document, field, $path, id }) {
   const { schema } = field
   const $richTextArgs = $path.derive(path => getRichTextArgs({ document, fieldPath: path }))
 
-  const [$value, setValue] = useFieldValue({ document, field, $path, initialValue: null })
+  const [$value, setValue] = useFieldValue({
+    document, field, $path, initialValue: null,
+    serializeValue: RichTextEditor.toJson,
+    extractValueForDiff,
+  })
 
   const $events = useEventSourceAsSignal({
     channel: 'document/rich-text',
@@ -46,6 +50,16 @@ export function RichTextField({ document, field, $path, id }) {
 
   function handleChange(doc) {
     setValue(doc)
+  }
+
+  function extractValueForDiff(value) {
+    const serializer = DOMSerializer.fromSchema(schema)
+    const content = serializer.serializeFragment(value.content)
+    const div = window.document.createElement('div')
+    div.appendChild(content)
+    const serialized = div.innerHTML
+
+    return serialized
   }
 
   function synchronize({ clientId, steps, version }) {
@@ -99,7 +113,7 @@ function useInitialValue($fieldValue, $steps) {
   // This signal only has a value once both versions align
   const $allignedDocumentAndSteps = useCombined($fieldValue, $steps)
     .derive(([value, steps]) => {
-      return (value?.attrs?.version || 0) === steps?.version && value
+      return (value?.attrs?.version || 0) === steps?.version && (value || { type: 'doc' })
     })
 
   // This signal will return the first aligned value and then keep it at that first value

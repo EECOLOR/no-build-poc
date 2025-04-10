@@ -2,6 +2,8 @@ import { patchDocument } from '#cms/client/data.js'
 import { debounce } from '#cms/client/machinery/debounce.js'
 import { useCombined } from '#ui/hooks.js'
 import { getAtPath } from './utils.js'
+import { createSignal } from '#ui/signal.js'
+import { useOnDestroy } from '#ui/dynamic.js'
 /** @import { Signal } from '#ui/signal.js' */
 
 // TODO: think: if we don't send updates to ourselves, we don't need to check for dirtyness
@@ -13,13 +15,16 @@ export function useFieldValue({
   field,
   $path,
   initialValue,
-  compareValues = (local, document) => local === document
+  compareValues = (local, document) => local === document,
+  serializeValue = value => value,
+  extractValueForDiff = value => value,
 }) {
   const $documentAndPath = useCombined(document.$value, $path)
   const $valueFromDocument = $documentAndPath.derive(([doc, path]) => getAtPath(doc, path) || initialValue)
   let localValue = $valueFromDocument.get()
   let dirty = false
 
+  // TODO: error reporting
   const patchDocumentDebounced = debounce(patchDocument, 300)
 
   // This signal only updates when it has seen the current local value
@@ -35,11 +40,14 @@ export function useFieldValue({
 
   return /** @type const */ ([$value, setValue])
 
-  function setValue(value) {
+  function setValue(rawValue) {
     dirty = true
-    localValue = value
+    localValue = rawValue
 
-    patchDocumentDebounced({ document, fieldType: field.type, path: $path.get(), value })
+    const valueForDiff = extractValueForDiff(rawValue)
+    const value = serializeValue(rawValue)
+
+    patchDocumentDebounced({ document, fieldType: field.type, path: $path.get(), value, valueForDiff })
   }
 }
 
@@ -49,11 +57,14 @@ export function useFieldValue({
  * @param {(newValue: X, oldValue: X) => Boolean} shouldUpdate
  */
 export function useConditionalDerive(signal, shouldUpdate) {
-  let oldValue = signal.get()
-  return signal.derive(newValue => {
-    if (shouldUpdate(newValue, oldValue))
-      oldValue = newValue
+  const [$value, setValue] = createSignal(signal.get())
 
-    return oldValue
+  const unsubscribe = signal.subscribeDirect((newValue, oldValue) => {
+    if (shouldUpdate(newValue, oldValue))
+      setValue(newValue)
   })
+
+  useOnDestroy(unsubscribe)
+
+  return $value
 }

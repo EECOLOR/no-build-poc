@@ -1,11 +1,10 @@
-import { diffChars } from 'diff'
 
+// TODO: we probably need to add display information for the user here. Things might change over time
 /**
  * @template {string} T
  * @typedef {{
  *   fieldType: T,
- *   oldValue: any,
- *   newValue: any,
+ *   valueForDiff: any,
  *   patch: object,
  * }} Change
  */
@@ -13,46 +12,11 @@ import { diffChars } from 'diff'
 /**
  * @typedef {{
  *   fieldType: string,
- *   oldValue: any,
- *   newValue: any,
+ *   valueForDiff: any,
  *   patches: Array<any>,
  * }} Details
  */
 
-const detailHandlers = {
-  'string': createStringDetails,
-  'rich-text': createRichTextDetails,
-}
-
-/**
- * @template {string} T
- * @typedef {T extends keyof typeof detailHandlers
- *   ? Parameters<(typeof detailHandlers)[T]>[2]
- *   : undefined
- * } FieldSpecificInfo
- */
-
-/**
- * @template {string} T
- * @param {Change<T>} change
- * @param {Details} details
- */
-function createStringDetails(change, details) {
-  return {
-    difference: diffChars(details.oldValue || '', change.newValue)
-  }
-}
-/**
- * @template {string} T
- * @param {Change<T>} change
- * @param {Details & { steps?: Array<any> }} change
- * @param {{ steps: Array<any> }} info
- */
-function createRichTextDetails(change, details, info) {
-  return {
-
-  }
-}
 
 /** @param {{ databaseActions: import('../database.js').Actions }} params */
 export function createHistoryHandler({ databaseActions }) {
@@ -77,16 +41,11 @@ export function createHistoryHandler({ databaseActions }) {
    * @param {string} documentId
    * @param {string} fieldPath
    * @param {Change<T>} change
-   * @param {FieldSpecificInfo<T>} info
    */
-  function updateDocumentHistory(userId, type, documentId, fieldPath, change, info) {
+  function updateDocumentHistory(userId, type, documentId, fieldPath, change) {
     const timestamp = Date.now()
 
     const result = getFieldHistoryChangedInTheLastMinute({ documentId, userId, fieldPath })
-
-    /** @type {(typeof detailHandlers)[keyof typeof detailHandlers] | undefined} */
-    // @ts-ignore - It will probably be tricky to tell Typescript that it is ok if we get an `undefined` as a result
-    const appendToDetails = detailHandlers[change.fieldType]
 
     //TODO: if the old and new value end up to be the same (or in case of an object, when there are no patches) remove the history item
     if (result) {
@@ -94,14 +53,12 @@ export function createHistoryHandler({ databaseActions }) {
 
       const timestampStart = result.timestampStart
       const timestampEnd = timestamp
+      /** @type {Details} */
       const details = {
         fieldType: change.fieldType,
-        oldValue: previous.oldValue,
-        newValue: change.newValue,
+        valueForDiff: change.valueForDiff,
         patches: previous.patches.concat(change.patch),
       }
-      if (appendToDetails)
-        Object.assign(details, appendToDetails(change, details, info)) // I don't like mutating like this, but I did it this way for backwards compatibility
 
       return updateHistory({
         type,
@@ -114,12 +71,9 @@ export function createHistoryHandler({ databaseActions }) {
       const timestampEnd = timestamp
       const details = {
         fieldType: change.fieldType,
-        oldValue: change.oldValue,
-        newValue: change.newValue,
+        valueForDiff: change.valueForDiff,
         patches: [change.patch],
       }
-      if (appendToDetails)
-        Object.assign(details, appendToDetails(change, details, info)) // I don't like this, but I did it this way for backwards compatibility
 
       return insertHistory({
         type, documentId, fieldPath, userId,

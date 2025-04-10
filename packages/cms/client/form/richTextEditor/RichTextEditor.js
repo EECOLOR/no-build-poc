@@ -189,7 +189,7 @@ RichTextEditor.toJson = function toJson(doc) {
 RichTextEditor.fromJson = function fromJson(schema, json) {
   if (!json) return json
 
-  const checkedContent = json.content.map(x =>
+  const checkedContent = json.content?.map(x =>
     x.type in schema.nodes ? x : { type: 'unknown', attrs: { node: x } }
   )
   return Node.fromJSON(schema, { ...json, content: checkedContent })
