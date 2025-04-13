@@ -14,7 +14,8 @@
     "#ui/*": "./packages/ui/*",
     "#cms/*": "./packages/cms/*",
     "#routing/*": "./packages/routing/*",
-    "#auth/*": "./packages/auth/*"
+    "#auth/*": "./packages/auth/*",
+    "#diff": "./packages/diff/index.js"
   },
   "dependencies": {
     "diff": "^7.0.0",
