@@ -35,6 +35,13 @@
   https://github.com/kpdecker/jsdiff/blob/2c36f81b41936a9987c4d0d4b3f8625b844fddb3/src/diff/base.js
 */
 
+/**
+ * Perform a diff between two strings on a character level
+ *
+ * @param {string} originalOldValue
+ * @param {string} originalNewValue
+ * @returns {Array<Change>}
+ */
 export function diff(originalOldValue, originalNewValue) {
   if (originalOldValue === originalNewValue)
     return []
@@ -60,9 +67,6 @@ export function diff(originalOldValue, originalNewValue) {
     ) {
       const bestPathByRemoval = bestPathsByDiagonal.get(diagonal - 1)
       const bestPathByAddition = bestPathsByDiagonal.get(diagonal + 1)
-
-      // We might be able to prune unreachable paths from bestPathsByDiagonal which will improve
-      // memory usage.
 
       /*
         Determine if we can extend the path by adding (moving down from diagonal + 1) or
@@ -127,9 +131,14 @@ export function diff(originalOldValue, originalNewValue) {
     }
   }
 
-  /** @param {Path} path */
+  /**
+   * @param {Path} path
+   * @returns {Array<Change>}
+   */
   function collectChanges(path) {
+    /** @type {Array<Change>} */
     const changes = []
+    /** @type {Change} */
     let last = {}
 
     while (path.previous) {
@@ -203,4 +212,19 @@ function followDiagonal(oldValue, newValue, oldPos, newPos, direction = 1) {
   return steps
 }
 
-/** @typedef {{ oldPos: number, newPos: number, previous: Path | null, added?: boolean, removed?: boolean }} Path */
+/**
+ * @typedef {{
+ *   oldPos: number,
+ *   newPos: number,
+ *   previous: Path | null,
+ *   added?: boolean,
+ *   removed?: boolean
+ * }} Path
+ */
+/**
+ * @typedef {{
+ *   value: string,
+ *   added?: boolean,
+ *   removed?: boolean,
+ * }} Change
+ */

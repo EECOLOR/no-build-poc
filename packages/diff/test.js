@@ -372,5 +372,19 @@ describe('Myers Diff Algorithm Implementation', () => {
           ]
         )
      })
+
+     test('should handle different line endings correctly', () => {
+      assert.deepStrictEqual(
+        diff(
+          'line1\nline2',
+          'line1\r\nline2'
+        ),
+        [
+          { value: 'line1' },
+          { added: true, value: '\r' },
+          { value: '\nline2' },
+        ]
+      )
+    })
   })
 })
