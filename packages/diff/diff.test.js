@@ -2,14 +2,14 @@
 
 import { describe, test } from 'node:test'
 import assert from 'node:assert/strict'
-import { diff } from './index.js'
+import { diff } from './diff.js'
 
 describe('Myers Diff Algorithm Implementation', () => {
   describe('Basic Diff Cases', () => {
     test('should return empty array for identical strings', () => {
       assert.deepStrictEqual(
         diff('abc', 'abc'),
-        []
+        [{ value: 'abc' }]
       )
     })
 
@@ -92,7 +92,7 @@ describe('Myers Diff Algorithm Implementation', () => {
     test('should handle both strings empty', () => {
       assert.deepStrictEqual(
         diff('', ''),
-        []
+        [{ value: '' }]
       )
     })
 

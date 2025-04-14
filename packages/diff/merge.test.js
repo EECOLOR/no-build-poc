@@ -337,4 +337,23 @@ describe('mergeChanges Function (Revised Logic & Inputs)', () => {
       )
     })
   })
+
+  describe('Unicode', () => {
+    test('should ignore short Unicode Private Use Area segments', () => {
+      const pua = String.fromCharCode(0xE001)
+
+      assert.deepStrictEqual(
+        mergeChanges([
+          { value: 'KeepThis' },
+          { added: true, value: 'add1' },
+          { value: pua }
+        ]),
+        [
+          { value: 'KeepThis' },
+          { added: true, value: 'add1' },
+          { value: pua }
+        ]
+      )
+    })
+  })
 })

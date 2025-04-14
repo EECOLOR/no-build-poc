@@ -1,9 +1,11 @@
 import { derive } from '#ui/dynamic.js'
 import { css, raw, tags } from '#ui/tags.js'
-import { diffChars } from 'diff'
 import { getPathInfo, getSchema } from '../context.js'
 import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
 import { ListSignal } from '../ui/List.js'
+import { mergeChanges } from '#diff/merge.js'
+import { diff } from '#diff'
+import { diffHtml } from '#diff/diffHtml.js'
 
 const { div, span, pre, code, del, ins, time, em } = tags
 
@@ -161,7 +163,7 @@ function StringItem({ historyItem, schema }) {
   if (!newValue)
     return null
 
-  const difference = diffChars(oldValue || '', newValue)
+  const difference = diff(oldValue || '', newValue)
   const merged = mergeChanges(difference)
 
   return (
@@ -176,9 +178,9 @@ function StringItem({ historyItem, schema }) {
 }
 
 RichTextItem.style = css`
-  & ins, & ins * { background-color: lightgreen; }
-  & del, & del * { background-color: lightcoral; }
-  & span.contextChanged, & span.contextChanged * { background-color: khaki; }
+  & ins.diff-added, & ins.diff-added * { background-color: lightgreen; }
+  & del.diff-removed, & del.diff-removed * { background-color: lightcoral; }
+  & span.diff-context-changed, & span.diff-context-changed * { background-color: khaki; }
   & ol, ul, li {
     margin: revert;
     padding: revert;
@@ -226,42 +228,6 @@ function useDocumentHistory({ id, schemaType }) {
   }).derive(x => x?.data || [])
 }
 
-// https://github.com/kpdecker/jsdiff/issues/528
-function mergeChanges(changes) {
-  let addedText = ''
-  let removedText = ''
-  const mergedChanges = []
-
-  for (const change of changes) {
-    if (change.added) {
-      addedText += change.value
-    } else if (change.removed) {
-      removedText += change.value
-    } else if (change.value.length <= 2) {
-      // we ignore small unchanged segments
-      addedText += change.value
-      removedText += change.value
-    } else {
-      // if the change is not added or removed, merge the added and removed text and append to the diff alongside neutral text
-      mergedChanges.push(
-        { value: removedText, removed: true },
-        { value: addedText, added: true },
-        { value: change.value },
-      )
-
-      addedText = ''
-      removedText = ''
-    }
-  }
-
-  if (removedText)
-    mergedChanges.push({ value: removedText, removed: true })
-  if (addedText)
-    mergedChanges.push({ value: addedText, added: true })
-
-  return mergedChanges
-}
-
 function prepareHistory(history) {
   const preparedHistory = []
   const lookup = {}
@@ -294,108 +260,11 @@ function prepareHistory(history) {
   return preparedHistory
 }
 
-// Unicode Private Use Area
-const puaStart = 0xE000
-const puaEnd = 0xF8FF
-const placeholderRegex = /[\uE000-\uF8FF]/g
-const placeholdersOnlyRegex = /^(\s*[\uE000-\uF8FF]\s*)+$/
-const containsTextRegex = /[^\s\uE000-\uF8FF]/
-
 function createHtmlDiffAsDiv(oldValue, newValue) {
-  const info = prepareForDiff(oldValue || '', newValue)
-  const difference = calculateDifference(info.oldValue, info.newValue, info.placeholderToTag)
-  const html = prepareForDisplay(difference, info.placeholderToTag)
+  const html = diffHtml(oldValue, newValue)
 
   const div = window.document.createElement('div')
   div.innerHTML = html
 
   return div
-}
-
-function prepareForDiff(oldHtml, newHtml) {
-  const tagRegex = /<[^>]+>/g
-  const tagToPlaceholder = new Map()
-  const placeholderToTag = new Map()
-
-  let charCode = puaStart
-  for (const [tag] of (oldHtml + newHtml).matchAll(tagRegex)) {
-    if (charCode > puaEnd)
-      throw new Error("Placeholder index exceeded Unicode PUA range. Cannot process HTML.")
-
-    if (tagToPlaceholder.has(tag))
-      continue
-
-    const isClose = tag.startsWith('</')
-    const isOpen = !isClose && tag.startsWith('<')
-
-    const placeholderChar = String.fromCharCode(charCode++)
-    tagToPlaceholder.set(tag, placeholderChar)
-    placeholderToTag.set(placeholderChar, { value: tag, isOpen, isClose })
-  }
-
-  const oldValue = oldHtml.replace(tagRegex, tagMatch => tagToPlaceholder.get(tagMatch))
-  const newValue = newHtml.replace(tagRegex, tagMatch => tagToPlaceholder.get(tagMatch))
-
-  return { oldValue, newValue, placeholderToTag }
-}
-
-/**
- * @returns {Array<import('diff').Change & { contextChanged?: boolean, tagsOnly?: boolean }>}
- */
-function calculateDifference(oldValue, newValue, placeHolderToTag) {
-  // TODO: maybe it's a fun challenge to recreate the diff function yourself. Saves the usage of another library
-  //       The library references the paper that describes the algorithm
-  const difference = diffChars(oldValue, newValue)
-
-  let contextChanges = { added: 0, removed: 0 }
-  for (const part of difference) {
-    const changed = part.added || part.removed
-
-    const isContextChange = changed && placeholdersOnlyRegex.test(part.value)
-    const shouldMarkContextChange = (
-      !changed &&
-      (contextChanges.added > 0 || contextChanges.removed > 0) &&
-      containsTextRegex.test(part.value)
-    )
-
-    if (isContextChange) {
-      for (const [placeholder] of part.value.matchAll(placeholderRegex)) {
-        const tag = placeHolderToTag.get(placeholder)
-        console.log(tag)
-        contextChanges[part.added ? 'added' : 'removed'] += (
-          tag.isClose ? -1 :
-          tag.isOpen ? 1 :
-          0
-        )
-      }
-      part['tagsOnly'] = true
-    }
-
-    if (shouldMarkContextChange) {
-      part['contextChanged'] = true
-    }
-  }
-
-  return difference
-}
-
-function prepareForDisplay(diffs, placeholderToTag) {
-  let result = ''
-
-  for (const part of diffs) {
-    const text = part.value.replace(placeholderRegex, match => placeholderToTag.get(match).value)
-
-    if (part.added)
-      result += '<ins>' + text + '</ins>'
-    else if (part.removed && part.tagsOnly)
-      continue // No need to display removed tags
-    else if (part.removed)
-      result += '<del>' + text + '</del>'
-    else if (part.contextChanged)
-      result += '<span class="contextChanged">' + text + '</span>'
-    else
-      result += text
-  }
-
-  return result
 }

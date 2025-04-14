@@ -44,7 +44,7 @@
  */
 export function diff(originalOldValue, originalNewValue) {
   if (originalOldValue === originalNewValue)
-    return []
+    return [{ value: originalOldValue }]
 
   const { oldValue, newValue, unchangedStartLength, unchangedEndLength } = trimUnchangedEnds()
 
