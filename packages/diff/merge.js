@@ -26,11 +26,7 @@ export function mergeChanges(changes) {
     } else {
       // if the change is not added or removed, merge the added and removed text and append to the diff alongside unchanged text
 
-      if (removedText)
-        mergedChanges.push({ value: removedText, removed: true })
-
-      if (addedText)
-        mergedChanges.push({ value: addedText, added: true })
+      pushPendingChanges()
 
       mergedChanges.push({ value: change.value })
 
@@ -39,16 +35,22 @@ export function mergeChanges(changes) {
     }
   }
 
-  if (removedText === addedText) {
-    if (removedText)
-      mergedChanges.push({ value: removedText })
-  } else {
+  pushPendingChanges()
+
+  return mergedChanges
+
+  function pushPendingChanges() {
+    if (removedText === addedText) {
+      if (removedText)
+        mergedChanges.push({ value: removedText })
+
+      return
+    }
+
     if (removedText)
       mergedChanges.push({ value: removedText, removed: true })
 
     if (addedText)
       mergedChanges.push({ value: addedText, added: true })
   }
-
-  return mergedChanges
 }
