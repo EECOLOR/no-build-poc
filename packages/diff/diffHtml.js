@@ -1,15 +1,15 @@
 import { diff } from './diff.js'
 import { mergeChanges } from './merge.js'
-import { puaStart, puaEnd, puaOnlyRegex, noPuaOrWhitespaceRegex, puaRegex } from './unicode.js'
+import unicode, { puaStart, puaEnd } from './unicode.js'
 
 /** @import { Change } from './diff.js' */
 
-const tagRegex = /<[^>]+>/g
+const tagRegex = /<([/]?)([^ />]+)[^/>]*([/]?)>/g
 
 export function diffHtml(oldValue, newValue) {
   const info = prepareForDiff(oldValue || '', newValue)
   const difference = calculateDifference(info.oldValue, info.newValue, info.placeholderToTag)
-  const html = prepareForDisplay(difference, info.placeholderToTag)
+  const html = prepareForDisplay(difference)
 
   return html
 }
@@ -26,20 +26,20 @@ function prepareForDiff(oldHtml, newHtml) {
   const placeholderToTag = new Map()
 
   let charCode = puaStart
-  for (const [tag] of (oldHtml + newHtml).matchAll(tagRegex)) {
+  for (const [tag, rawIsClose, name, rawIsSelfClose] of (oldHtml + newHtml).matchAll(tagRegex)) {
     if (charCode > puaEnd)
       throw new Error("Placeholder index exceeded Unicode PUA range. Cannot process HTML.")
 
     if (tagToPlaceholder.has(tag))
       continue
 
-    const isClose = tag.startsWith('</')
-    const isOpen = !isClose && tag.startsWith('<')
-    const isSelfClose = isOpen && tag.endsWith('/>')
+    const isClose = Boolean(rawIsClose)
+    const isOpen = !isClose
+    const isSelfClose = Boolean(rawIsSelfClose)
 
     const placeholderChar = String.fromCharCode(charCode++)
     tagToPlaceholder.set(tag, placeholderChar)
-    placeholderToTag.set(placeholderChar, { value: tag, isOpen, isClose, isSelfClose })
+    placeholderToTag.set(placeholderChar, { value: tag, isOpen, isClose, isSelfClose, name })
   }
 
   const oldValue = oldHtml.replace(tagRegex, tagMatch => tagToPlaceholder.get(tagMatch))
@@ -54,65 +54,93 @@ function prepareForDiff(oldHtml, newHtml) {
  *
  * @returns {Array<HtmlChange>}
  */
-function calculateDifference(oldValue, newValue, placeHolderToTag) {
+function calculateDifference(oldValue, newValue, placeholderToTag) {
   const originalDifference = diff(oldValue, newValue)
   const difference = mergeChanges(originalDifference)
 
+  const changes = []
+
   let contextChanges = { added: 0, removed: 0 }
   for (const part of difference) {
-    const changed = part.added || part.removed
+    const { value, added, removed } = part
+    const changed = added || removed
 
-    // TODO: this could also be when a tag is in the part value
-    const isContextChange = changed && puaOnlyRegex.test(part.value)
-    const shouldMarkContextChange = (
-      !changed &&
-      (contextChanges.added > 0 || contextChanges.removed > 0) &&
-      noPuaOrWhitespaceRegex.test(part.value)
-    )
+    const openTags = new Set()
+    const closeTags = new Set()
 
-    if (isContextChange) {
-      let isSelfCloseOnly = true // TODO: this probably doesn't cover enough
+    let hasText = false
+    let translatedValue = ''
 
-      for (const [placeholder] of part.value.matchAll(puaRegex)) {
-        const tag = placeHolderToTag.get(placeholder)
-        isSelfCloseOnly &&= tag.isSelfClose
+    for (const [_, placeholder, text] of value.matchAll(unicode.puaOrNotPuaRegex)) {
+      if (!placeholder) {
+        translatedValue += text
+        hasText = true
+        continue
+      }
 
-        contextChanges[part.added ? 'added' : 'removed'] += (
-          tag.isSelfClose ? 0 :
-          tag.isClose ? -1 :
-          tag.isOpen ? 1 :
+      const { isSelfClose, isClose, isOpen, name, value } = placeholderToTag.get(placeholder)
+      translatedValue += value
+      if (changed) {
+        contextChanges[added ? 'added' : 'removed'] += (
+          isSelfClose ? 0 :
+          isClose ? -1 :
+          isOpen ? 1 :
           0
         )
       }
-      part['tagsOnly'] = true
-      part['isSelfCloseOnly'] = isSelfCloseOnly
+
+      if (isOpen && !isSelfClose)
+        openTags.add(name)
+
+      if (isClose && !isSelfClose)
+        if (openTags.has(name))
+          openTags.delete(name)
+        else
+          closeTags.add(name)
     }
 
-    if (shouldMarkContextChange) {
-      part['contextChanged'] = true
-    }
+    if (removed && !hasText)
+      continue
+
+    let newValue = ''
+
+    if (changed && hasText)
+      for (const name of closeTags)
+        newValue += `<${name}>`
+
+    newValue += translatedValue
+
+    if (changed && hasText)
+      for (const name of openTags)
+        newValue += `</${name}>`
+
+    const contextChanged = (
+      !changed &&
+      (contextChanges.added > 0 || contextChanges.removed > 0)
+    )
+
+    changes.push({ value: newValue, added, removed, contextChanged, hasText })
   }
 
-  return difference
+  return changes
 }
 
 /**
  * Turns the placeholders back into tags and renders the result to a string.
  *
  * @param {Array<HtmlChange>} diffs
- * @param {Map<string, { value: string }>} placeholderToTag
  */
-function prepareForDisplay(diffs, placeholderToTag) {
+function prepareForDisplay(diffs) {
   let result = ''
 
   for (const part of diffs) {
-    const text = part.value.replace(puaRegex, match => placeholderToTag.get(match).value)
+    const text = part.value
 
-    if (part.added && part.tagsOnly && !part.isSelfCloseOnly)
+    if (part.added && !part.hasText)
       result += text
     else if (part.added)
       result += '<ins class="diff-added">' + text + '</ins>'
-    else if (part.removed && part.tagsOnly && !part.isSelfCloseOnly)
+    else if (part.removed && !part.hasText)
       continue // No need to display removed tags
     else if (part.removed)
       result += '<del class="diff-removed">' + text + '</del>'
@@ -125,4 +153,8 @@ function prepareForDisplay(diffs, placeholderToTag) {
   return result
 }
 
-/** @typedef {Change & { contextChanged?: boolean, tagsOnly?: boolean, isSelfCloseOnly?: boolean }} HtmlChange */
+/**
+ * @typedef {Change & (
+ *  { contextChanged: boolean, hasText: boolean }
+ * )} HtmlChange
+ */
