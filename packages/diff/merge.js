@@ -1,6 +1,6 @@
 // Inspiration taken from https://github.com/kpdecker/jsdiff/issues/528
 
-import { puaRegex } from './unicode.js'
+import unicode from './unicode.js'
 
 /** @import { Change } from './diff.js' */
 
@@ -21,7 +21,7 @@ export function mergeChanges(changes) {
       addedText += change.value
     } else if (change.removed) {
       removedText += change.value
-    } else if (change.value.length <= 2 && !puaRegex.test(change.value)) {
+    } else if (change.value.length <= 2 && !unicode.puaRegex.test(change.value)) {
       // we ignore small unchanged segments
       addedText += change.value
       removedText += change.value
