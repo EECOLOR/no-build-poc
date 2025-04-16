@@ -385,6 +385,16 @@ describe('diffHtml', () => {
       // Expected version:
       // '<b class="bar"><span class="diff-context-changed">abc</span></b>'
     );
+
+    // another case like this:
+    /*
+      {
+        "oldValue": "<p>Hello, banana is <strong>Rich</strong> Text</p><ul><li><p>And <em>he a list</em> item</p></li><li><p>Another list item</p></li><li><p>Green item</p></li></ul><p>Something special</p>",
+        "newValue": "<p>Hello, banana is <strong>Rich</strong> Text</p><ul><li><p>And <em>he a list</em> item</p></li><li><p>Green item</p></li></ul><p>Something special</p>"
+      }
+
+      result: <p>Hello, banana is <strong>Rich</strong> Text</p><ul><li><p>And <em>he a list</em> item</p></li><li><p><del class="diff-removed"><li><p>Another list item</p></li><li><p></p></li></del>Green item</p></li></ul><p>Something special</p>
+    */
   });
 
    test('should handle whitespace between tags', () => {

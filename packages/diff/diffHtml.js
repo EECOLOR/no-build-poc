@@ -7,6 +7,7 @@ import unicode, { puaStart, puaEnd } from './unicode.js'
 const tagRegex = /<([/]?)([^ />]+)[^/>]*([/]?)>/g
 
 export function diffHtml(oldValue, newValue) {
+  console.log({ oldValue, newValue })
   const info = prepareForDiff(oldValue || '', newValue)
   const difference = calculateDifference(info.oldValue, info.newValue, info.placeholderToTag)
   const html = prepareForDisplay(difference)
@@ -69,6 +70,7 @@ function calculateDifference(oldValue, newValue, placeholderToTag) {
     const closeTags = new Set()
 
     let hasText = false
+    let hasTags = false
     let translatedValue = ''
 
     for (const [_, placeholder, text] of value.matchAll(unicode.puaOrNotPuaRegex)) {
@@ -77,6 +79,8 @@ function calculateDifference(oldValue, newValue, placeholderToTag) {
         hasText = true
         continue
       }
+
+      hasTags = true
 
       const { isSelfClose, isClose, isOpen, name, value } = placeholderToTag.get(placeholder)
       translatedValue += value
@@ -104,14 +108,16 @@ function calculateDifference(oldValue, newValue, placeholderToTag) {
 
     let newValue = ''
 
+    // TODO: adding tags helps when diffing changes that involves markup like <b> and <i>
+    //       it however causes problems with adding <li> (additional list items)
     if (changed && hasText)
-      for (const name of closeTags)
+      for (const name of Array.from(closeTags).reverse())
         newValue += `<${name}>`
 
     newValue += translatedValue
 
     if (changed && hasText)
-      for (const name of openTags)
+      for (const name of Array.from(openTags).reverse())
         newValue += `</${name}>`
 
     const contextChanged = (
@@ -121,6 +127,8 @@ function calculateDifference(oldValue, newValue, placeholderToTag) {
 
     changes.push({ value: newValue, added, removed, contextChanged, hasText })
   }
+
+  console.log('result', changes)
 
   return changes
 }
@@ -149,7 +157,7 @@ function prepareForDisplay(diffs) {
     else
       result += text
   }
-
+console.log('result:', result)
   return result
 }
 
