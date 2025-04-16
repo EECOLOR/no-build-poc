@@ -177,7 +177,7 @@ describe('Myers Diff Algorithm Implementation', () => {
         )
     })
 
-     test('should handle only common prefix/suffix (middle added)', () => {
+    test('should handle only common prefix/suffix (middle added)', () => {
         assert.deepStrictEqual(
           diff('prefix__suffix', 'prefix_middle_suffix'),
           [
@@ -186,6 +186,158 @@ describe('Myers Diff Algorithm Implementation', () => {
             { value: '_suffix' }
           ]
         )
+    })
+
+    test('should handle overlap in prefix and suffix optimization', () => {
+      assert.deepStrictEqual(
+        diff(
+          'text  more',
+          'text more'
+        ),
+        [
+          { value: 'text ' },
+          { removed: true, value: ' ' },
+          { value: 'more' },
+        ]
+      )
+    })
+
+    test('should show suffix space detached from removal', () => {
+      assert.deepStrictEqual(
+        diff(
+          'text  more',
+          'text more'
+        ),
+        [
+          { value: 'text ' },
+          { removed: true, value: ' ' },
+          { value: 'more' },
+        ]
+      )
+    })
+
+    test('overlap case 1: should produce result that does not reconstruct correctly', () => {
+      assert.deepStrictEqual(
+        diff(
+          'abbbcbbba',
+          'abbba'
+        ),
+        [
+          { value: 'abbb' },
+          { removed: true, value: 'cbbb' },
+          { value: 'a' }
+        ]
+      )
+    })
+
+    test('variation overlap case 1: slightly different overlap', () => {
+      assert.deepStrictEqual(
+        diff(
+          'aba',
+          'aa'
+        ),
+        [
+          { value: 'a' },
+          { removed: true, value: 'b' },
+          { value: 'a' },
+        ]
+      )
+    })
+
+
+    test('original case (addition): should handle addition adjacent to suffix space', () => {
+      assert.deepStrictEqual(
+        diff(
+          'text more',
+          'text  more'
+        ),
+        [
+          { value: 'text ' },
+          { added: true, value: ' ' },
+          { value: 'more' },
+        ]
+      )
+    })
+
+    test('overlap case 1 (addition): should produce semantically correct diff', () => {
+      assert.deepStrictEqual(
+        diff(
+          'abbba',
+          'abbbcbbba'
+        ),
+        [
+          { value: 'abbb' },
+          { added: true, value: 'cbbb' },
+          { value: 'a' },
+        ]
+      )
+    })
+
+    test('control case: simple change, no overlap issues', () => {
+      assert.deepStrictEqual(
+        diff(
+          'abcde',
+          'abxye'
+        ),
+        [
+          { value: 'ab' },
+          { removed: true, value: 'cd' },
+          { added: true, value: 'xy' },
+          { value: 'e' },
+        ]
+      )
+    })
+
+    test('control case: removal at end', () => {
+      assert.deepStrictEqual(
+        diff(
+          'abcdef',
+          'abc'
+        ),
+        [
+          { value: 'abc' },
+          { removed: true, value: 'def' },
+        ]
+      )
+    })
+
+    test('control case: addition at end', () => {
+      assert.deepStrictEqual(
+        diff(
+          'abc',
+          'abcdef'
+        ),
+        [
+          { value: 'abc' },
+          { added: true, value: 'def' },
+        ]
+      )
+    })
+
+    test('control case: removal at start', () => {
+      assert.deepStrictEqual(
+        diff(
+          'abcdef',
+          'def'
+        ),
+        [
+          { removed: true, value: 'abc' },
+          { value: 'def' },
+        ]
+      )
+    })
+
+    test('control case: addition at start', () => {
+      assert.deepStrictEqual(
+        diff(
+          'def',
+          'abcdef'
+        ),
+        [
+          { added: true, value: 'abc' },
+          { value: 'def' },
+        ]
+      )
     })
   })
 
@@ -373,7 +525,7 @@ describe('Myers Diff Algorithm Implementation', () => {
         )
      })
 
-     test('should handle different line endings correctly', () => {
+    test('should handle different line endings correctly', () => {
       assert.deepStrictEqual(
         diff(
           'line1\nline2',

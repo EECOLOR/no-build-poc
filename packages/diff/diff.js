@@ -184,14 +184,16 @@ export function diff(originalOldValue, originalNewValue) {
   }
 
   function trimUnchangedEnds() {
-    const o = originalOldValue
-    const n = originalNewValue
-
+    let o = originalOldValue
+    let n = originalNewValue
     const unchangedStartLength = followDiagonal(o, n, -1, -1, 1)
+
+    o = o.slice(unchangedStartLength)
+    n = n.slice(unchangedStartLength)
     const unchangedEndLength = followDiagonal(o, n, o.length, n.length, -1)
 
-    const oldValue = o.slice(unchangedStartLength, -unchangedEndLength || undefined)
-    const newValue = n.slice(unchangedStartLength, -unchangedEndLength || undefined)
+    const oldValue = originalOldValue.slice(unchangedStartLength, -unchangedEndLength || undefined)
+    const newValue = originalNewValue.slice(unchangedStartLength, -unchangedEndLength || undefined)
 
     return { oldValue, newValue, unchangedStartLength, unchangedEndLength }
   }
