@@ -5,7 +5,7 @@ import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
 import { ListSignal } from '../ui/List.js'
 import { mergeChanges } from '#diff/merge.js'
 import { diff } from '#diff'
-import { diffHtml } from '#diff/diffHtml.js'
+import { diffHtml, toHtml } from '#diff/diffHtml.js'
 
 const { div, span, pre, code, del, ins, time, em } = tags
 
@@ -261,7 +261,7 @@ function prepareHistory(history) {
 }
 
 function createHtmlDiffAsDiv(oldValue, newValue) {
-  const html = diffHtml(oldValue, newValue)
+  const html = toHtml(diffHtml(oldValue, newValue))
 
   const div = window.document.createElement('div')
   div.innerHTML = html
