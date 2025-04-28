@@ -145,15 +145,10 @@ function balanceChanges(changes, placeholderToTag) {
 
   for (let i = 1; i < changes.length - 1; i++) {
     const current = changes[i]
-    if (!hasChanged(current))
-      continue
-
     const previous = changes[i - 1]
-    if (hasChanged(previous))
-      continue
-
     const next = changes[i + 1]
-    if (hasChanged(next))
+
+    if (!hasChanged(current) || hasChanged(previous) || hasChanged(next))
       continue
 
     let previousValue = previous.value
