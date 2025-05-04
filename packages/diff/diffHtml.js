@@ -7,20 +7,6 @@ const tagRegex = /<([/]?)([^ />]+)[^/>]*([/]?)>/
 const tagsRegex = new RegExp(tagRegex, 'g')
 const tagOrNoTagRegex = /(<[^>]+>)|([^<]+)/g
 
-const regex = {
-  tag: tagRegex,
-
-  get tags() {
-    tagsRegex.lastIndex = 0
-    return tagsRegex
-  },
-
-  get tagOrNoTag() {
-    tagOrNoTagRegex.lastIndex = 0
-    return tagOrNoTagRegex
-  }
-}
-
 export function diffHtml(oldValue, newValue) {
   const info = prepareForDiff(oldValue || '', newValue)
   const changes = calculateChanges(info.oldValue, info.newValue, info.placeholderToTag)
@@ -39,7 +25,7 @@ function prepareForDiff(oldHtml, newHtml) {
   const placeholderToTag = new Map()
 
   let charCode = puaStart
-  for (const [tag, rawIsClose, name, rawIsSelfClose] of (oldHtml + newHtml).matchAll(regex.tags)) {
+  for (const [tag, rawIsClose, name, rawIsSelfClose] of (oldHtml + newHtml).matchAll(tagsRegex)) {
     if (charCode > puaEnd)
       throw new Error("Placeholder index exceeded Unicode PUA range. Cannot process HTML.")
 
@@ -55,15 +41,15 @@ function prepareForDiff(oldHtml, newHtml) {
     placeholderToTag.set(placeholderChar, { value: tag, isOpen, isClose, isSelfClose, name })
   }
 
-  const oldValue = oldHtml.replace(regex.tags, tagMatch => tagToPlaceholder.get(tagMatch))
-  const newValue = newHtml.replace(regex.tags, tagMatch => tagToPlaceholder.get(tagMatch))
+  const oldValue = oldHtml.replace(tagsRegex, tagMatch => tagToPlaceholder.get(tagMatch))
+  const newValue = newHtml.replace(tagsRegex, tagMatch => tagToPlaceholder.get(tagMatch))
 
   return { oldValue, newValue, placeholderToTag }
 }
 
 /**
  * Runs the actual diff algorithm and then massages the changes to that tag-only changes can be
- * displayed. It does this by marking sections with `contextChanged` and `tagsOnly`.
+ * displayed.
  *
  * @returns {Array<HtmlChange>}
  */
@@ -138,50 +124,9 @@ function calculateChanges(oldValue, newValue, placeholderToTag) {
   return changes
 }
 
-
-function balanceChanges(changes, placeholderToTag) {
-  if (changes.length < 2)
-    return changes
-
-  for (let i = 1; i < changes.length - 1; i++) {
-    const current = changes[i]
-    const previous = changes[i - 1]
-    const next = changes[i + 1]
-
-    if (!hasChanged(current) || hasChanged(previous) || hasChanged(next))
-      continue
-
-    let previousValue = previous.value
-    let currentValue = current.value
-    let nextValue = next.value
-
-    const positionFromEnd = balanceFromPrevious(previousValue, currentValue, placeholderToTag)
-    if (positionFromEnd) {
-      const segmentToMove = previousValue.slice(positionFromEnd)
-
-      previousValue = previousValue.slice(0, positionFromEnd)
-      currentValue = segmentToMove + currentValue.slice(0, positionFromEnd)
-      nextValue = segmentToMove + nextValue
-    }
-
-    const positionFromStart = balanceFromNext(currentValue, nextValue, placeholderToTag)
-    if (positionFromStart > -1) {
-      const segmentToMove = currentValue.slice(0, positionFromStart)
-
-      previousValue = previousValue + segmentToMove
-      currentValue = currentValue.slice(positionFromStart) + segmentToMove
-      nextValue = nextValue.slice(positionFromStart)
-    }
-
-    previous.value = previousValue
-    current.value = currentValue
-    next.value = nextValue
-  }
-
-  return changes.filter(change => change.value)
-}
-
 /*
+ For direction -1 (backward)
+
  before:
  [
    { value: "item 1<p>item " },
@@ -195,37 +140,9 @@ function balanceChanges(changes, placeholderToTag) {
    { value: "<p>item 2</p>", removed: true },
    { value: "<p>item 3</p>" }
  ]
-*/
-function balanceFromPrevious(previousValue, currentValue, placeholderToTag) {
 
-  const minLength = Math.min(currentValue.length, previousValue.length)
+ For direction 1 (forward)
 
-  let positionFromEnd = 0
-  let hasTag = false
-  while (positionFromEnd > -minLength) {
-    positionFromEnd -= 1
-    let charFromPrevious = previousValue.slice(positionFromEnd, positionFromEnd + 1 || undefined)
-    let charFromCurrent = currentValue.slice(positionFromEnd, positionFromEnd + 1 || undefined)
-    if (charFromPrevious !== charFromCurrent) {
-      positionFromEnd += 1
-      break
-    }
-    if (placeholderToTag.has(charFromCurrent)) {
-      hasTag = true
-      const { isClose } = placeholderToTag.get(charFromCurrent)
-      if (isClose) {
-        positionFromEnd += 1
-        break
-      }
-    }
-  }
-  if (!hasTag)
-    return 0
-
-  return positionFromEnd
-}
-
-/*
  before:
  [
    { value: "item 1<p>" },
@@ -248,33 +165,82 @@ function balanceFromPrevious(previousValue, currentValue, placeholderToTag) {
    { value: "" }
  ]
 */
-function balanceFromNext(currentValue, nextValue, placeholderToTag) {
-  const minLength = Math.min(currentValue.length, nextValue.length)
+function balanceChanges(changes, placeholderToTag) {
+  if (changes.length < 2)
+    return changes
 
-  let positionFromStart = -1
-  let hasTag = false
+  for (let i = 1; i < changes.length - 1; i++) {
+    const current = changes[i]
+    const previous = changes[i - 1]
+    const next = changes[i + 1]
 
-  while (positionFromStart < minLength) {
-    positionFromStart += 1
+    if (!hasChanged(current) || hasChanged(previous) || hasChanged(next))
+      continue
 
-    let charFromCurrent = currentValue.slice(positionFromStart, positionFromStart + 1)
-    let charFromNext = nextValue.slice(positionFromStart, positionFromStart + 1)
+    const positionFromEnd = findMovablePosition(current.value, previous.value, placeholderToTag, -1)
+    if (positionFromEnd) {
+      const segmentToMove = previous.value.slice(positionFromEnd)
 
-    if (charFromCurrent !== charFromNext)
-      break
+      previous.value = previous.value.slice(0, positionFromEnd)
+      current.value = segmentToMove + current.value.slice(0, positionFromEnd)
+      next.value = segmentToMove + next.value
+    }
 
-    if (placeholderToTag.has(charFromCurrent)) {
-      hasTag = true
-      const { isOpen } = placeholderToTag.get(charFromCurrent)
-      if (isOpen)
-        break
+    const positionFromStart = findMovablePosition(current.value, next.value, placeholderToTag, +1)
+    if (positionFromStart) {
+      const segmentToMove = current.value.slice(0, positionFromStart)
+
+      previous.value = previous.value + segmentToMove
+      current.value = current.value.slice(positionFromStart) + segmentToMove
+      next.value = next.value.slice(positionFromStart)
     }
   }
 
-  if (!hasTag)
-    return -1
+  return changes.filter(change => change.value)
+}
 
-  return positionFromStart
+/**
+ * @param {string} currentValue
+ * @param {string} otherValue
+ * @param {Map<string, { isOpen?: boolean, isClose?: boolean }} placeholderToTag
+ * @param {-1 | 1} direction
+ * @returns
+ */
+function findMovablePosition(currentValue, otherValue, placeholderToTag, direction) {
+  const currentLength = currentValue.length
+  const otherLength = otherValue.length
+  const minLength = Math.min(currentLength, otherLength)
+
+  const isForward = direction > 0
+  const stopTagType = isForward ? 'isOpen' : 'isClose'
+
+  let position = 0
+  let hasTag = false
+
+  for (let i = 0; i < minLength; i++) {
+    const currentPosition = isForward ? i : currentLength - 1 - i
+    const otherPosition = isForward ? i : otherLength - 1 - i
+
+    const charFromCurrent = currentValue[currentPosition]
+    const charFromOther = otherValue[otherPosition]
+
+    if (charFromCurrent !== charFromOther)
+        break
+
+    if (placeholderToTag.has(charFromCurrent)) {
+      hasTag = true
+      const tag = placeholderToTag.get(charFromCurrent)
+      if (tag[stopTagType])
+        break
+    }
+
+    position += 1
+  }
+
+  if (!hasTag)
+    return 0
+
+  return direction * position
 }
 
 function hasChanged(part) {
@@ -282,7 +248,7 @@ function hasChanged(part) {
 }
 
 /**
- * Turns the placeholders back into tags and renders the result to a string.
+ * Converts changes into renderable html
  *
  * @param {Array<HtmlChange>} changes
  */
@@ -326,7 +292,7 @@ export function toHtml(changes) {
       }
       result += del(toDelete)
     } else if (part.contextChanged && part.hasTags)
-      for (const [_, tag, text] of value.matchAll(regex.tagOrNoTag)) {
+      for (const [_, tag, text] of value.matchAll(tagOrNoTagRegex)) {
         if (tag)
           result += tag
         else
@@ -362,13 +328,13 @@ function getValueSegments(value) {
 
   const openTags = new Map()
 
-  for (const [_, rawTag, text] of value.matchAll(regex.tagOrNoTag)) {
+  for (const [_, rawTag, text] of value.matchAll(tagOrNoTagRegex)) {
     if (text) {
       segments.push({ type: 'text', text })
       continue
     }
 
-    const [tag, rawIsClose, name, rawIsSelfClose] = rawTag.match(regex.tag)
+    const [tag, rawIsClose, name, rawIsSelfClose] = rawTag.match(tagRegex)
     const isClose = Boolean(rawIsClose)
     const isOpen = !isClose && !rawIsSelfClose
 
