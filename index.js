@@ -7,6 +7,7 @@ await startServer({
     '#cms/client',
     '#routing',
     '#utils/createHash.js',
+    '#diff',
   ],
   allowedLibraries: [
     'three',
@@ -32,7 +33,5 @@ await startServer({
       'orderedmap',
       'rope-sequence',
       'w3c-keyname',
-
-    'diff',
   ],
 })

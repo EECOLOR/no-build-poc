@@ -4,3 +4,4 @@ node_modules/
 cmsStorage/
 config/local.js
 *key*.json
+visualy-test-diff-change.html
