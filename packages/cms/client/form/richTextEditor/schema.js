@@ -45,15 +45,15 @@ export function defaultMarkConfigs(schema) {
   return /** @type {const} */ ([
     {
       title: 'Bold',
-      shortcuts: {
-        'Mod-b': toggleMark(schema.marks.strong)
-      }
+      mark: schema.marks.strong,
+      command: toggleMark(schema.marks.strong),
+      shortcut: 'Mod-b',
     },
     {
       title: 'Italic',
-      shortcuts: {
-        'Mod-i': toggleMark(schema.marks.em),
-      }
+      mark: schema.marks.em,
+      command: toggleMark(schema.marks.em),
+      shortcut: 'Mod-i',
     }
   ])
 }
@@ -67,42 +67,34 @@ export function defaultNodeConfigs(schema) {
   return /** @type {const} */ ([
     {
       title: 'Ordered list',
-      shortcuts: {
-        'Shift-Mod-7': chainCommands(
-          unwrapFromList(schema.nodes.orderedList),
-          wrapInList(schema.nodes.orderedList)
-        ),
-      }
+      command: chainCommands(
+        unwrapFromList(schema.nodes.orderedList),
+        wrapInList(schema.nodes.orderedList)
+      ),
+      shortcut: 'Shift-Mod-7',
     },
     {
       title: 'Unordered list',
-      shortcuts: {
-        'Shift-Mod-8': chainCommands(
-          unwrapFromList(schema.nodes.unorderedList),
-          wrapInList(schema.nodes.unorderedList),
-        ),
-      }
+      command: chainCommands(
+        unwrapFromList(schema.nodes.unorderedList),
+        wrapInList(schema.nodes.unorderedList),
+      ),
+      shortcut: 'Shift-Mod-8',
     },
     {
       title: 'Indent list item',
-      shortcuts: {
-        'Tab': sinkListItem(schema.nodes.listItem),
-      }
+      command: sinkListItem(schema.nodes.listItem),
+      shortcut: 'Tab',
     },
     {
       title: 'Outdent list item',
-      shortcuts: {
-        'Shift-Tab': liftListItem(schema.nodes.listItem),
-      }
+      command: liftListItem(schema.nodes.listItem),
+      shortcut: 'Shift-Tab',
     },
     {
       title: 'Generic list functionality',
-      shortcuts: {
-        'Enter': function (state, dispatch) {
-          console.log('split')
-          return splitListItem(schema.nodes.listItem)(state, dispatch)
-        }
-      }
+      command: splitListItem(schema.nodes.listItem),
+      shortcut: 'Enter',
     }
   ])
 }

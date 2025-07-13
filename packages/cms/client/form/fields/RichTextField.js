@@ -5,6 +5,9 @@ import { useCombined } from '#ui/hooks.js'
 import { RichTextEditor } from '../richTextEditor/RichTextEditor.js'
 import { useConditionalDerive, useFieldValue } from './useFieldValue.js'
 import { DOMSerializer, Schema as ProsemirrorSchema } from 'prosemirror-model'
+import { tags } from '#ui/tags.js'
+
+const { div } = tags
 
 /**
  * @typedef {{
@@ -13,7 +16,7 @@ import { DOMSerializer, Schema as ProsemirrorSchema } from 'prosemirror-model'
  */
 
 export function RichTextField({ document, field, $path, id }) {
-  const { schema, plugins } = field
+  const { schema, plugins, MenuItems } = field
   const $richTextArgs = $path.derive(path => getRichTextArgs({ document, fieldPath: path }))
 
   const [$value, setValue] = useFieldValue({
@@ -38,15 +41,18 @@ export function RichTextField({ document, field, $path, id }) {
   // This might be an interesting performance optimization if that is needed:
   // https://discuss.prosemirror.net/t/current-state-of-the-art-on-syncing-data-to-backend/5175/4
   return renderOnValue($initialValue, initialValue =>
-    RichTextEditor({
-      id,
-      initialValue: RichTextEditor.fromJson(schema, initialValue),
-      $steps,
-      synchronize,
-      schema,
-      plugins,
-      onChange: handleChange
-    }),
+    div(
+      MenuItems(),
+      RichTextEditor({
+        id,
+        initialValue: RichTextEditor.fromJson(schema, initialValue),
+        $steps,
+        synchronize,
+        schema,
+        plugins,
+        onChange: handleChange
+      }),
+    )
   )
 
   function handleChange(doc) {

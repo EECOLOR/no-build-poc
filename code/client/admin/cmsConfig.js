@@ -109,10 +109,15 @@ function documentView({ schemaType }) {
 
 function Custom({ id, $selected }) {
   return (
-    div({ style: { outline: $selected.derive(x => x ? 'solid' : 'unset') }, id, css: css`
-    display: flex;
-    /* user-select: none; */
-  `, },
+    div(
+      {
+        id,
+        style: { outline: $selected.derive(x => x ? 'solid' : 'unset') },
+        css: css`
+          display: flex;
+          /* user-select: none; */
+        `,
+      },
       CustomItem({ title: 'ONE',  backgroundColor: 'red' }),
       CustomItem({ title: 'TWO',  backgroundColor: 'blue' }),
       // tags.span({ contentEditable: true }, ' ')//'\u200b' /* zero width whitespace */) // prevent bug with caret
