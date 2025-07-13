@@ -13,7 +13,7 @@ import { DOMSerializer, Schema as ProsemirrorSchema } from 'prosemirror-model'
  */
 
 export function RichTextField({ document, field, $path, id }) {
-  const { schema } = field
+  const { schema, plugins } = field
   const $richTextArgs = $path.derive(path => getRichTextArgs({ document, fieldPath: path }))
 
   const [$value, setValue] = useFieldValue({
@@ -44,6 +44,7 @@ export function RichTextField({ document, field, $path, id }) {
       $steps,
       synchronize,
       schema,
+      plugins,
       onChange: handleChange
     }),
   )

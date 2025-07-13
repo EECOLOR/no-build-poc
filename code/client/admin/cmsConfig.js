@@ -1,8 +1,9 @@
-import { schema } from '#cms/client/form/richTextEditor/schema.js'
+import { editorConfigsWithDefaults, inject, schema, schemaWithDefaults } from '#cms/client/form/richTextEditor/schema.js'
 import { arrayObject, cmsConfig, field, listItem, pane, document } from '#cms/client/cmsConfig.js'
 import { builtInPaneTypes } from '#cms/client/desk/panes/builtInPaneTypes.js'
 import { css, tags } from '#ui/tags.js'
 import { builtInFieldTypes } from '#cms/client/form/fields/builtInFieldTypes.js'
+import { richTextConfig } from '#cms/client/form/richTextEditor/richTextConfig.js'
 
 const { div } = tags
 
@@ -43,13 +44,25 @@ export function createCmsConfig() {
             ],
           }),
           field('heroImage', 'image'),
-          field('content', 'rich-text', {
-            schema: schema({
-              nodes: {
-                custom: schema.customComponent('custom', Custom)
+          field('content', 'rich-text',
+            richTextConfig({
+              schema: schemaWithDefaults({
+                nodes: {
+                  custom: schema.customComponent('custom', Custom)
+                 }
+              }),
+              editor(schema) {
+                return editorConfigsWithDefaults(schema, [
+                  {
+                    title: 'Add custom node',
+                    shortcuts: {
+                      'Shift-Mod-5': inject(schema.nodes.custom),
+                    }
+                  }
+                ])
               }
             })
-          }),
+          ),
           field('items', 'array', {
             of: [
               arrayObject('item', {

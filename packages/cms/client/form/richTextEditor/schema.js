@@ -3,35 +3,174 @@ import { createSignal } from '#ui/signal.js'
 import { Tag } from '#ui/tags.js'
 import { Schema } from 'prosemirror-model'
 import { Plugin } from 'prosemirror-state'
+import { toggleMark, chainCommands, lift } from 'prosemirror-commands'
+import { wrapInList, liftListItem, sinkListItem, splitListItem } from 'prosemirror-schema-list'
 
-// move to RichTextEditor and use plugin with appendTransaction to assign uuid (https://discuss.prosemirror.net/t/how-i-can-attach-attribute-with-dynamic-value-when-new-paragraph-is-inserted/751/3)
-export const generateUuid = Symbol('generateUuid')
-export const nodeView = Symbol('nodeView')
+/** @import { NodeSpec, MarkSpec } from 'prosemirror-model' */
+/** @import { EditorConfig } from './richTextConfig.js' */
+
+const generateUuid = Symbol('generateUuid')
+const nodeView = Symbol('nodeView')
+
+schema.node = node
+schema.heading = heading
+schema.list = list
+schema.listItem = listItem
+schema.content = content
+schema.customComponent = customComponent
+schema.nodeViewNode = nodeViewNode
+schema.mark = mark
+schema.link = link
+schema.doc = doc
+
+export const defaultNodes = /** @type {const} */ ({
+  heading: schema.heading([1, 2, 3, 4, 5, 6]),
+  orderedList: schema.list('ol'),
+  unorderedList: schema.list('ul'),
+  listItem: schema.listItem(
+    schema.content('paragraph', 'orderedList', 'unorderedList')
+  ),
+})
+
+export const defaultMarks = /** @type {const} */ ({
+  link: schema.link(),
+  em: schema.mark('em'),
+  strong: schema.mark('strong'),
+})
 
 /**
- * @template {string} Nodes
- * @template {string} Marks
- * @param {{
- *  nodes?: { [name: string]: import('prosemirror-model').NodeSpec }
- *  marks?: { [name: string]: import('prosemirror-model').MarkSpec }
- * }} spec
+ * @param {Schema<any, keyof typeof defaultMarks>} schema
  */
-export function schema({ nodes = {}, marks = {} } = {}) {
+export function defaultMarkConfigs(schema) {
+  return /** @type {const} */ ([
+    {
+      title: 'Bold',
+      shortcuts: {
+        'Mod-b': toggleMark(schema.marks.strong)
+      }
+    },
+    {
+      title: 'Italic',
+      shortcuts: {
+        'Mod-i': toggleMark(schema.marks.em),
+      }
+    }
+  ])
+}
+
+// TODO: we probably want a typed wrapper for Schema, it's `nodes` is of type any
+/**
+ * @param {Schema<keyof typeof defaultNodes, any>} schema
+ */
+export function defaultNodeConfigs(schema) {
+
+  return /** @type {const} */ ([
+    {
+      title: 'Ordered list',
+      shortcuts: {
+        'Shift-Mod-7': chainCommands(
+          unwrapFromList(schema.nodes.orderedList),
+          wrapInList(schema.nodes.orderedList)
+        ),
+      }
+    },
+    {
+      title: 'Unordered list',
+      shortcuts: {
+        'Shift-Mod-8': chainCommands(
+          unwrapFromList(schema.nodes.unorderedList),
+          wrapInList(schema.nodes.unorderedList),
+        ),
+      }
+    },
+    {
+      title: 'Indent list item',
+      shortcuts: {
+        'Tab': sinkListItem(schema.nodes.listItem),
+      }
+    },
+    {
+      title: 'Outdent list item',
+      shortcuts: {
+        'Shift-Tab': liftListItem(schema.nodes.listItem),
+      }
+    },
+    {
+      title: 'Generic list functionality',
+      shortcuts: {
+        'Enter': function (state, dispatch) {
+          console.log('split')
+          return splitListItem(schema.nodes.listItem)(state, dispatch)
+        }
+      }
+    }
+  ])
+}
+
+/**
+ * @template {Schema} T
+ * @param {T} schema
+ * @param {Array<EditorConfig<T>>} configs
+ */
+export function editorConfigsWithDefaults(schema, configs) {
+  return [
+    ...defaultEditorConfigs(schema),
+    ...configs
+  ]
+}
+
+/**
+ * @param {Schema<keyof typeof defaultNodes, keyof typeof defaultMarks>} schema
+ */
+export function defaultEditorConfigs(schema) {
+  return [
+    ...defaultNodeConfigs(schema),
+    ...defaultMarkConfigs(schema),
+  ]
+}
+
+export const defaultSchema = schema({ nodes: defaultNodes, marks: defaultMarks })
+
+/**
+ * @template {string} [Nodes = never]
+ * @template {string} [Marks = never]
+ * @param {{
+*   nodes?: { [name in Nodes]: NodeSpec }
+*   marks?: { [name in Marks]: MarkSpec }
+* }} customSchema
+*/
+export function schemaWithDefaults(customSchema) {
+  return schema({
+    nodes: {
+      ...defaultNodes,
+      ...customSchema.nodes,
+    },
+    marks: {
+      ...defaultMarks,
+      ...customSchema.marks,
+    },
+  })
+}
+
+/**
+ * @template {string} [Nodes = never]
+ * @template {string} [Marks = never]
+ * @param {{
+ *   nodes?: { [name in Nodes]: NodeSpec }
+ *   marks?: { [name in Marks]: MarkSpec }
+ * }} customSchema
+ */
+export function schema(customSchema) {
 
   // TODO: add a handler for unknown nodes (for when content is copy pasted): https://github.com/ueberdosis/tiptap/pull/5178/files
   return new Schema({
     nodes: {
       doc: schema.doc(
-        schema.content('paragraph', 'orderedList', 'unorderedList', 'heading', 'unknown', Object.keys(nodes)),
+        schema.content('paragraph', 'unknown', Object.keys(customSchema?.nodes || {})),
       ),
       text: {},
-      paragraph: schema.node('p'),
-      heading: schema.heading([1, 2, 3, 4, 5, 6]),
-      orderedList: schema.list('ol'),
-      unorderedList: schema.list('ul'),
-      listItem: schema.listItem(
-        schema.content('paragraph', 'orderedList', 'unorderedList')
-      ),
+      paragraph: schema.node('p', { content: 'text*' }),
+      ...customSchema.nodes,
       unknown: {
         attrs: { node: {} },
         atom: true,
@@ -42,15 +181,9 @@ export function schema({ nodes = {}, marks = {} } = {}) {
         },
         parseDOM: [{ tag: '*', priority: 0 }],
       },
-
-      ...nodes,
     },
     marks: {
-      link: schema.link(),
-      em: schema.mark('em'),
-      strong: schema.mark('strong'),
-
-      ...marks,
+      ...customSchema.marks,
     }
   })
 }
@@ -67,7 +200,7 @@ createUuidPlugin.isNeededFor = function isNeededFor(schema) {
 }
 
 function createUuidPlugin(schema) {
-  /** @type {Map<import('prosemirror-model').NodeSpec, { attributeName: string }>} */
+  /** @type {Map<NodeSpec, { attributeName: string }>} */
   const targetTypes = new Map(getApplicableEntries(schema.nodes)) // get from schema
   return new Plugin({
     appendTransaction(transactions, prevState, nextState) {
@@ -110,22 +243,31 @@ function createUuidPlugin(schema) {
 }
 
 export function extractNodeViews(schema) {
-  // TODO: fill in
+  return Object.fromEntries(
+    Object.entries(schema.nodes).map(([name, node]) =>
+      [name, node.spec[nodeView]] // https://github.com/ProseMirror/prosemirror-model/commit/c8c7b62645d2a8293fa6b7f52aa2b04a97821f34#r148502417
+    )                             // if link does not jump (https://github.com/orgs/community/discussions/139005#discussioncomment-11092579)
+  )                               // src/schema.ts line 432
 }
 
 /**
  * @param {string} tag
- * @param {Partial<import('prosemirror-model').NodeSpec>} [spec]
+ * @param {Exclude<NodeSpec, 'toDOM' | 'parseDOM'>} spec
+ * @returns {NodeSpec}
  */
- schema.node = function node(tag, spec) {
-  return schema.tag(tag, { content: 'text*', ...spec })
+ function node(tag, spec) {
+  return {
+    toDOM() { return /** @const */ ([tag, 0]) },
+    parseDOM: [{ tag }],
+    ...spec,
+  }
 }
 
 /**
  * @param {Array<number>} variants
- * @param {import('prosemirror-model').NodeSpec} [spec]
+ * @param {NodeSpec} [spec]
  */
-schema.heading = function heading(variants = [1, 2, 3, 4, 5, 6], spec) {
+function heading(variants = [1, 2, 3, 4, 5, 6], spec) {
   return {
     content: 'text*',
     defining: true,
@@ -138,29 +280,29 @@ schema.heading = function heading(variants = [1, 2, 3, 4, 5, 6], spec) {
 
 /**
  * @param {'ol' | 'ul'} type
- * @param {Partial<import('prosemirror-model').NodeSpec>} [spec]
+ * @param {Partial<NodeSpec>} [spec]
  */
-schema.list = function list(type, spec) {
+function list(type, spec) {
   return schema.node(type, { content: 'listItem+', ...spec })
 }
 
 /**
  * @param {string} content
- * @param {Partial<import('prosemirror-model').NodeSpec>} [spec]
- */
-schema.listItem = function listItem(content, spec) {
+ * @param {Partial<NodeSpec>} [spec]
+*/
+function listItem(content, spec) {
   return schema.node('li', { content, ...spec })
 }
 
-schema.content = function content(...nodeTypes) {
+function content(...nodeTypes) {
   return `(${nodeTypes.flat().join(' | ')})+`
 }
 
 /**
  * @param {string} name
- * @param {({ id: string, $selected }) => Tag<any>} Component
+ * @param {(props: { id: string, $selected }) => Tag<any>} Component
  */
-schema.customComponent = function createCustomNodeView(name, Component) {
+function customComponent(name, Component) {
   return schema.nodeViewNode(name, node => {
     const [$selected, setSelected] = createSignal(false)
 
@@ -183,7 +325,7 @@ schema.customComponent = function createCustomNodeView(name, Component) {
  * @param {string} name
  * @param {import('prosemirror-view').NodeViewConstructor} nodeViewConstructor
  */
-schema.nodeViewNode = function(name, nodeViewConstructor) {
+function nodeViewNode(name, nodeViewConstructor) {
   // TODO: if you place more blocks directly after each other, you can no longer place cursor in between
   return {
     atom: true,
@@ -203,27 +345,18 @@ schema.nodeViewNode = function(name, nodeViewConstructor) {
 }
 
 /**
- * @template {import('prosemirror-model').MarkSpec | import('prosemirror-model').NodeSpec} T
  * @param {string} tag
- * @param {T} [spec]
- */
-schema.tag = function tag(tag, spec) {
+ * @param {MarkSpec} [spec]
+*/
+function mark(tag, spec) {
   return {
-    toDOM() { return [tag, 0] },
+    toDOM() { return /** @type const */ ([tag, 0]) },
     parseDOM: [{ tag }],
     ...spec,
   }
 }
 
-/**
- * @param {string} tag
- * @param {import('prosemirror-model').MarkSpec} [spec]
- */
-schema.mark = function mark(tag, spec) {
-  return schema.tag(tag, spec)
-}
-
-schema.link = function link(spec) {
+function link(spec) {
   return {
     inclusive: false,
 
@@ -236,12 +369,39 @@ schema.link = function link(spec) {
   }
 }
 
-schema.doc = function doc(content) {
+/**
+ * @param {string} content
+ */
+function doc(content) {
   return {
     content,
     attrs: {
       version: { default: 0 },
       lastEditClientId: { default: '' },
     },
+  }
+}
+
+// TODO: move to generic utils / machinery
+function unwrapFromList(nodeType) {
+  return (state, dispatch, view) => {
+    const {$from, $to} = state.selection
+    const range = $from.blockRange($to, node => node.type === nodeType)
+    if (!range) return false
+
+    return lift(state, dispatch, view)
+  }
+}
+
+// TODO: move to generic utils / machinery
+export function inject(nodeType) {
+  return (state, dispatch, view) => {
+    if (dispatch)
+      dispatch(
+        state.tr.replaceSelectionWith(
+          nodeType.create(null, [nodeType.schema.text('[this text can be edited]')])
+        )
+      )
+    return true
   }
 }
