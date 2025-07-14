@@ -56,13 +56,13 @@ export function RichTextEditor({ id, initialValue, $steps, synchronize, onChange
 
   const allPlugins = [
     history(),
+    collab.collab({ version: initialValue.attrs.version, clientID: context.clientId }),
     keymap({
       'Mod-z': undo,
       'Shift-Mod-z': redo,
     }),
     ...plugins,
     keymap(baseKeymap),
-    collab.collab({ version: initialValue.attrs.version, clientID: context.clientId }),
     ...schemaPlugins(schema),
   ]
   const view = new EditorView(null, {
@@ -80,7 +80,6 @@ export function RichTextEditor({ id, initialValue, $steps, synchronize, onChange
       //     }))
       //   })
 
-      // TODO: history is broken (CTRL + Z), when we comment out the code below it does work
       const stepsWereSent = tryToSynchronize(view)
       if (transaction.docChanged && !stepsWereSent && newState.doc.attrs.lastEditClientId === context.clientId) {
         onChange(view.state.doc)
@@ -90,6 +89,7 @@ export function RichTextEditor({ id, initialValue, $steps, synchronize, onChange
   })
   const unsubscribe = $steps.subscribe(({ steps, clientIds, version }) => { // TODO: rename version to sessionVersion
     const tr = collab.receiveTransaction(view.state, steps, clientIds, { mapSelectionBackward: true })
+    tr.setMeta('addToHistory', false)
     tr.setDocAttribute('version', version)
     const [lastEditClientId] = clientIds.slice(-1)
     if (lastEditClientId) {
