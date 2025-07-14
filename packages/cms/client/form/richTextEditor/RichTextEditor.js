@@ -56,8 +56,12 @@ export function RichTextEditor({ id, initialValue, $steps, synchronize, onChange
 
   const allPlugins = [
     history(),
+    keymap({
+      'Mod-z': undo,
+      'Shift-Mod-z': redo,
+    }),
     ...plugins,
-    ...createBaseKeymaps(),
+    keymap(baseKeymap),
     collab.collab({ version: initialValue.attrs.version, clientID: context.clientId }),
     ...schemaPlugins(schema),
   ]
@@ -75,6 +79,8 @@ export function RichTextEditor({ id, initialValue, $steps, synchronize, onChange
       //       invert: x.invert(docBeforeChange).toJSON()
       //     }))
       //   })
+
+      // TODO: history is broken (CTRL + Z), when we comment out the code below it does work
       const stepsWereSent = tryToSynchronize(view)
       if (transaction.docChanged && !stepsWereSent && newState.doc.attrs.lastEditClientId === context.clientId) {
         onChange(view.state.doc)
@@ -199,14 +205,4 @@ RichTextEditor.stepToJson = function stepToJson(step) {
 RichTextEditor.stepFromJson = function stepFromJson(schema, json) {
   if (!json) return json
   return Step.fromJSON(schema, json)
-}
-
-function createBaseKeymaps() {
-  return [
-    keymap({
-      'Mod-z': undo,
-      'Shift-Mod-z': redo,
-    }),
-    keymap(baseKeymap),
-  ]
 }

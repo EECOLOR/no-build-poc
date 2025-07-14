@@ -5,18 +5,29 @@ import { useCombined } from '#ui/hooks.js'
 import { RichTextEditor } from '../richTextEditor/RichTextEditor.js'
 import { useConditionalDerive, useFieldValue } from './useFieldValue.js'
 import { DOMSerializer, Schema as ProsemirrorSchema } from 'prosemirror-model'
-import { tags } from '#ui/tags.js'
+import { Plugin as ProsemirrorPlugin, EditorState } from 'prosemirror-state'
+import { EditorView } from 'prosemirror-view'
+import { css, tags } from '#ui/tags.js'
+import { Signal } from '#ui/signal.js'
+/** @import { EditorConfig } from '../richTextEditor/richTextConfig.js' */
 
-const { div } = tags
+const { div, span } = tags
 
 /**
+ * @template {ProsemirrorSchema} T
  * @typedef {{
- *   schema: ProsemirrorSchema,
+ *   schema: T,
+ *   createPlugins(): {
+ *     $editorViewState: Signal<{ view: EditorView, state: EditorState }>,
+ *     plugins: Array<ProsemirrorPlugin>,
+ *   },
+ *   configs: Array<EditorConfig<T>>,
  * }} RichTextFieldConfig
  */
 
+/** @param {{ document, field: RichTextFieldConfig<any>, $path, id }} props */
 export function RichTextField({ document, field, $path, id }) {
-  const { schema, plugins, MenuItems } = field
+  const { schema, createPlugins, configs } = field
   const $richTextArgs = $path.derive(path => getRichTextArgs({ document, fieldPath: path }))
 
   const [$value, setValue] = useFieldValue({
@@ -38,11 +49,13 @@ export function RichTextField({ document, field, $path, id }) {
 
   const $initialValue = useInitialValue($value, $steps)
 
+  const { plugins, $editorViewState } = createPlugins()
+
   // This might be an interesting performance optimization if that is needed:
   // https://discuss.prosemirror.net/t/current-state-of-the-art-on-syncing-data-to-backend/5175/4
   return renderOnValue($initialValue, initialValue =>
-    div(
-      MenuItems(),
+    div({ className: 'RichTextField' },
+      MenuBar({ $editorViewState, configs }),
       RichTextEditor({
         id,
         initialValue: RichTextEditor.fromJson(schema, initialValue),
@@ -132,4 +145,44 @@ function useInitialValue($fieldValue, $steps) {
   )
 
   return $stableAlignedDocumentAndSteps
+}
+
+MenuBar.style = css`
+  display: flex;
+  gap: var(--default-gap);
+`
+function MenuBar({ $editorViewState, configs }) {
+  const markConfigs = configs.filter(config => config.mark)
+
+  return div({ className: 'MenuBar', css: MenuBar.style },
+    markConfigs.map(config =>
+      Mark({ $editorViewState, config })
+    )
+  )
+}
+
+/**
+ * @template {ProsemirrorSchema} T
+ * @param {{ $editorViewState: Signal<{ view: EditorView, state: EditorState }>, config: EditorConfig<T> }} props
+ */
+function Mark({ $editorViewState, config }) {
+  const $active = $editorViewState.derive(({ state }) => {
+    if (!state)
+      return false
+
+    const { from, $from, to, empty } = state.selection
+    return empty
+      ? Boolean(config.mark.isInSet(state.storedMarks || $from.marks()))
+      : state.doc.rangeHasMark(from, to, config.mark)
+  })
+  return span({ className: 'Mark' },
+    config.Component({
+      config,
+      $active,
+      onClick() {
+        const { state, view } = $editorViewState.get()
+        config.command(state, view.dispatch, view)
+        view.focus()
+      }
+    }))
 }

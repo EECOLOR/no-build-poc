@@ -1,10 +1,11 @@
 import { render } from '#ui/render/clientRenderer.js'
 import { createSignal } from '#ui/signal.js'
-import { Tag } from '#ui/tags.js'
+import { css, Tag, cx } from '#ui/tags.js'
 import { Schema } from 'prosemirror-model'
 import { Plugin } from 'prosemirror-state'
 import { toggleMark, chainCommands, lift } from 'prosemirror-commands'
 import { wrapInList, liftListItem, sinkListItem, splitListItem } from 'prosemirror-schema-list'
+import { Button } from '#cms/client/ui/Button.js'
 
 /** @import { NodeSpec, MarkSpec } from 'prosemirror-model' */
 /** @import { EditorConfig } from './richTextConfig.js' */
@@ -48,12 +49,14 @@ export function defaultMarkConfigs(schema) {
       mark: schema.marks.strong,
       command: toggleMark(schema.marks.strong),
       shortcut: 'Mod-b',
+      Component: MarkStrong,
     },
     {
       title: 'Italic',
       mark: schema.marks.em,
       command: toggleMark(schema.marks.em),
       shortcut: 'Mod-i',
+      Component: MarkEm,
     }
   ])
 }
@@ -396,4 +399,36 @@ export function inject(nodeType) {
       )
     return true
   }
+}
+
+MarkStrong.style = css`
+  font-weight: bold;
+`
+function MarkStrong({ config, $active, onClick }) {
+  return Mark({ label: 'B', css: MarkStrong.style, config, $active, onClick })
+}
+
+MarkEm.style = css`
+  font-style: italic;
+`
+function MarkEm({ config, $active, onClick }) {
+  return Mark({ label: 'I', css: MarkEm.style, config, $active, onClick })
+}
+
+Mark.style = css`
+  min-width: 2em;
+  &.active {
+    background-color: gainsboro;
+  }
+`
+function Mark({ label, css, config, $active, onClick }) {
+  return Button(
+    {
+      css: [Mark.style, css],
+      className: cx('Mark', $active.derive(active => active && 'active')),
+      onClick,
+      label,
+      title: config.title,
+    },
+  )
 }

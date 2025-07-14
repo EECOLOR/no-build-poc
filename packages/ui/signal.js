@@ -142,7 +142,7 @@ export function createSignal(initialValue, isEqual = defaultIsEqual) {
  * @param {(value: T) => X} deriveValue
  * @returns {Signal<X>}
  */
-function derived(signal, deriveValue) {
+export function derived(signal, deriveValue) {
   const e = new Error()
 
   const derivedSignal = {
