@@ -17,7 +17,12 @@ import { Plugin } from 'prosemirror-state'
  *   action?: Action<T>,
  *   command: Command,
  *   shortcut?: string,
- *   Component?: (props: { config:EditorConfig<T>, $active: Signal<boolean>, onClick: () => void }) => any,
+ *   Component?: (props: {
+ *     config:EditorConfig<T>,
+ *     $active: Signal<boolean>,
+ *     $enabled: Signal<boolean>,
+ *     onClick: () => void
+ *   }) => any,
  * }} EditorConfig
  */
 

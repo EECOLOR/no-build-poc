@@ -166,23 +166,32 @@ function MenuBar({ $editorViewState, configs }) {
  * @param {{ $editorViewState: Signal<{ view: EditorView, state: EditorState }>, config: EditorConfig<T> }} props
  */
 function Mark({ $editorViewState, config }) {
-  const $active = $editorViewState.derive(({ state }) => {
-    if (!state)
-      return false
-
-    const { from, $from, to, empty } = state.selection
-    return empty
-      ? Boolean(config.mark.isInSet(state.storedMarks || $from.marks()))
-      : state.doc.rangeHasMark(from, to, config.mark)
-  })
+  const $active = $editorViewState.derive(({ state }) => isMarkActive(state, config))
+  const $enabled = $editorViewState.derive(({ state }) => config.command(state))
   return span({ className: 'Mark' },
     config.Component({
       config,
       $active,
+      $enabled,
       onClick() {
         const { state, view } = $editorViewState.get()
         config.command(state, view.dispatch, view)
         view.focus()
       }
     }))
+}
+
+/**
+ * @template {ProsemirrorSchema} T
+ * @param {EditorState} state
+ * @param {EditorConfig<T>} config
+ */
+function isMarkActive(state, config) {
+  if (!state)
+    return false
+
+  const { from, $from, to, empty } = state.selection
+  return empty
+    ? Boolean(config.mark.isInSet(state.storedMarks || $from.marks()))
+    : state.doc.rangeHasMark(from, to, config.mark)
 }

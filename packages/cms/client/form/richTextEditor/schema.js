@@ -404,15 +404,15 @@ export function inject(nodeType) {
 MarkStrong.style = css`
   font-weight: bold;
 `
-function MarkStrong({ config, $active, onClick }) {
-  return Mark({ label: 'B', css: MarkStrong.style, config, $active, onClick })
+function MarkStrong({ config, $enabled, $active, onClick }) {
+  return Mark({ label: 'B', css: MarkStrong.style, config, $enabled, $active, onClick })
 }
 
 MarkEm.style = css`
   font-style: italic;
 `
-function MarkEm({ config, $active, onClick }) {
-  return Mark({ label: 'I', css: MarkEm.style, config, $active, onClick })
+function MarkEm({ config, $enabled, $active, onClick }) {
+  return Mark({ label: 'I', css: MarkEm.style, config, $enabled, $active, onClick })
 }
 
 Mark.style = css`
@@ -421,13 +421,14 @@ Mark.style = css`
     background-color: gainsboro;
   }
 `
-function Mark({ label, css, config, $active, onClick }) {
+function Mark({ label, css, config, $enabled, $active, onClick }) {
   return Button(
     {
       css: [Mark.style, css],
       className: cx('Mark', $active.derive(active => active && 'active')),
       onClick,
       label,
+      disabled: $enabled.derive(x => !x),
       title: config.title,
     },
   )
