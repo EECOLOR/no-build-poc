@@ -1,6 +1,6 @@
 /** @import { Attributes } from '#ui/tags.js' */
 
-import { arrowDown, arrowUp, chevronLeft, chevronRight, chevronUp, plus, trash } from '#cms/client/ui/icons.js'
+import { arrowDown, arrowUp, chevronLeft, chevronRight, chevronUp, indent, listOl, listUl, outdent, plus, trash } from '#cms/client/ui/icons.js'
 import { tags, css, Tag } from '#ui/tags.js'
 import { withIcon } from './icon.js'
 
@@ -14,6 +14,10 @@ export const ButtonChevron = createIconButton(chevronUp)
 export const ButtonChevronRight = createIconButton(chevronRight)
 export const ButtonChevronLeft = createIconButton(chevronLeft)
 export const ButtonClose = createIconButton(plus, { rotation: 45 })
+export const ButtonListUl = createIconButton(listUl)
+export const ButtonListOl = createIconButton(listOl)
+export const ButtonIndent = createIconButton(indent)
+export const ButtonOutdent = createIconButton(outdent)
 
 Button.style = css`
   padding: 0.25rem;

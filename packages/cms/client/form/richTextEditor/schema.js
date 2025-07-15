@@ -5,7 +5,7 @@ import { Schema } from 'prosemirror-model'
 import { Plugin } from 'prosemirror-state'
 import { toggleMark, chainCommands, lift } from 'prosemirror-commands'
 import { wrapInList, liftListItem, sinkListItem, splitListItem } from 'prosemirror-schema-list'
-import { Button } from '#cms/client/ui/Button.js'
+import { Button, ButtonIndent, ButtonListOl, ButtonListUl, ButtonOutdent } from '#cms/client/ui/Button.js'
 
 /** @import { NodeSpec, MarkSpec } from 'prosemirror-model' */
 /** @import { EditorConfig } from './richTextConfig.js' */
@@ -45,15 +45,17 @@ export const defaultMarks = /** @type {const} */ ({
 export function defaultMarkConfigs(schema) {
   return /** @type {const} */ ([
     {
-      title: 'Bold',
+      type: 'mark',
       mark: schema.marks.strong,
+      title: 'Bold',
       command: toggleMark(schema.marks.strong),
       shortcut: 'Mod-b',
       Component: MarkStrong,
     },
     {
-      title: 'Italic',
+      type: 'mark',
       mark: schema.marks.em,
+      title: 'Italic',
       command: toggleMark(schema.marks.em),
       shortcut: 'Mod-i',
       Component: MarkEm,
@@ -69,32 +71,46 @@ export function defaultNodeConfigs(schema) {
 
   return /** @type {const} */ ([
     {
+      type: 'node',
+      node: schema.nodes.orderedList,
       title: 'Ordered list',
       command: chainCommands(
         unwrapFromList(schema.nodes.orderedList),
         wrapInList(schema.nodes.orderedList)
       ),
       shortcut: 'Shift-Mod-7',
+      Component: OrderedList,
     },
     {
+      type: 'node',
+      node: schema.nodes.unorderedList,
       title: 'Unordered list',
       command: chainCommands(
         unwrapFromList(schema.nodes.unorderedList),
         wrapInList(schema.nodes.unorderedList),
       ),
       shortcut: 'Shift-Mod-8',
+      Component: UnorderedList,
     },
     {
-      title: 'Indent list item',
-      command: sinkListItem(schema.nodes.listItem),
-      shortcut: 'Tab',
-    },
-    {
+      type: 'node',
+      node: schema.nodes.listItem,
       title: 'Outdent list item',
       command: liftListItem(schema.nodes.listItem),
       shortcut: 'Shift-Tab',
+      Component: Outdent,
     },
     {
+      type: 'node',
+      node: schema.nodes.listItem,
+      title: 'Indent list item',
+      command: sinkListItem(schema.nodes.listItem),
+      shortcut: 'Tab',
+      Component: Indent,
+    },
+    {
+      type: 'node',
+      node: schema.nodes.listItem,
       title: 'Generic list functionality',
       command: splitListItem(schema.nodes.listItem),
       shortcut: 'Enter',
@@ -416,7 +432,8 @@ function MarkEm({ config, $enabled, $active, onClick }) {
 }
 
 Mark.style = css`
-  min-width: 2em;
+  width: 2em;
+  height: 2em;
   &.active {
     background-color: gainsboro;
   }
@@ -428,6 +445,49 @@ function Mark({ label, css, config, $enabled, $active, onClick }) {
       className: cx('Mark', $active.derive(active => active && 'active')),
       onClick,
       label,
+      disabled: $enabled.derive(x => !x),
+      title: config.title,
+    },
+  )
+}
+
+// TODO: combine with Mark as a MenuButton
+OrderedList.style = css`
+  --width: 2em;
+  --height: 2em;
+  &.active {
+    background-color: gainsboro;
+  }
+`
+function OrderedList({ config, $enabled, $active, onClick }) {
+  return IconButton({ button: ButtonListOl, config, $enabled, $active, onClick })
+}
+
+function UnorderedList({ config, $enabled, $active, onClick }) {
+  return IconButton({ button: ButtonListUl, config, $enabled, $active, onClick })
+}
+
+function Indent({ config, $enabled, $active, onClick }) {
+  return IconButton({ button: ButtonIndent, config, $enabled, onClick })
+}
+
+function Outdent({ config, $enabled, $active, onClick }) {
+  return IconButton({ button: ButtonOutdent, config, $enabled, onClick })
+}
+
+IconButton.style = css`
+  --width: 2em;
+  --height: 2em;
+  &.active {
+    background-color: gainsboro;
+  }
+`
+function IconButton({ button, config, $enabled, $active = undefined, onClick }) {
+  return button(
+    {
+      css: IconButton.style,
+      className: cx('IconButton', $active?.derive(active => active && 'active')),
+      onClick,
       disabled: $enabled.derive(x => !x),
       title: config.title,
     },

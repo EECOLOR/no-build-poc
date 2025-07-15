@@ -1,7 +1,7 @@
 import { createSignal, Signal } from '#ui/signal.js'
 import { keymap } from 'prosemirror-keymap'
 import { Plugin } from 'prosemirror-state'
-/** @import { Schema, MarkType } from 'prosemirror-model' */
+/** @import { Schema, MarkType, NodeType } from 'prosemirror-model' */
 /** @import { Command } from 'prosemirror-state' */
 
 /**
@@ -9,12 +9,16 @@ import { Plugin } from 'prosemirror-state'
  * @typedef {(schema: T) => Array<EditorConfig<T>>} EditorConfigConstructor
  */
 
+// TODO: move types to a .ts file
+/**
+ * @template {Schema} T
+ * @typedef {EditorConfigMark<T> | EditorConfigNode<T>} EditorConfig
+ */
+
 /**
  * @template {Schema} T
  * @typedef {{
  *   title: string,
- *   mark?: MarkType,
- *   action?: Action<T>,
  *   command: Command,
  *   shortcut?: string,
  *   Component?: (props: {
@@ -23,15 +27,23 @@ import { Plugin } from 'prosemirror-state'
  *     $enabled: Signal<boolean>,
  *     onClick: () => void
  *   }) => any,
- * }} EditorConfig
+ * }} EditorConfigBase
  */
 
-// Actions as menu items can be implemented using a plugin
 /**
  * @template {Schema} T
- * @typedef {{
- *   render(props: { title: string, onClick: () => void }): any
- * }} Action
+ * @typedef {EditorConfigBase<T> & {
+ *   type: 'mark',
+ *   mark: MarkType,
+ * }} EditorConfigMark
+ */
+
+/**
+ * @template {Schema} T
+ * @typedef {EditorConfigBase<T> & {
+ *   type: 'node',
+ *   node: NodeType,
+ * }} EditorConfigNode
  */
 
 /**

@@ -5,11 +5,11 @@ import { useCombined } from '#ui/hooks.js'
 import { RichTextEditor } from '../richTextEditor/RichTextEditor.js'
 import { useConditionalDerive, useFieldValue } from './useFieldValue.js'
 import { DOMSerializer, Schema as ProsemirrorSchema } from 'prosemirror-model'
-import { Plugin as ProsemirrorPlugin, EditorState } from 'prosemirror-state'
+import { Plugin as ProsemirrorPlugin, EditorState, NodeSelection } from 'prosemirror-state'
 import { EditorView } from 'prosemirror-view'
 import { css, tags } from '#ui/tags.js'
 import { Signal } from '#ui/signal.js'
-/** @import { EditorConfig } from '../richTextEditor/richTextConfig.js' */
+/** @import { EditorConfig, EditorConfigMark, EditorConfigNode } from '../richTextEditor/richTextConfig.js' */
 
 const { div, span } = tags
 
@@ -151,19 +151,33 @@ MenuBar.style = css`
   display: flex;
   gap: var(--default-gap);
 `
+/**
+ * @template {ProsemirrorSchema} T
+ * @param {{
+ *   $editorViewState: Signal<{ view: EditorView, state: EditorState }>,
+ *   configs: Array<EditorConfig<T>>
+ * }} props
+ */
 function MenuBar({ $editorViewState, configs }) {
-  const markConfigs = configs.filter(config => config.mark)
-
   return div({ className: 'MenuBar', css: MenuBar.style },
-    markConfigs.map(config =>
-      Mark({ $editorViewState, config })
-    )
+    configs
+      .filter(config => config.Component)
+      .map(config => {
+        switch (config.type) {
+          case 'mark':
+            return Mark({ $editorViewState, config })
+          case 'node':
+            return Node({ $editorViewState, config })
+          default:
+            throw new Error(`Do not know how to render a menu item with type '${config.type}'`)
+        }
+      })
   )
 }
 
 /**
  * @template {ProsemirrorSchema} T
- * @param {{ $editorViewState: Signal<{ view: EditorView, state: EditorState }>, config: EditorConfig<T> }} props
+ * @param {{ $editorViewState: Signal<{ view: EditorView, state: EditorState }>, config: EditorConfigMark<T> }} props
  */
 function Mark({ $editorViewState, config }) {
   const $active = $editorViewState.derive(({ state }) => isMarkActive(state, config))
@@ -178,13 +192,31 @@ function Mark({ $editorViewState, config }) {
         config.command(state, view.dispatch, view)
         view.focus()
       }
-    }))
+    })
+  )
+}
+
+function Node({ $editorViewState, config }) {
+  const $active = $editorViewState.derive(({ state }) => isNodeActive(state, config))
+  const $enabled = $editorViewState.derive(({ state }) => config.command(state))
+  return span({ className: 'Node' },
+    config.Component({
+      config,
+      $active,
+      $enabled,
+      onClick() {
+        const { state, view } = $editorViewState.get()
+        config.command(state, view.dispatch, view)
+        view.focus()
+      }
+    })
+  )
 }
 
 /**
  * @template {ProsemirrorSchema} T
  * @param {EditorState} state
- * @param {EditorConfig<T>} config
+ * @param {EditorConfigMark<T>} config
  */
 function isMarkActive(state, config) {
   if (!state)
@@ -194,4 +226,17 @@ function isMarkActive(state, config) {
   return empty
     ? Boolean(config.mark.isInSet(state.storedMarks || $from.marks()))
     : state.doc.rangeHasMark(from, to, config.mark)
+}
+
+/**
+ * @template {ProsemirrorSchema} T
+ * @param {EditorState} state
+ * @param {EditorConfigNode<T>} config
+ */
+function isNodeActive(state, config) {
+  if (!state)
+    return false
+
+  const { $from, $to } = state.selection
+  return Boolean($from.blockRange($to, node => node.type === config.node))
 }

@@ -1,6 +1,6 @@
 import { Signal } from '#ui/signal.js'
 import { useStyle } from '#ui/styles/shared.js'
-import { tags, css } from '#ui/tags.js'
+import { tags, css, cx } from '#ui/tags.js'
 import { separatePropsAndChildren } from '#ui/utils.js'
 
 /**
@@ -60,7 +60,7 @@ function Icon(icon, { rotation }, element, ...params) {
   return element(
     {
       ...props,
-      className: iconClassName,
+      className: cx(props?.className, iconClassName),
       style: {
         ...props?.style,
         '--rotation': map(rotation, x => `${x}deg`)
