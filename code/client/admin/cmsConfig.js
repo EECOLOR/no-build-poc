@@ -54,10 +54,11 @@ export function createCmsConfig() {
               editor(schema) {
                 return editorConfigsWithDefaults(schema, [
                   {
+                    type: 'node',
+                    node: schema.nodes.custom,
                     title: 'Add custom node',
-                    shortcuts: {
-                      'Shift-Mod-5': inject(schema.nodes.custom),
-                    }
+                    shortcut: 'Shift-Mod-5',
+                    command: inject(schema.nodes.custom),
                   }
                 ])
               }

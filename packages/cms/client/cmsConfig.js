@@ -61,9 +61,11 @@ export function field(name, type, ...typeParams) {
   return { ...defaults(type), ...props, title: props?.title ?? capitalize(name), type, name }
 }
 
+// TODO: this is a more correct version than the previous one, but the return types do not work, seems typescript has changed because the previous one does not work anymore
 /**
+ * @template T
  * @param {DocumentSchema.FieldTypes} type
- * @returns {AsReturnType<DocumentSchema.FieldConfig<typeof type>>}
+ * @returns {AsReturnType<DocumentSchema.FieldConfig<T>>}
  */
 function defaults(type) {
   switch (type) {

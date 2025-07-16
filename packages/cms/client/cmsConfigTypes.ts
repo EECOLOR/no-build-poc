@@ -83,14 +83,13 @@ export type Simplify<T> =
     ) :
   T
 
-  export type DeepRequired<T> =
-
+export type DeepRequired<T> =
   T extends object ?
     (T extends infer O
         ? { [K in keyof O]-?: DeepRequired<O[K]> }
         : never
-    )
-  : T
+    ) :
+  T
 
 export type AsReturnType<T> = Simplify<DeepRequired<T>>
 

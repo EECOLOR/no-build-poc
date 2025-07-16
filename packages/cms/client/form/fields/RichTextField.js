@@ -161,13 +161,15 @@ MenuBar.style = css`
 function MenuBar({ $editorViewState, configs }) {
   return div({ className: 'MenuBar', css: MenuBar.style },
     configs
-      .filter(config => config.Component)
+      .filter(config => config.type === 'group' || config.Component)
       .map(config => {
         switch (config.type) {
           case 'mark':
             return Mark({ $editorViewState, config })
           case 'node':
             return Node({ $editorViewState, config })
+          case 'group':
+            return Group({ $editorViewState, config })
           default:
             throw new Error(`Do not know how to render a menu item with type '${config.type}'`)
         }
@@ -210,6 +212,13 @@ function Node({ $editorViewState, config }) {
         view.focus()
       }
     })
+  )
+}
+
+function Group({ $editorViewState, config }) {
+  return div(
+    div(config.title),
+    MenuBar({ $editorViewState, configs: config.items })
   )
 }
 

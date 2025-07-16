@@ -3,7 +3,7 @@ import { createSignal } from '#ui/signal.js'
 import { css, Tag, cx } from '#ui/tags.js'
 import { Schema } from 'prosemirror-model'
 import { Plugin } from 'prosemirror-state'
-import { toggleMark, chainCommands, lift } from 'prosemirror-commands'
+import { toggleMark, chainCommands, lift, setBlockType } from 'prosemirror-commands'
 import { wrapInList, liftListItem, sinkListItem, splitListItem } from 'prosemirror-schema-list'
 import { Button, ButtonIndent, ButtonListOl, ButtonListUl, ButtonOutdent } from '#cms/client/ui/Button.js'
 
@@ -63,13 +63,30 @@ export function defaultMarkConfigs(schema) {
   ])
 }
 
-// TODO: we probably want a typed wrapper for Schema, it's `nodes` is of type any
+// TODO: we probably want a typed wrapper for Schema, it's `nodes` is of type any <- this is not allways the case
+// TODO: we probably want a typed wrapper for NodeType in nodes of schema, it would be nice to have type completion for attributes
 /**
  * @param {Schema<keyof typeof defaultNodes, any>} schema
  */
 export function defaultNodeConfigs(schema) {
 
   return /** @type {const} */ ([
+    {
+      type: 'group',
+      title: 'Style',
+      items: Array.from(Array(3), (_, i) => {
+        const h = i + 2
+        return /** @type {const} */ ({
+          type: 'node',
+          node: schema.nodes.heading,
+          command: setBlockType(schema.nodes.heading, { level: h }),
+          title: `H${h}`,
+          Component: function H({ config, $enabled, $active, onClick }) {
+            return Mark({ label: `h${h}`, css: ``, config, $enabled, $active, onClick })
+          },
+        })
+      })
+    },
     {
       type: 'node',
       node: schema.nodes.orderedList,

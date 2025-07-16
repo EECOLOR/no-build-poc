@@ -12,7 +12,7 @@ import { Plugin } from 'prosemirror-state'
 // TODO: move types to a .ts file
 /**
  * @template {Schema} T
- * @typedef {EditorConfigMark<T> | EditorConfigNode<T>} EditorConfig
+ * @typedef {EditorConfigMark<T> | EditorConfigNode<T> | EditorConfigGroup<T>} EditorConfig
  */
 
 /**
@@ -45,6 +45,15 @@ import { Plugin } from 'prosemirror-state'
  *   node: NodeType,
  * }} EditorConfigNode
  */
+
+/**
+ * @template {Schema} T
+ * @typedef {{
+ *   type: 'group',
+ *   title: string,
+ *   items: Array<Exclude<EditorConfig<T>, EditorConfigGroup<T>>>,
+ * }} EditorConfigGroup
+*/
 
 /**
  * @template {Schema} T
