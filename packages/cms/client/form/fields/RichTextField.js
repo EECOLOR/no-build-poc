@@ -157,23 +157,10 @@ MenuBar.style = css`
  *   $editorViewState: Signal<{ view: EditorView, state: EditorState }>,
  *   configs: Array<EditorConfig<T>>
  * }} props
- */
+*/
 function MenuBar({ $editorViewState, configs }) {
   return div({ className: 'MenuBar', css: MenuBar.style },
-    configs
-      .filter(config => config.type === 'group' || config.Component)
-      .map(config => {
-        switch (config.type) {
-          case 'mark':
-            return Mark({ $editorViewState, config })
-          case 'node':
-            return Node({ $editorViewState, config })
-          case 'group':
-            return Group({ $editorViewState, config })
-          default:
-            throw new Error(`Do not know how to render a menu item with type '${config.type}'`)
-        }
-      })
+    configs.filter(canRenderItem).map(createRenderItem($editorViewState))
   )
 }
 
@@ -182,7 +169,7 @@ function MenuBar({ $editorViewState, configs }) {
  * @param {{ $editorViewState: Signal<{ view: EditorView, state: EditorState }>, config: EditorConfigMark<T> }} props
  */
 function Mark({ $editorViewState, config }) {
-  const $active = $editorViewState.derive(({ state }) => isMarkActive(state, config))
+  const $active = $editorViewState.derive(({ state }) => Boolean(state) && config.isActive(state))
   const $enabled = $editorViewState.derive(({ state }) => config.command(state))
   return span({ className: 'Mark' },
     config.Component({
@@ -199,7 +186,7 @@ function Mark({ $editorViewState, config }) {
 }
 
 function Node({ $editorViewState, config }) {
-  const $active = $editorViewState.derive(({ state }) => isNodeActive(state, config))
+  const $active = $editorViewState.derive(({ state }) => Boolean(state) && config.isActive(state))
   const $enabled = $editorViewState.derive(({ state }) => config.command(state))
   return span({ className: 'Node' },
     config.Component({
@@ -217,35 +204,25 @@ function Node({ $editorViewState, config }) {
 
 function Group({ $editorViewState, config }) {
   return div(
-    div(config.title),
-    MenuBar({ $editorViewState, configs: config.items })
+    config.Component({ config, canRenderItem, renderItem: createRenderItem($editorViewState) })
   )
 }
 
-/**
- * @template {ProsemirrorSchema} T
- * @param {EditorState} state
- * @param {EditorConfigMark<T>} config
- */
-function isMarkActive(state, config) {
-  if (!state)
-    return false
-
-  const { from, $from, to, empty } = state.selection
-  return empty
-    ? Boolean(config.mark.isInSet(state.storedMarks || $from.marks()))
-    : state.doc.rangeHasMark(from, to, config.mark)
+function canRenderItem(item) {
+  return Boolean(item.Component)
 }
 
-/**
- * @template {ProsemirrorSchema} T
- * @param {EditorState} state
- * @param {EditorConfigNode<T>} config
- */
-function isNodeActive(state, config) {
-  if (!state)
-    return false
-
-  const { $from, $to } = state.selection
-  return Boolean($from.blockRange($to, node => node.type === config.node))
+function createRenderItem($editorViewState) {
+  return function renderItem(config) {
+    switch (config.type) {
+      case 'mark':
+        return Mark({ $editorViewState, config })
+      case 'node':
+        return Node({ $editorViewState, config })
+      case 'group':
+        return Group({ $editorViewState, config })
+      default:
+        throw new Error(`Do not know how to render a menu item with type '${config.type}'`)
+    }
+  }
 }

@@ -2,7 +2,7 @@ import { createSignal, Signal } from '#ui/signal.js'
 import { keymap } from 'prosemirror-keymap'
 import { Plugin } from 'prosemirror-state'
 /** @import { Schema, MarkType, NodeType } from 'prosemirror-model' */
-/** @import { Command } from 'prosemirror-state' */
+/** @import { Command, EditorState } from 'prosemirror-state' */
 
 /**
  * @template {Schema} T
@@ -21,6 +21,7 @@ import { Plugin } from 'prosemirror-state'
  *   title: string,
  *   command: Command,
  *   shortcut?: string,
+ *   isActive?: (state: EditorState) => boolean,
  *   Component?: (props: {
  *     config:EditorConfig<T>,
  *     $active: Signal<boolean>,

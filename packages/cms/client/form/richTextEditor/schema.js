@@ -1,18 +1,22 @@
 import { render } from '#ui/render/clientRenderer.js'
-import { createSignal } from '#ui/signal.js'
-import { css, Tag, cx } from '#ui/tags.js'
+import { createSignal, Signal } from '#ui/signal.js'
+import { css, Tag, cx, tags } from '#ui/tags.js'
 import { Schema } from 'prosemirror-model'
-import { Plugin } from 'prosemirror-state'
+import { EditorState, Plugin } from 'prosemirror-state'
 import { toggleMark, chainCommands, lift, setBlockType } from 'prosemirror-commands'
 import { wrapInList, liftListItem, sinkListItem, splitListItem } from 'prosemirror-schema-list'
 import { Button, ButtonIndent, ButtonListOl, ButtonListUl, ButtonOutdent } from '#cms/client/ui/Button.js'
 
-/** @import { NodeSpec, MarkSpec } from 'prosemirror-model' */
+/** @import { NodeSpec, MarkSpec, MarkType, NodeType } from 'prosemirror-model' */
 /** @import { EditorConfig } from './richTextConfig.js' */
 
 const generateUuid = Symbol('generateUuid')
 const nodeView = Symbol('nodeView')
 
+// TODO: add selectedcontent to global types
+const { select, button, option, span, selectedcontent } = tags
+
+schema.paragraph = paragraph
 schema.node = node
 schema.heading = heading
 schema.list = list
@@ -49,6 +53,7 @@ export function defaultMarkConfigs(schema) {
       mark: schema.marks.strong,
       title: 'Bold',
       command: toggleMark(schema.marks.strong),
+      isActive: state => isMarkActive(state, schema.marks.strong),
       shortcut: 'Mod-b',
       Component: MarkStrong,
     },
@@ -57,6 +62,7 @@ export function defaultMarkConfigs(schema) {
       mark: schema.marks.em,
       title: 'Italic',
       command: toggleMark(schema.marks.em),
+      isActive: state => isMarkActive(state, schema.marks.em),
       shortcut: 'Mod-i',
       Component: MarkEm,
     }
@@ -66,7 +72,7 @@ export function defaultMarkConfigs(schema) {
 // TODO: we probably want a typed wrapper for Schema, it's `nodes` is of type any <- this is not allways the case
 // TODO: we probably want a typed wrapper for NodeType in nodes of schema, it would be nice to have type completion for attributes
 /**
- * @param {Schema<keyof typeof defaultNodes, any>} schema
+ * @param {Schema<keyof typeof defaultNodes | 'paragraph', any>} schema
  */
 export function defaultNodeConfigs(schema) {
 
@@ -74,18 +80,28 @@ export function defaultNodeConfigs(schema) {
     {
       type: 'group',
       title: 'Style',
-      items: Array.from(Array(3), (_, i) => {
-        const h = i + 2
-        return /** @type {const} */ ({
+      items: [
+        {
           type: 'node',
-          node: schema.nodes.heading,
-          command: setBlockType(schema.nodes.heading, { level: h }),
-          title: `H${h}`,
-          Component: function H({ config, $enabled, $active, onClick }) {
-            return Mark({ label: `h${h}`, css: ``, config, $enabled, $active, onClick })
-          },
-        })
-      })
+          node: schema.nodes.paragraph,
+          command: setBlockType(schema.nodes.paragraph),
+          isActive: state => isNodeActive(state, schema.nodes.paragraph),
+          title: 'Normal',
+          Component: Normal,
+        },
+        ...Array.from(Array(3), (_, i) => {
+          const h = i + 2
+          return /** @type {const} */ ({
+            type: 'node',
+            node: schema.nodes.heading,
+            command: setBlockType(schema.nodes.heading, { level: h }),
+            isActive: state => isNodeActive(state, schema.nodes.heading, { level: h }),
+            title: `H${h}`,
+            Component: createHeadingComponent(h),
+          })
+        }),
+      ],
+      Component: Select,
     },
     {
       type: 'node',
@@ -95,6 +111,7 @@ export function defaultNodeConfigs(schema) {
         unwrapFromList(schema.nodes.orderedList),
         wrapInList(schema.nodes.orderedList)
       ),
+      isActive: state => isListActive(state, schema.nodes.orderedList),
       shortcut: 'Shift-Mod-7',
       Component: OrderedList,
     },
@@ -106,6 +123,7 @@ export function defaultNodeConfigs(schema) {
         unwrapFromList(schema.nodes.unorderedList),
         wrapInList(schema.nodes.unorderedList),
       ),
+      isActive: state => isListActive(state, schema.nodes.unorderedList),
       shortcut: 'Shift-Mod-8',
       Component: UnorderedList,
     },
@@ -184,7 +202,7 @@ export function schemaWithDefaults(customSchema) {
  * @template {string} [Nodes = never]
  * @template {string} [Marks = never]
  * @param {{
- *   nodes?: { [name in Nodes]: NodeSpec }
+ *   nodes?: { [name in Nodes | 'paragraph']: NodeSpec }
  *   marks?: { [name in Marks]: MarkSpec }
  * }} customSchema
  */
@@ -197,7 +215,7 @@ export function schema(customSchema) {
         schema.content('paragraph', 'unknown', Object.keys(customSchema?.nodes || {})),
       ),
       text: {},
-      paragraph: schema.node('p', { content: 'text*' }),
+      paragraph: schema.paragraph(),
       ...customSchema.nodes,
       unknown: {
         attrs: { node: {} },
@@ -289,6 +307,13 @@ export function extractNodeViews(schema) {
     parseDOM: [{ tag }],
     ...spec,
   }
+}
+
+/**
+ * @returns {NodeSpec}
+ */
+function paragraph() {
+  return schema.node('p', { content: 'text*' })
 }
 
 /**
@@ -434,6 +459,48 @@ export function inject(nodeType) {
   }
 }
 
+/**
+ * @param {EditorState} state
+ * @param {MarkType} mark
+ */
+export function isMarkActive(state, mark) {
+  const { from, $from, to, empty } = state.selection
+  return empty
+    ? Boolean(mark.isInSet(state.storedMarks || $from.marks()))
+    : state.doc.rangeHasMark(from, to, mark)
+}
+
+/**
+ * @param {EditorState} state
+ * @param {NodeType} nodeType
+ */
+export function isListActive(state, nodeType) {
+  const { $from, $to } = state.selection
+  return Boolean($from.blockRange($to, node => node.type === nodeType))
+}
+
+/**
+ * @param {EditorState} state
+ * @param {NodeType} nodeType
+ * @param {{ [name: string]: any }} [attrs]
+ */
+export function isNodeActive(state, nodeType, attrs) {
+  const { $from, $to } = state.selection
+  return Boolean($from.parent.hasMarkup(nodeType, attrs))
+}
+
+const activeBackground = css`
+  &.active {
+    background-color: gainsboro;
+  }
+`
+const enabledText = css`
+  color: grey;
+  &.enabled {
+    color: unset;
+  }
+`
+
 MarkStrong.style = css`
   font-weight: bold;
 `
@@ -451,31 +518,18 @@ function MarkEm({ config, $enabled, $active, onClick }) {
 Mark.style = css`
   width: 2em;
   height: 2em;
-  &.active {
-    background-color: gainsboro;
-  }
 `
 function Mark({ label, css, config, $enabled, $active, onClick }) {
-  return Button(
-    {
-      css: [Mark.style, css],
-      className: cx('Mark', $active.derive(active => active && 'active')),
-      onClick,
-      label,
-      disabled: $enabled.derive(x => !x),
-      title: config.title,
-    },
-  )
+  return Button({
+    css: [Mark.style, activeBackground, css],
+    className: cx('Mark', asString($active, 'active')),
+    onClick,
+    label,
+    disabled: $enabled.derive(x => !x),
+    title: config.title,
+  })
 }
 
-// TODO: combine with Mark as a MenuButton
-OrderedList.style = css`
-  --width: 2em;
-  --height: 2em;
-  &.active {
-    background-color: gainsboro;
-  }
-`
 function OrderedList({ config, $enabled, $active, onClick }) {
   return IconButton({ button: ButtonListOl, config, $enabled, $active, onClick })
 }
@@ -495,18 +549,70 @@ function Outdent({ config, $enabled, $active, onClick }) {
 IconButton.style = css`
   --width: 2em;
   --height: 2em;
-  &.active {
-    background-color: gainsboro;
-  }
 `
 function IconButton({ button, config, $enabled, $active = undefined, onClick }) {
-  return button(
+  return button({
+    css: [IconButton.style, activeBackground],
+    className: cx('IconButton', asString($active, 'active')),
+    onClick,
+    disabled: $enabled.derive(x => !x),
+    title: config.title,
+  })
+}
+
+Select.style = css`
+  &,
+  &::picker(select) {
+    appearance: base-select;
+  }
+`
+function Select({ config, canRenderItem, renderItem }) {
+  return select({ className: 'Select', css: Select.style },
+    button(selectedcontent()),
+    config.items.filter(canRenderItem).map(item =>
+      renderItem({
+        ...item,
+        Component({ $enabled, $active, onClick }) {
+          return option({ selected: $active }, item.Component({ config: item, $enabled, $active, onClick }))
+        }
+      })
+    )
+  )
+}
+
+function Normal({ config, $enabled, $active, onClick }) {
+  return span(
     {
-      css: IconButton.style,
-      className: cx('IconButton', $active?.derive(active => active && 'active')),
+      className: cx('Normal', asString($active, 'active'), asString($enabled, 'enabled')),
+      css: [activeBackground, enabledText],
       onClick,
-      disabled: $enabled.derive(x => !x),
       title: config.title,
     },
+    'Normal'
   )
+}
+
+/**
+ * @template {string} T
+ * @param {Signal<boolean>} $signal
+ * @param {T} string
+ * @return {Signal<false | T>}
+ */
+function asString($signal, string) {
+  return $signal?.derive(value => value && string)
+}
+
+function createHeadingComponent(level) {
+  function Heading({ config, $enabled, $active, onClick }) {
+    return tags[`h${level}`](
+      {
+        css: [activeBackground, enabledText],
+        className: cx('Heading', asString($active, 'active'), asString($enabled, 'enabled')),
+        onClick,
+        title: config.title,
+      },
+      `Heading ${level}`
+    )
+  }
+  return Heading
 }
