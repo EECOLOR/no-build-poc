@@ -18,11 +18,11 @@ import { Plugin } from 'prosemirror-state'
 /**
  * @template {Schema} T
  * @typedef {{
- *   title: string,
- *   command: Command,
- *   shortcut?: string,
- *   isActive?: (state: EditorState) => boolean,
- *   Component?: (props: {
+ *   readonly title: string,
+ *   readonly command: Command,
+ *   readonly shortcut?: string,
+ *   readonly isActive?: (state: EditorState) => boolean,
+ *   readonly Component?: (props: {
  *     config:EditorConfig<T>,
  *     $active: Signal<boolean>,
  *     $enabled: Signal<boolean>,
@@ -34,25 +34,30 @@ import { Plugin } from 'prosemirror-state'
 /**
  * @template {Schema} T
  * @typedef {EditorConfigBase<T> & {
- *   type: 'mark',
- *   mark: MarkType,
+ *   readonly type: 'mark',
+ *   readonly mark: MarkType,
  * }} EditorConfigMark
  */
 
 /**
  * @template {Schema} T
  * @typedef {EditorConfigBase<T> & {
- *   type: 'node',
- *   node: NodeType,
+ *   readonly type: 'node',
+ *   readonly node: NodeType,
  * }} EditorConfigNode
  */
 
 /**
  * @template {Schema} T
  * @typedef {{
- *   type: 'group',
- *   title: string,
- *   items: Array<Exclude<EditorConfig<T>, EditorConfigGroup<T>>>,
+ *   readonly type: 'group',
+ *   readonly title: string,
+ *   readonly items: ReadonlyArray<Exclude<EditorConfig<T>, EditorConfigGroup<T>>>,
+ *   readonly Component?: (props: {
+ *     config: EditorConfig<T>,
+ *     canRenderItem: (item: EditorConfig<T>) => boolean,
+ *     renderItem: (item: EditorConfig<T>) => any,
+ *   })
  * }} EditorConfigGroup
 */
 
@@ -92,6 +97,7 @@ function createShortcutPlugin(configs) {
   return keymap(
     Object.fromEntries(
       configs
+        .flatMap(config => config.type === 'group' ? config.items : [config])
         .filter(config => config.shortcut)
         .map(config => [config.shortcut, config.command])
     )

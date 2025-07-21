@@ -186,7 +186,7 @@ function Mark({ $editorViewState, config }) {
 }
 
 function Node({ $editorViewState, config }) {
-  const $active = $editorViewState.derive(({ state }) => Boolean(state) && config.isActive(state))
+  const $active = $editorViewState.derive(({ state }) => Boolean(state && config.isActive?.(state)))
   const $enabled = $editorViewState.derive(({ state }) => config.command(state))
   return span({ className: 'Node' },
     config.Component({

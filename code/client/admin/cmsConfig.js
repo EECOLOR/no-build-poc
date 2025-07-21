@@ -5,7 +5,7 @@ import { css, tags } from '#ui/tags.js'
 import { builtInFieldTypes } from '#cms/client/form/fields/builtInFieldTypes.js'
 import { richTextConfig } from '#cms/client/form/richTextEditor/richTextConfig.js'
 
-const { div } = tags
+const { div, button, select, option } = tags
 
 export function createCmsConfig() {
   return cmsConfig({
@@ -54,12 +54,25 @@ export function createCmsConfig() {
               editor(schema) {
                 return editorConfigsWithDefaults(schema, [
                   {
-                    type: 'node',
-                    node: schema.nodes.custom,
-                    title: 'Add custom node',
-                    shortcut: 'Shift-Mod-5',
-                    command: inject(schema.nodes.custom),
-                  }
+                    type: 'group',
+                    title: '...',
+                    items: [
+                      {
+                        type: 'node',
+                        node: schema.nodes.custom,
+                        title: 'Add custom node',
+                        shortcut: 'Shift-Mod-5',
+                        command: inject(schema.nodes.custom),
+                        Component: ({ $active, $enabled, config, onClick }) => {
+                          return button(
+                            { type: 'button', onClick, disabled: $enabled.derive(x => !x) },
+                            config.title
+                          )
+                        }
+                      },
+                    ],
+                    Component: SelectCustomComponent,
+                  },
                 ])
               }
             })
@@ -128,4 +141,33 @@ function Custom({ id, $selected }) {
 
 function CustomItem({ title, backgroundColor }) {
   return div({ style: { color: 'white', padding: '0.2rem', backgroundColor } }, title)
+}
+
+SelectCustomComponent.style = css`
+  border-radius: 0;
+  height: 32px;
+  padding: 0 5px;
+  align-items: center;
+
+  &,
+  &::picker(select) {
+    appearance: base-select;
+  }
+
+  & option::checkmark {
+    display: none;
+  }
+`
+function SelectCustomComponent({ config, canRenderItem, renderItem }) {
+  return select({ className: 'Select', css: SelectCustomComponent.style },
+    button(config.title),
+    config.items.filter(canRenderItem).map(item =>
+      renderItem({
+        ...item,
+        Component({ $enabled, $active, onClick }) {
+          return option({ selected: $active }, item.Component({ config: item, $enabled, $active, onClick }))
+        }
+      })
+    )
+  )
 }

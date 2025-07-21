@@ -156,7 +156,7 @@ export function defaultNodeConfigs(schema) {
 /**
  * @template {Schema} T
  * @param {T} schema
- * @param {Array<EditorConfig<T>>} configs
+ * @param {ReadonlyArray<EditorConfig<T>>} configs
  */
 export function editorConfigsWithDefaults(schema, configs) {
   return [
@@ -166,7 +166,7 @@ export function editorConfigsWithDefaults(schema, configs) {
 }
 
 /**
- * @param {Schema<keyof typeof defaultNodes, keyof typeof defaultMarks>} schema
+ * @param {Schema<keyof typeof defaultNodes | 'paragraph', keyof typeof defaultMarks>} schema
  */
 export function defaultEditorConfigs(schema) {
   return [
@@ -202,7 +202,7 @@ export function schemaWithDefaults(customSchema) {
  * @template {string} [Nodes = never]
  * @template {string} [Marks = never]
  * @param {{
- *   nodes?: { [name in Nodes | 'paragraph']: NodeSpec }
+ *   nodes?: { [name in Nodes]: NodeSpec } & { paragraph?: NodeSpec }
  *   marks?: { [name in Marks]: MarkSpec }
  * }} customSchema
  */
@@ -561,6 +561,11 @@ function IconButton({ button, config, $enabled, $active = undefined, onClick }) 
 }
 
 Select.style = css`
+  border-radius: 0;
+  height: 32px;
+  padding: 0 5px;
+  align-items: center;
+
   &,
   &::picker(select) {
     appearance: base-select;
