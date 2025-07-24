@@ -169,8 +169,8 @@ function MenuBar({ $editorViewState, configs }) {
  * @param {{ $editorViewState: Signal<{ view: EditorView, state: EditorState }>, config: EditorConfigMark<T> }} props
  */
 function Mark({ $editorViewState, config }) {
-  const $active = $editorViewState.derive(({ state }) => Boolean(state) && config.isActive(state))
-  const $enabled = $editorViewState.derive(({ state }) => config.command(state))
+  const $active = $editorViewState.derive(({ state }) => Boolean(state && config.isActive(state)))
+  const $enabled = $editorViewState.derive(({ state }) => Boolean(state && config.command(state)))
   return span({ className: 'Mark' },
     config.Component({
       config,
@@ -187,7 +187,7 @@ function Mark({ $editorViewState, config }) {
 
 function Node({ $editorViewState, config }) {
   const $active = $editorViewState.derive(({ state }) => Boolean(state && config.isActive?.(state)))
-  const $enabled = $editorViewState.derive(({ state }) => config.command(state))
+  const $enabled = $editorViewState.derive(({ state }) => Boolean(state && config.command(state)))
   return span({ className: 'Node' },
     config.Component({
       config,
