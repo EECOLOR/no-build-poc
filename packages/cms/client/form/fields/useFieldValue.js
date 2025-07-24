@@ -59,8 +59,8 @@ export function useFieldValue({
 export function useConditionalDerive(signal, shouldUpdate) {
   const [$value, setValue] = createSignal(signal.get())
 
-  const unsubscribe = signal.subscribeDirect((newValue, oldValue) => {
-    if (shouldUpdate(newValue, oldValue))
+  const unsubscribe = signal.subscribe(newValue => {
+    if (shouldUpdate(newValue, $value.get()))
       setValue(newValue)
   })
 

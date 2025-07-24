@@ -55,7 +55,7 @@ export function useCombined(...signals) {
 
   const subscriptions = []
   for (const [i, signal] of signals.entries()) {
-    const unsubscribe = signal.subscribeDirect(value => {
+    const unsubscribe = signal.subscribe(value => {
       setCombined(previous => {
         const newValue = previous.slice()
         newValue[i] = value
@@ -87,7 +87,7 @@ export function useSplitSignal(signal, predicate) {
 
   const [$left, setLeft] = createSignal(left)
   const [$right, setRight] = createSignal(right)
-  const unsubscribe = signal.subscribeDirect(value => {
+  const unsubscribe = signal.subscribe(value => {
     if (predicate(value)) setLeft(value)
     else setRight(value)
   })

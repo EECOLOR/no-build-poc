@@ -29,7 +29,7 @@ export const render = createRenderer(
         const value = [].concat(raw(marker), signal.get(), raw(comment()))
         const nodes = renderValue(value)
 
-        const unsubscribe = signal.subscribeDirect(newValue => {
+        const unsubscribe = signal.subscribe(newValue => {
           try {
             const newNodes = renderValue(newValue)
             const oldNodes = nodes.slice(1, -1)
@@ -60,7 +60,7 @@ export const render = createRenderer(
         })
         const nodes = [marker, ...nodesFromLoop, comment()]
 
-        const unsubscribe = dynamic.signal.subscribeDirect(newItems => {
+        const unsubscribe = dynamic.signal.subscribe(newItems => {
           const unusedKeys = new Set(infoByKey.keys())
 
           for (const item of newItems.values()) {
@@ -204,7 +204,7 @@ function bindSignalToAttribute(element, attribute, signal) {
 }
 
 function bindSignalTo(signal, setValue) {
-  const unsubscribe = signal.subscribeDirect(setValue)
+  const unsubscribe = signal.subscribe(setValue)
   return unsubscribe
 }
 

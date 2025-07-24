@@ -146,10 +146,6 @@ function fixed(value) {
       return noop
     },
 
-    subscribeDirect(callback) {
-      return noop
-    },
-
     derive(f) {
       return fixed(f(value))
     },
@@ -176,10 +172,6 @@ function combine(signals) {
 
     subscribe(callback) {
       return subscribeToAll('subscribe', callback)
-    },
-
-    subscribeDirect(callback) {
-      return subscribeToAll('subscribeDirect', callback)
     },
 
     derive(f) {

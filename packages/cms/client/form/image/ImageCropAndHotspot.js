@@ -457,8 +457,8 @@ function useRectangle({ tl, tr, bl, br, rectangle, $bounds, $initialRectangle })
     bind(tl, { xAxis: rectangle, yAxis: rectangle }),
     bindRectangle({ rectangle, tl, tr, bl, br }),
 
-    $bounds.subscribeDirect(_ => rectangle.move(x => x)),
-    $initialRectangle.subscribeDirect(initialRectangle => {
+    $bounds.subscribe(_ => rectangle.move(x => x)),
+    $initialRectangle.subscribe(initialRectangle => {
       moveWithoutRecursion(() => {
         const [tlPos, trPos, blPos, brPos] = areaToCornerPositions(initialRectangle)
         tl.move(tlPos)
@@ -476,7 +476,7 @@ function useRectangle({ tl, tr, bl, br, rectangle, $bounds, $initialRectangle })
   })
 
   function bind(corner, { xAxis, yAxis }) {
-    return corner.$position.subscribeDirect(([newX, newY]) =>
+    return corner.$position.subscribe(([newX, newY]) =>
       moveWithoutRecursion(() => {
         xAxis.move(([_, y]) => [newX, y])
         yAxis.move(([x, _]) => [x, newY])
@@ -485,7 +485,7 @@ function useRectangle({ tl, tr, bl, br, rectangle, $bounds, $initialRectangle })
   }
 
   function bindRectangle({ tl, tr, bl, br, rectangle }) {
-    return rectangle.$position.subscribeDirect(([newX, newY]) =>
+    return rectangle.$position.subscribe(([newX, newY]) =>
       moveWithoutRecursion(() => {
         const [minX, minY] = tl.$position.get()
         const [maxX, maxY] = br.$position.get()
@@ -505,23 +505,20 @@ function useBindEllipse({ center, handle, $bounds, $initialEllipse }) {
   const moveWithoutRecursion = createCallWithoutRecursion()
 
   const subscriptions = [
-    center.$position.subscribeDirect(([newX, newY], [oldX, oldY]) => {
+    withPreviousValue(center.$position).subscribe(({ prev: [oldX, oldY], current: [newX, newY] }) => {
       moveWithoutRecursion(() => {
-        const [handleX, handleY] = handle.$position.get()
-        const [xAxis, yAxis] = findEllipseSemiAxes([handleX - oldX, handleY - oldY])
-        const [x, y] = findPointOnEllipse([xAxis, yAxis])
-
-        handle.move([newX + x, newY + y])
+        const deltaX = newX - oldX
+        const deltaY = newY - oldY
+        handle.move(([handleX, handleY]) => [handleX + deltaX, handleY + deltaY])
       })
     }),
-
-    handle.$position.subscribeDirect(([newX, newY], [oldX, oldY]) => {
+    handle.$position.subscribe(_ => {
       moveWithoutRecursion(() => {
         center.move(x => x)
       })
     }),
-    $bounds.subscribeDirect(_ => center.move(x => x)),
-    $initialEllipse.subscribeDirect(initialEllipse => {
+    $bounds.subscribe(_ => center.move(x => x)),
+    $initialEllipse.subscribe(initialEllipse => {
       moveWithoutRecursion(() => {
         const [centerPosition, handlePosition] = getEllipsePositions(initialEllipse)
         center.move(centerPosition)
@@ -599,4 +596,14 @@ function areaToCornerPositions(area) {
     [minX, minY], [maxX, minY],
     [minX, maxY], [maxX, maxY],
   ])
+}
+
+/** @template T @param {Signal<T>} signal */
+function withPreviousValue(signal) {
+  let prev = signal.get()
+  return signal.derive(current => {
+    const result = { prev, current }
+    prev = current
+    return result
+  })
 }

@@ -11,40 +11,14 @@ export class Signal {
   /** @returns {T} */
   get() { return null }
 
-  // TODO: both callbacks accept `oldValue`, this is a perfomance penalty to derived signals
-  //       I think we should make a separate set of methods if `oldValue` is used so that the
-  //       performance penalty is only paid when needed.
-
-  /** @param {(value: T, oldValue: T) => void} callback @returns {() => void} */
+  /** @param {(value: T) => void} callback @returns {() => void} */
   subscribe(callback){ return null }
-
-  /** @param {(value: T, oldValue: T) => void} callback @returns {() => void} */
-  subscribeDirect(callback){ return null }
 
   /** @template X @param {(value: T) => X} f @returns {Signal<X>} */
   derive(f) { return null }
 
   /** @returns {string} */
   get stack() { return null }
-
-  // TODO: we probably need a destroy
-  /*
-    That would be tricky, let's say you have this:
-
-    $b = $a.derive(...).derive(...)
-
-    The middle signal would not be destroyed by a call to destroy unless we chain it, but that
-    would be problematic too:
-
-    $b = $a.derive(...)
-    $c = $b.derive(...)
-
-    If we destroy $c we don't want $b to be destroyed
-
-    We could add the ability to track the creation of signals. Simlar to the `useOnDestroy`. That way,
-    the client renderer could call destroy on all signals created in the 'renderItem' function when the
-    UI element is destroyed.
-  */
 }
 Object.defineProperty(Signal, Symbol.hasInstance, { value: o => o?.constructor === Signal })
 
@@ -67,7 +41,6 @@ export function createSignal(initialValue, isEqual = defaultIsEqual) {
   let isInitialized = false
   let value = undefined
   const listeners = new Set()
-  const directListeners = new Set()
 
   const e = new Error()
 
@@ -79,11 +52,10 @@ export function createSignal(initialValue, isEqual = defaultIsEqual) {
     },
 
     subscribe(callback) {
-      return addListener(callback, listeners)
-    },
-
-    subscribeDirect(callback) {
-      return addListener(callback, directListeners)
+      listeners.add(callback)
+      return function unsubscribe() {
+        listeners.delete(callback)
+      }
     },
 
     derive(f) {
@@ -109,12 +81,8 @@ export function createSignal(initialValue, isEqual = defaultIsEqual) {
 
       value = newValue
 
-      for (const callback of directListeners) {
-        callback(value, oldValue)
-      }
-
       for (const callback of listeners) {
-        setTimeout(() => { callback(value, oldValue) }, 0)
+        callback(value, oldValue)
       }
     },
   ]
@@ -126,13 +94,6 @@ export function createSignal(initialValue, isEqual = defaultIsEqual) {
     }
 
     return value
-  }
-
-  function addListener(callback, target) {
-    target.add(callback)
-    return function unsubscribe() {
-      target.delete(callback)
-    }
   }
 }
 
@@ -156,10 +117,6 @@ export function derived(signal, deriveValue) {
       return signal.subscribe(wrapCallback(callback))
     },
 
-    subscribeDirect(callback) {
-      return signal.subscribeDirect(wrapCallback(callback))
-    },
-
     derive(f) {
       return derived(derivedSignal, f)
     },
@@ -172,7 +129,7 @@ export function derived(signal, deriveValue) {
   return derivedSignal
 
   function wrapCallback(callback) {
-    return (value, oldValue) => callback(deriveValue(value), deriveValue(oldValue))
+    return value => callback(deriveValue(value))
   }
 }
 
