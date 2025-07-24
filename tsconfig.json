@@ -9,6 +9,7 @@
     "./packages/**/*",
   ],
   "compilerOptions": {
+    "noImplicitAny": true,
     "module": "NodeNext",
     "moduleResolution": "nodenext",
     "target": "esnext",

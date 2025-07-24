@@ -6,20 +6,21 @@ import { createSignal } from '#ui/signal.js'
  * @typedef {number} y
  * @typedef {number} width
  * @typedef {number} height
- * @typedef {[x, y]} Position
- * @typedef {[x, y, width, height]} Area
+ * @typedef {readonly [x, y]} Position
+ * @typedef {readonly [x, y, width, height]} Area
  */
 
 /**
- * @param {readonly [x, y]} initialPosition
+ * @param {Position} initialPosition
  * @param {object} options
- * @param {() => [x, y, width, height]} [options.getBounds]
+ * @param {() => Area} [options.getBounds]
  * @param {any} [options.id]
  */
 export function useDrag([initialX, initialY], options = undefined) {
-  const [$position, setPosition] = createSignal([initialX, initialY], pointsEqual)
+  const [$position, setPosition] = createSignal(/** @type {Position} */ ([initialX, initialY]), pointsEqual)
   const $translate = $position.derive(([x, y]) => [x - initialX, y - initialY])
 
+  /** @type {{ offset: Position, parent: Area }} */
   let state = null
   useOnDestroy(removeListeners)
 
@@ -31,6 +32,7 @@ export function useDrag([initialX, initialY], options = undefined) {
     id: options?.id,
   }
 
+  /** @param {Position | ((position: Position) => Position)} newValueOrFunction */
   function move(newValueOrFunction) {
     if (!options?.getBounds)
       throw new Error(`Can not move a dragable when no 'getBounds' function was given`)
@@ -44,9 +46,13 @@ export function useDrag([initialX, initialY], options = undefined) {
     })
   }
 
+  /** @param {MouseEvent} e */
   function handleMouseDown(e) {
+    if (!(e.currentTarget instanceof HTMLElement))
+      return
+
     const parent = e.currentTarget.parentElement.getBoundingClientRect()
-    const parentArea = [parent.x, parent.y, parent.width, parent.height]
+    const parentArea = /** @type const */ ([parent.x, parent.y, parent.width, parent.height])
     state = {
       offset: [Math.round(e.offsetX), Math.round(e.offsetY)],
       parent: parentArea,
@@ -66,6 +72,7 @@ export function useDrag([initialX, initialY], options = undefined) {
     state = null
   }
 
+  /** @param {MouseEvent} e */
   function handleMouseMove(e) {
     const { offset: [offsetX, offsetY], parent } = state
     const  [parentX, parentY] = parent
@@ -77,14 +84,17 @@ export function useDrag([initialX, initialY], options = undefined) {
   }
 }
 
+/** @param {Position} p1 @param {Position} p2 */
 function pointsEqual([x1, y1], [x2, y2]) {
   return x1 === x2 && y1 === y2
 }
 
+/** @param {Position} position @param {Area} bounds @returns {Position} */
 function getBoundedPosition([x, y], [areaX, areaY, areaWidth, areaHeight]) {
   return [clamp(areaX, areaX + areaWidth, x), clamp(areaY, areaY + areaHeight, y)]
 }
 
+/** @param {number} min @param {number} max @param {number} input */
 function clamp(min, max, input) {
   return Math.min(max, Math.max(min, input))
 }

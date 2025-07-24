@@ -4,6 +4,8 @@ import { conditional, derive, useOnDestroy } from '#ui/dynamic.js'
 import { Signal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
 import { useCombined, useElementSize } from '#ui/hooks.js'
+import { asConst } from '#cms/client/machinery/typeHelpers.js'
+/** @import { Position, Area } from '#cms/client/machinery/useDrag.js' */
 
 const { div, img } = tags
 
@@ -295,10 +297,10 @@ function Handle({ handle, type = 'square' }) {
   /* TopLeft, TopRight, BottomLeft, BottomRight */
   const [tlPos, trPos, blPos, brPos] = areaToCornerPositions($initialRectangle.get())
   const [tlOptions, trOptions, blOptions, brOptions, rectangleOptions] = getOptions()
-  const corners = [
+  const corners = asConst([
     useDrag(tlPos, tlOptions), useDrag(trPos, trOptions),
     useDrag(blPos, blOptions), useDrag(brPos, brOptions)
-  ]
+  ])
   const [tl, tr, bl, br] = corners
   const rectangle = useDrag(tlPos, rectangleOptions)
 
@@ -312,6 +314,7 @@ function Handle({ handle, type = 'square' }) {
     return [
       {
         id: 'tl',
+        /** @returns {Area} */
         getBounds() {
            const [x, y] = br.$position.get()
            return [0, 0, x - 10, y - 10]
@@ -319,6 +322,7 @@ function Handle({ handle, type = 'square' }) {
       },
       {
         id: 'tr',
+        /** @returns {Area} */
         getBounds() {
            const [x, y] = bl.$position.get()
            const { width } = $bounds.get()
@@ -327,6 +331,7 @@ function Handle({ handle, type = 'square' }) {
       },
       {
         id: 'bl',
+        /** @returns {Area} */
         getBounds() {
            const [x, y] = tr.$position.get()
            const { height } = $bounds.get()
@@ -335,6 +340,7 @@ function Handle({ handle, type = 'square' }) {
       },
       {
         id: 'br',
+        /** @returns {Area} */
         getBounds() {
            const [x, y] = tl.$position.get()
            const { width, height } = $bounds.get()
@@ -343,6 +349,7 @@ function Handle({ handle, type = 'square' }) {
       },
       {
         id: 'rectangle',
+        /** @returns {Area} */
         getBounds() {
           const [minX, minY] = tl.$position.get()
           const [maxX, maxY] = br.$position.get()
@@ -377,8 +384,9 @@ function useDraggableEllipse({ $bounds, $initialEllipse }) {
     return [
       {
         id: 'center',
+        /** @returns {Area} */
         getBounds: () => pipe(
-          $bounds.get(), center.$position.get(), handle.$position.get(),
+          [$bounds.get(), center.$position.get(), handle.$position.get()],
           ({ x, y, width, height }, [centerX, centerY], [handleX, handleY]) => {
             const [xAxis, yAxis] = findEllipseSemiAxes([handleX - centerX, handleY - centerY])
 
@@ -393,8 +401,9 @@ function useDraggableEllipse({ $bounds, $initialEllipse }) {
       },
       {
         id: 'handle',
+        /** @returns {Area} */
         getBounds: () => pipe(
-          $bounds.get(), center.$position.get(),
+          [$bounds.get(), center.$position.get()],
           (bounds, [centerX, centerY]) => {
             const [maxXAxis, maxYAxis] = [bounds.width / 2, bounds.height / 2]
             const [width, height] = findPointOnEllipse([maxXAxis, maxYAxis])
@@ -407,12 +416,13 @@ function useDraggableEllipse({ $bounds, $initialEllipse }) {
   }
 }
 
+/** @param {{ x: number, y: number, width: number, height: number }} initialEllipse */
 function getEllipsePositions(initialEllipse) {
   const { x, y, width, height } = initialEllipse
   const [pointX, pointY] = findPointOnEllipse([width / 2, height / 2])
   const [centerX, centerY] = [x + (width / 2), y + (height / 2)]
 
-  return /** @type const */ ([
+  return asConst([
     [centerX, centerY],
     [centerX + pointX, centerY + pointY]
   ])
@@ -439,10 +449,11 @@ function useDerivedEllipsePositions({ center, handle, $bounds }) {
   return { $area, $ellipse }
 }
 
-function pipe(...args) {
-  const [...newArgs] = args.slice(0, -1)
-  const [f] = args.slice(-1)
-  return f(...newArgs)
+/**
+ * @type {<const A extends any[], T extends (...args: A) => R, const R>(args: A, f: T) => R}
+ */
+function pipe(args, f) {
+  return f.apply(null, args)
 }
 
 function useRectangle({ tl, tr, bl, br, rectangle, $bounds, $initialRectangle }) {
@@ -575,6 +586,7 @@ function findEllipseSemiAxes([x, y]) {
     : [semiMinorAxis, semiMajorAxis]
 }
 
+/** @param {Position} position @returns {Position} */
 function findPointOnEllipse([horizontalSemiAxis, verticalSemiAxis]) {
   const major = Math.max(horizontalSemiAxis, verticalSemiAxis)
   const minor = Math.min(horizontalSemiAxis, verticalSemiAxis)

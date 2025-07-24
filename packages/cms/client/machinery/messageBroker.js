@@ -1,25 +1,29 @@
 import { createSignal } from '#ui/signal.js'
 import { createAsyncTaskQueue } from './asyncTaskQueue.js'
+/** @import { Context } from '../context.js' */
 
 /** @typedef {string} Key */
 /** @typedef {string} Channel */
 /** @typedef {any[]} Args */
 /** @typedef {string} EventName */
-/** @typedef {(event: EventName, data: any) => void} Callback */
+/** @typedef {(props: { event: EventName, data: any }) => void} Callback */
 /** @typedef {ReturnType<typeof createMessageBroker>} MessageBroker */
+/** @typedef {() => void} Unsubscribe */
+/** @typedef {{ listenerCount: number, event?: any }} LastKnownEvent */
+/** @typedef {'subscribe' | 'unsubscribe'} Action */
 
 /**
- * @param {{ api: import('../context.js').Context['api'], onError(e:Error):void }} params
+ * @param {{ api: Context['api'], onError(e: Error):void }} params
  */
 export function createMessageBroker({ api, onError }) {
-  const [$connectId, setConnectId] = createSignal(null)
+  const [$connectId, setConnectId] = createSignal('')
   const eventSource = createEventSource({ onConnectIdChange: setConnectId, onError })
   const serverQueue = createAsyncTaskQueue({ processTask, onError, })
 
-  /** @type {Map<string, { listenerCount: number, event?: any }>} */
+  /** @type {Map<string, LastKnownEvent>} */
   const lastKnownEvents = new Map()
 
-  /** @type {Map<Key, { count, channel, args }>} */
+  /** @type {Map<Key, { count: number, channel: Channel, args: Args }>} */
   const serverSubscriptions = new Map()
 
   $connectId.subscribe(_ => {
@@ -37,6 +41,7 @@ export function createMessageBroker({ api, onError }) {
      * @param {Callback} callback
      */
     subscribe(channel, args, info, events, callback) {
+      /** @type {Array<Unsubscribe>} */
       const eventSourceSubscriptions = []
       for (const event of events)
         eventSourceSubscriptions.push(subscribeToEventSource(event, channel, args, callback))
@@ -52,6 +57,7 @@ export function createMessageBroker({ api, onError }) {
     }
   }
 
+  /** @param {{ onConnectIdChange(connectId: string): void, onError(e: Error): void }} props */
   function createEventSource({ onConnectIdChange, onError }) {
     const pathname = api.events()
     const eventSource = new EventSource(pathname)
@@ -66,12 +72,18 @@ export function createMessageBroker({ api, onError }) {
     })
     eventSource.addEventListener('error', e => {
       onConnectIdChange(null)
-      onError(e)
+      onError(new Error(`Connection to ${pathname} lost`))
       console.log(`Connection to ${pathname} lost`)
     })
     return eventSource
   }
 
+  /**
+   * @param {EventName} event
+   * @param {Channel} channel
+   * @param {Args} args
+   * @param {Callback} callback
+   */
   function subscribeToEventSource(event, channel, args, callback) {
     const fullEventName = `${event}-${channel}-${args.join('|')}`
 
@@ -82,11 +94,13 @@ export function createMessageBroker({ api, onError }) {
       removeEventListener(lastKnownEvent, fullEventName)
     }
 
+    /** @param {MessageEvent} e */
     function listener(e) {
       lastKnownEvent.event = e
       callback({ event, data: JSON.parse(e.data) })
     }
 
+    /** @param {string} fullEventName */
     function prepareLastKnownEvent(fullEventName) {
       if (!lastKnownEvents.has(fullEventName))
         lastKnownEvents.set(fullEventName, { listenerCount: 0 })
@@ -94,6 +108,7 @@ export function createMessageBroker({ api, onError }) {
       return lastKnownEvents.get(fullEventName)
     }
 
+    /** @param {LastKnownEvent} lastKnownEvent @param {string} fullEventName */
     function addEventListener(lastKnownEvent, fullEventName) {
       lastKnownEvent.listenerCount += 1
       eventSource.addEventListener(fullEventName, listener)
@@ -101,6 +116,7 @@ export function createMessageBroker({ api, onError }) {
         listener(lastKnownEvent.event)
     }
 
+    /** @param {LastKnownEvent} lastKnownEvent @param {string} fullEventName */
     function removeEventListener(lastKnownEvent, fullEventName) {
       lastKnownEvent.listenerCount -= 1
       if (!lastKnownEvent.listenerCount)
@@ -110,8 +126,10 @@ export function createMessageBroker({ api, onError }) {
     }
   }
 
+  /** @param {Channel} channel @param {Args} args @param {any} info */
   function subscribeToServer(channel, args, info) {
     const key = `${channel}-${args.join('|')}`
+    let unsubscribed = false
 
     const existingSubscription = serverSubscriptions.get(key)
     if (existingSubscription) {
@@ -131,6 +149,10 @@ export function createMessageBroker({ api, onError }) {
     return unsubscribeFromServer
 
     function unsubscribeFromServer() {
+      if (unsubscribed)
+        throw new Error(`Unsubscribed more than once`)
+
+      unsubscribed = true
       const subscription = serverSubscriptions.get(key)
       subscription.count -= 1
       if (subscription.count)
@@ -141,16 +163,18 @@ export function createMessageBroker({ api, onError }) {
     }
   }
 
+  /** @param {Action} action @param {Channel} channel @param {Args} args @param {any} info */
   function updateServerSubscription(action, channel, args, info) {
     serverQueue.add(connectId =>
       fetch(api.events.subscription({ action }), {
         method: 'POST',
         headers: { 'X-connect-id': connectId }, // TODO: think: should this be done using a cookie, otherwise we might subscrube to channels that are not our own
         body: JSON.stringify({ channel, args, info }),
-      }).then(r => r.text() /* If we don't read the response, Chrome thinks we failed, also we might trigger an open pipe error */)
+      }).then(r => { r.text() /* If we don't read the response, Chrome thinks we failed, also we might trigger an open pipe error */ })
     )
   }
 
+  /** @param {(connectId: string) => Promise<void>} callServer */
   function processTask(callServer) {
     const connectId = $connectId.get()
     if (!connectId) return
