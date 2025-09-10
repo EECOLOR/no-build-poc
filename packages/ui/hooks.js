@@ -1,7 +1,7 @@
 import { useOnDestroy } from './dynamic.js'
 import { createSignal } from './signal.js'
-
 /** @import { Signal } from './signal.js' */
+/** @import { CombineSignals, ExtractSignalTypes } from './types.ts' */
 
 /**
  * @template {HTMLElement} T
@@ -10,7 +10,7 @@ import { createSignal } from './signal.js'
 
 /**
  * @template {keyof HTMLElementTagNameMap} T
- * @param {T} [hint]
+ * @arg {T} [hint]
  * @return {Ref<HTMLElementTagNameMap[T]>}
  */
 export function useRef(hint) {
@@ -20,6 +20,7 @@ export function useRef(hint) {
 
   return ref
 
+  /** @arg {HTMLElement} element */
   function ref(element) {
     ref.current = element
   }
@@ -36,6 +37,7 @@ export function useElementSize() {
 
   return { ref, $size }
 
+  /** @arg {HTMLElement} element */
   function ref(element) {
     observer.disconnect()
     if (!element)
@@ -45,19 +47,31 @@ export function useElementSize() {
     observer.observe(element)
   }
 
+  /** @arg {Element} target */
   function update(target) {
+    if (!(target instanceof HTMLElement))
+      throw new Error(`Can only update the size of HTML elements, the current target has another type`)
+
     setSize({ width: target.offsetWidth, height: target.offsetHeight, element: target })
   }
 }
 
+/**
+ * @template {Array<Signal<any>>} T
+ * @arg {T} signals
+ * @returns {CombineSignals<T>}
+ */
 export function useCombined(...signals) {
-  const [$combined, setCombined] = createSignal(() => signals.map(signal => signal.get()))
+  const [$combined, setCombined] = createSignal(() => /** @type {ExtractSignalTypes<T>} */(
+    signals.map(signal => signal.get())
+  ))
 
+  /** @type {Array<() => void>} */
   const subscriptions = []
   for (const [i, signal] of signals.entries()) {
     const unsubscribe = signal.subscribe(value => {
       setCombined(previous => {
-        const newValue = previous.slice()
+        const newValue = /** @type {ExtractSignalTypes<T>} */ (previous.slice())
         newValue[i] = value
         return newValue
       })
@@ -75,8 +89,8 @@ export function useCombined(...signals) {
 
 /**
  * @template T
- * @param {Signal<T>} signal
- * @param {(value: T) => Boolean} predicate If true, use the left rignal
+ * @arg {Signal<T>} signal
+ * @arg {(value: T) => Boolean} predicate If true, use the left rignal
  * @returns
  */
 export function useSplitSignal(signal, predicate) {

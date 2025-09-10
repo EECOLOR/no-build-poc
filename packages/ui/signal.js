@@ -11,18 +11,25 @@ export class Signal {
   /** @returns {T} */
   get() { return null }
 
-  /** @param {(value: T) => void} callback @returns {() => void} */
+  /** @arg {(value: T) => void} callback @returns {() => void} */
   subscribe(callback){ return null }
 
-  /** @template X @param {(value: T) => X} f @returns {Signal<X>} */
+  /** @template X @arg {(value: T) => X} f @returns {Signal<X>} */
   derive(f) { return null }
 
   /** @returns {string} */
   get stack() { return null }
 }
-Object.defineProperty(Signal, Symbol.hasInstance, { value: o => o?.constructor === Signal })
+Object.defineProperty(
+  Signal,
+  Symbol.hasInstance,
+  {
+    /** @arg {Signal<any>} o */
+    value: o => o?.constructor === Signal
+  }
+)
 
-
+/** @template T @arg {T} a @arg {T} b */
 function defaultIsEqual(a, b) {
   return a === b
 }
@@ -34,11 +41,12 @@ function defaultIsEqual(a, b) {
 
 /**
  * @template T
- * @param {T | (() => T)} initialValue
+ * @arg {T | (() => T)} initialValue
  * @returns {[Signal<T>, setSignalValue<T>]}
  */
 export function createSignal(initialValue, isEqual = defaultIsEqual) {
   let isInitialized = false
+  /** @type {T} */
   let value = undefined
   const listeners = new Set()
 
@@ -51,6 +59,7 @@ export function createSignal(initialValue, isEqual = defaultIsEqual) {
       return getValue()
     },
 
+    /** @arg {(value: T) => void} callback */
     subscribe(callback) {
       listeners.add(callback)
       return function unsubscribe() {
@@ -58,6 +67,7 @@ export function createSignal(initialValue, isEqual = defaultIsEqual) {
       }
     },
 
+    /** @template X @arg {(value: T) => X} f @returns {Signal<X>} */
     derive(f) {
       return derived(signal, f)
     },
@@ -99,8 +109,8 @@ export function createSignal(initialValue, isEqual = defaultIsEqual) {
 
 /**
  * @template T @template X
- * @param {Signal<T>} signal
- * @param {(value: T) => X} deriveValue
+ * @arg {Signal<T>} signal
+ * @arg {(value: T) => X} deriveValue
  * @returns {Signal<X>}
  */
 export function derived(signal, deriveValue) {
@@ -113,10 +123,12 @@ export function derived(signal, deriveValue) {
       return deriveValue(signal.get())
     },
 
+    /** @arg {(value: X) => void} callback */
     subscribe(callback) {
       return signal.subscribe(wrapCallback(callback))
     },
 
+    /** @template Y @arg {(value: X) => Y} f @returns {Signal<Y>} */
     derive(f) {
       return derived(derivedSignal, f)
     },
@@ -128,14 +140,16 @@ export function derived(signal, deriveValue) {
 
   return derivedSignal
 
+  /** @arg {(value: X) => void} callback */
   function wrapCallback(callback) {
+    /** @arg {T} value */
     return value => callback(deriveValue(value))
   }
 }
 
 /**
  * @template {Array<any>} X @template Y @template {(...args: X) => Y} T
- * @param {unknown} value
+ * @arg {unknown} value
  * @returns {value is T}
  */
 function isCallable(value) {

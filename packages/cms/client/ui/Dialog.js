@@ -1,6 +1,8 @@
 import { controller } from '#cms/client/machinery/useController.js'
 import { css, tags } from '#ui/tags.js'
 
+/** @import { Children } from '#ui/tags.js' */
+
 const { dialog } = tags
 
 Dialog.controller = controller(
@@ -33,8 +35,9 @@ Dialog.style = css`
   }
 `
 /**
- * @param {{ controller: ReturnType<typeof Dialog.controller> }} props
- * @param {any[]} children
+ * @template {Children<X>} X
+ * @arg {{ controller: ReturnType<typeof Dialog.controller> }} props
+ * @arg {X} children
  */
 export function Dialog({ controller }, ...children) {
 

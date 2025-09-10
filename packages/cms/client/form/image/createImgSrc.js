@@ -1,8 +1,12 @@
 import { context } from '#cms/client/context.js'
 
 /**
- * @param {string} filename
- * @param {{ width, height, crop?, hotspot? }} metadata
+ * @arg {string} filename
+ * @arg {{
+ *   width: number, height: number,
+ *   crop?: { x:number, y: number, width: number, height: number },
+ *   hotspot?: { x:number, y: number, width: number, height: number },
+ * }} metadata
  */
 export function createImageSrc(filename, { width, height, crop, hotspot }) {
   const src = context.api.images.single({ filename })

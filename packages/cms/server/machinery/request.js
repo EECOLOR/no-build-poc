@@ -3,7 +3,12 @@ import config from '#config'
 import crypto from 'node:crypto'
 
 /** @import { WithPublicKeys } from '#auth/oauth2.js' */
+/** @import { IncomingMessage } from 'node:http' */
 
+/**
+ * @arg {IncomingMessage} req
+ * @arg {(result: unknown, error: Error) => void} callback
+ */
 export function withRequestJsonBody(req, callback) {
   withRequestBufferBody(req, (buffer, e) => {
     let error = e
@@ -17,8 +22,12 @@ export function withRequestJsonBody(req, callback) {
   })
 }
 
+/**
+ * @arg {IncomingMessage} req
+ * @arg {(result: Buffer, error: Error) => void} callback
+ */
 export function withRequestBufferBody(req, callback) {
-  const data = []
+  const data = /** @type {Array<Uint8Array>} */ ([])
   req.on('data', chunk => { data.push(chunk) })
   req.on('end', () => {
     let error = null
@@ -34,6 +43,7 @@ export function withRequestBufferBody(req, callback) {
 
 const emptyObject = {}
 
+/** @arg {IncomingMessage} req */
 export function getCookies(req) {
   const cookieHeader = req.headers['cookie']
   if (!cookieHeader)
@@ -52,8 +62,9 @@ export function getCookies(req) {
 }
 
 /**
- * @param {{ [provider: string]: WithPublicKeys }} pubicKeyProviders
- * @param {(
+ * @arg {IncomingMessage} req
+ * @arg {{ [provider: string]: WithPublicKeys }} pubicKeyProviders
+ * @arg {(
 *    info:
 *      { authenticated: true, idProvider: string, user: { email: string, name: string, id: string } } |
 *      { authenticated: false, hint: string },
@@ -70,8 +81,6 @@ export function withAuthInfo(req, pubicKeyProviders, callback) {
     return notAuthorized('No id token')
   if (!idProvider)
     return notAuthorized('No id provider')
-  if (!config.auth[idProvider])
-    return notAuthorized(`No auth configuration for id provider '${idProvider}'`)
 
   const withPublicKeys = pubicKeyProviders[idProvider]
   if (!withPublicKeys)
@@ -89,6 +98,7 @@ export function withAuthInfo(req, pubicKeyProviders, callback) {
     return callback({ authenticated: true, idProvider, user: { email: body.email, name: body.name, id } })
   })
 
+  /** @arg {string} hint */
   function notAuthorized(hint) {
     return callback({ authenticated: false, hint })
   }

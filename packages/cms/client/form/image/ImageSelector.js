@@ -5,18 +5,28 @@ import { plus } from '#cms/client/ui/icons.js'
 import { renderOnValue } from '#cms/client/machinery/renderOnValue.js'
 import { withIcon } from '#cms/client/ui/icon.js'
 import { conditional, derive, loop } from '#ui/dynamic.js'
-import { createSignal } from '#ui/signal.js'
+import { createSignal, Signal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
 import { createImageSrc } from './createImgSrc.js'
 import { scrollable } from '#cms/client/ui/scrollable.js'
 import { FlexSectionHorizontal, FlexSectionVertical } from '#cms/client/ui/FlexSection.js'
 import { useController } from '#cms/client/machinery/useController.js'
 import { Dialog } from '#cms/client/ui/Dialog.js'
+import { asConst } from '#cms/client/machinery/typeHelpers.js'
+
+/** @import { Image } from '#cms/types.ts' */
+/** @import { ChangeEventHandler } from 'react' */
+/** @import { Attributes } from '#ui/tags.js' */
+
+/** @typedef {(image: Image) => void} ImageHandler */
+/** @typedef {() => void} Handler */
+/** @typedef {typeof newImage} NewImageSymbol */
 
 const { div, img, input } = tags
 
 const newImage = Symbol('new image')
 
+/** @arg {{ onSelect: ImageHandler }} props */
 export function ImageSelector({ onSelect }) {
   const controller = useController(Dialog.controller)
 
@@ -29,6 +39,7 @@ export function ImageSelector({ onSelect }) {
     )
   )
 
+  /** @arg {Image} image */
   function handleChoose(image) {
     controller.close()
     onSelect(image)
@@ -42,6 +53,7 @@ export function ImageSelector({ onSelect }) {
 ImageSelectorDialogContent.style = css`
   align-items: end;
 `
+/** @arg {{ onChoose: ImageHandler, onCloseClick: Handler }} props */
 function ImageSelectorDialogContent({ onChoose, onCloseClick }) {
   return FlexSectionVertical({ className: 'ImageSelectorDialogContent', css: ImageSelectorDialogContent.style },
     ButtonClose({ onClick: onCloseClick }),
@@ -62,14 +74,15 @@ ImagesAndDetails.style = css`
     width: 30%;
   }
 `
+/** @arg {{ onChoose: ImageHandler }} props */
 function ImagesAndDetails({ onChoose }) {
-  const [$selected, setSelected] = createSignal(null)
+  const [$selected, setSelected] = createSignal(/** @type {Image | NewImageSymbol} */ (null))
 
   return (
     div({ className: 'ImagesAndDetails', css: ImagesAndDetails.style },
       Images({
         $selected,
-        onSelect: image => setSelected(image),
+        onSelect: setSelected,
         onNewClick: () => setSelected(newImage)
       }),
       renderOnValue($selected, () =>
@@ -91,27 +104,35 @@ Details.style = css`
     align-self: center;
   }
 `
+/**
+ * @arg {{
+ *   $selected: Signal<Image | NewImageSymbol>,
+ *   onSelect: ImageHandler,
+ *   onChoose: ImageHandler
+ * }} props
+ */
 function Details({ $selected, onSelect, onChoose }) {
   return (
     scrollable(FlexSectionVertical)({ className: 'Details', css: Details.style },
       conditional($selected, x => x === newImage,
-        () => SelectFile({ onChange: handleFileChange }),
+        _ => SelectFile({ onChange: handleFileChange }),
       ),
-      derive($selected, image => image !== newImage && [
+      derive($selected, image => image !== newImage && asConst([
         Image({ image }),
         sizeString(image),
         Button({ label: 'Select this image', onClick: () => onChoose(image) }),
-      ]),
+      ])),
     )
   )
 
+  /** @arg {Image} image */
   function sizeString({ metadata }) {
     const { width, height } = metadata.crop || metadata
     return `${width} x ${height}`
   }
 
+  /** @arg {Parameters<ChangeEventHandler<HTMLInputElement>>[0]} e */
   async function handleFileChange(e) {
-    /** @type {Array<File>} */
     const [file] = e.currentTarget.files
     if (!file)
       return
@@ -135,6 +156,7 @@ function Details({ $selected, onSelect, onChoose }) {
   }
 }
 
+/** @arg {{ onChange: ChangeEventHandler<HTMLInputElement> }} props */
 function SelectFile({ onChange }) {
   return (
     input({
@@ -154,6 +176,7 @@ Images.style = css`
     height: 15rem;
   }
 `
+/** @arg {{ $selected: Signal<Image | NewImageSymbol>, onSelect: ImageHandler, onNewClick: Handler }} props */
 function Images({ $selected, onSelect, onNewClick }) {
   const $images = useImages()
 
@@ -198,6 +221,7 @@ ImageItem.style = css`
     }
   }
 `
+/** @arg {{ image: Image, $selected: Signal<boolean>, onClick: Handler }} props */
 function ImageItem({ image, $selected, onClick }) {
   return (
     div({ className: $selected.derive(x => x ? 'selected' : '' ), css: ImageItem.style },
@@ -206,6 +230,7 @@ function ImageItem({ image, $selected, onClick }) {
   )
 }
 
+/** @arg {{ image: Image } & Attributes<'img'>} props */
 function Image({ image, ...imgProps }) {
   const { filename, metadata } = image
   const { crop, hotspot } = metadata

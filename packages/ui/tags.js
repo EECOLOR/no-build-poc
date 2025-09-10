@@ -4,7 +4,14 @@ import { derived, Signal } from './signal.js'
 import { useStyle } from './styles/shared.js'
 import { separatePropsAndChildren } from './utils.js'
 
-export class Raw { constructor(value) { this.value = value } }
+/** @template T */
+export class Raw {
+  /** @arg {T} value */
+  constructor(value) {
+    this.value = value
+  }
+}
+/** @template T @arg {T} value */
 export function raw(value) { return new Raw(value) }
 
 /**
@@ -43,7 +50,7 @@ export function raw(value) { return new Raw(value) }
 
 /**
  * @template T
- * @typedef {T extends (Tag<any> | Signal<any> | Dynamic<any> | Array<any> | Raw | string | number | boolean | null | undefined) ? T : never} Child
+ * @typedef {T extends (Tag<any> | Signal<any> | Dynamic<any, any> | Array<any> | Raw<any> | string | number | boolean | null | undefined) ? T : never} Child
  */
 
 /**
@@ -66,8 +73,13 @@ export const tags = new Proxy(
    */
   ({}),
   {
-    /** @param {TagNames} tagName */
+    /** @arg {TagNames} tagName */
     get(_, tagName) {
+      /**
+       * @template T
+       * @template {Children<X>} X
+       * @arg {[ChildOrAttributes<T, tagName>, ...children: X]} params
+       */
       return function tag(...params) {
         const { props, children } = separatePropsAndChildren(params)
         if (props?.css) {
@@ -86,12 +98,12 @@ export const tags = new Proxy(
   }
 )
 
-/** @template {TagNames} tagName */
+/** @template {TagNames} TagName */
 export class Tag {
   /**
-   * @param {tagName} tagName
-   * @param {Attributes<tagName>} attributes
-   * @param {Children<any>} children
+   * @arg {TagName} tagName
+   * @arg {Attributes<TagName>} attributes
+   * @arg {Children<any>} children
    */
   constructor(tagName, attributes, children) {
     this.tagName = tagName
@@ -101,13 +113,14 @@ export class Tag {
 }
 
 /**
- * @param {Parameters<typeof String.raw>} args
+ * @arg {Parameters<typeof String.raw>} args
  * @returns {string}
  */
 export function css(...args) {
   return String.raw(...args)
 }
 
+/** @arg {Array<string | Signal<string>>} classNames */
 export function cx(...classNames) {
   const signals = classNames.filter(x => x instanceof Signal)
   if (!signals.length)
@@ -118,8 +131,8 @@ export function cx(...classNames) {
 
 /**
  * @template T
- * @param {Array<Signal<string> | string>} potentialSignals
- * @param {(values: Array<string>) => T} callback
+ * @arg {Array<Signal<string> | string>} potentialSignals
+ * @arg {(values: Array<string>) => T} callback
  */
 function mergeSignals(potentialSignals, callback) {
   const signals = potentialSignals
@@ -159,6 +172,8 @@ function fixed(value) {
 
   function noop() {}
 }
+
+// TODO: we need to move this to signal.js (if we want to keep it)
 
 function combine(signals) {
   const e = new Error()

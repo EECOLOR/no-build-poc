@@ -1,5 +1,10 @@
 import crypto from 'node:crypto'
 
+/**
+ * @arg {string} jwt
+ * @arg {{ [id: string]: string}} publicKeys
+ * @returns {{ valid: boolean, header?: any, body?: any, hint?: string }}
+ */
 export function decodeAndVerifyJwt(jwt, publicKeys) {
   const [encodedHeader, encodedBody, encodedSignature] = jwt.split('.')
   const header = decodeJson(encodedHeader)
@@ -36,6 +41,11 @@ export function decodeAndVerifyJwt(jwt, publicKeys) {
   return { valid: true, header, body }
 }
 
+/**
+ * @arg {string} kid
+ * @arg {any} body
+ * @arg {string} privateKey
+ */
 export function createJwt(kid, body, privateKey) {
   const encodedHeader = encodeJson({ alg: "RS256", typ: "JWT", kid })
   const encodedBody = encodeJson(body)
@@ -50,23 +60,28 @@ export function createJwt(kid, body, privateKey) {
   return `${unsignedToken}.${signature}`
 }
 
+/** @arg {string} hint */
 function invalid(hint) {
   return { valid: false, hint }
 }
 
+/** @arg {any} json */
 function encodeJson(json) {
   const jsonString = JSON.stringify(json)
   return encodeRaw(jsonString)
 }
 
+/** @arg {string} value */
 function encodeRaw(value) {
   return Buffer.from(value).toString('base64url')
 }
 
+/** @arg {string} encoded */
 function decodeJson(encoded) {
   const decodedString = decodeRaw(encoded).toString('utf-8')
   try { return decodedString && JSON.parse(decodedString) } catch (e) { }
 }
+/** @arg {string} encoded */
 function decodeRaw(encoded) {
   try { return Buffer.from(encoded, 'base64url') } catch (e) { }
 }

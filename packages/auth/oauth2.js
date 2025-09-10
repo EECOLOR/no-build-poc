@@ -60,7 +60,7 @@ export async function handleLoginCallback(authConfig, searchParams) {
 
 /** @typedef {ReturnType<typeof createWithPublicKeys>} WithPublicKeys */
 
-/** @param {() => Promise<{ [kid: string]: string }>} fetchPublicKeys */
+/** @arg {() => Promise<{ [kid: string]: string }>} fetchPublicKeys */
 export function createWithPublicKeys(fetchPublicKeys) {
   const cache = {
     lastUpdated: 0,
@@ -68,7 +68,7 @@ export function createWithPublicKeys(fetchPublicKeys) {
   }
   const expiration = 24 * 60 * 60 * 1000
 
-  /** @param {(publicKeys: { [id: string]: string }, error?: Error) => void} callback */
+  /** @arg {(publicKeys: { [id: string]: string }, error?: Error) => void} callback */
   return function withPublicKeys(callback) {
     // these things rotate every once in a while, so cache up to 24 hours
     const now = Date.now()

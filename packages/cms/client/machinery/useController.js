@@ -11,7 +11,7 @@ import { useRef } from '#ui/hooks.js';
 /**
  * @template {HTMLElement} S
  * @template {{ [method: string]: () => void }} T
- * @param {(ref: Ref<S>) => Controller<T, S>} createController
+ * @arg {(ref: Ref<S>) => Controller<T, S>} createController
  * @returns {Controller<T, S>}
  */
 export function useController(createController) {
@@ -22,12 +22,12 @@ export function useController(createController) {
 /**
  * @template {keyof HTMLElementTagNameMap} S
  * @template {{ [method: string]: () => void }} T
- * @param {S} hint
- * @param {(ref: Ref<HTMLElementTagNameMap[S]>) => T} f
+ * @arg {S} hint
+ * @arg {(ref: Ref<HTMLElementTagNameMap[S]>) => T} f
  */
 export function controller(hint, f) {
   /**
-   * @param {Ref<HTMLElementTagNameMap[S]>} ref
+   * @arg {Ref<HTMLElementTagNameMap[S]>} ref
    * @returns {Controller<ReturnType<typeof f>, HTMLElementTagNameMap[S]>}
    */
   return ref => ({ ...f(ref), ref })
