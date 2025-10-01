@@ -2,7 +2,7 @@
 
 import unicode from './unicode.js'
 
-/** @import { Change } from './diff.js' */
+/** @import { Change } from './types.ts' */
 
 /**
  * We do not expect similar changes to be present consecutively in the array (added, removed, unchanged)

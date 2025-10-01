@@ -35,11 +35,13 @@
   https://github.com/kpdecker/jsdiff/blob/2c36f81b41936a9987c4d0d4b3f8625b844fddb3/src/diff/base.js
 */
 
+/** @import { Change, Path } from './types.ts' */
+
 /**
  * Perform a diff between two strings on a character level
  *
- * @param {string} originalOldValue
- * @param {string} originalNewValue
+ * @arg {string} originalOldValue
+ * @arg {string} originalNewValue
  * @returns {Array<Change>}
  */
 export function diff(originalOldValue, originalNewValue) {
@@ -51,6 +53,7 @@ export function diff(originalOldValue, originalNewValue) {
   const [oldLen, newLen] = [oldValue.length, newValue.length]
   const maxEditLength = oldLen + newLen
 
+  /** @type {Path} */
   const start = { oldPos: -1, newPos: -1, previous: null }
   /** @type {Map<number, Path>} */
   const bestPathsByDiagonal = new Map([[0, start]])
@@ -118,6 +121,7 @@ export function diff(originalOldValue, originalNewValue) {
 
   throw new Error('No path found')
 
+  /** @arg {Path} path */
   function appendUnchangedPath(path) {
     const diagonalSteps = followDiagonal(oldValue, newValue, path.oldPos, path.newPos)
 
@@ -199,6 +203,13 @@ export function diff(originalOldValue, originalNewValue) {
   }
 }
 
+/**
+ * @arg {string} oldValue
+ * @arg {string} newValue
+ * @arg {number} oldPos
+ * @arg {number} newPos
+ * @arg {1 | -1} [direction]
+ */
 function followDiagonal(oldValue, newValue, oldPos, newPos, direction = 1) {
   let steps = 0
   while (true) {
@@ -213,20 +224,3 @@ function followDiagonal(oldValue, newValue, oldPos, newPos, direction = 1) {
 
   return steps
 }
-
-/**
- * @typedef {{
- *   oldPos: number,
- *   newPos: number,
- *   previous: Path | null,
- *   added?: boolean,
- *   removed?: boolean
- * }} Path
- */
-/**
- * @typedef {{
- *   value: string,
- *   added?: boolean,
- *   removed?: boolean,
- * }} Change
- */

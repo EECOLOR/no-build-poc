@@ -5,6 +5,7 @@ import url from 'node:url'
 const pwd = process.cwd()
 const currentPath = path.dirname(url.fileURLToPath(import.meta.url))
 
+/** @arg {string} configEnv */
 export async function load(configEnv) {
   const configFiles = [
     { name: 'default', required: false, allowOverride: false },
@@ -12,6 +13,7 @@ export async function load(configEnv) {
     { name: 'local'  , required: false, allowOverride: true }
   ]
 
+  /** @type {{ [key: string]: unknown }} */
   let config = {}
 
   for (const { name, required, allowOverride } of configFiles) {
@@ -28,6 +30,12 @@ export async function load(configEnv) {
   return config
 }
 
+/**
+ * @arg {{ [key: string]: unknown }} target
+ * @arg {{ [key: string]: unknown }} source
+ * @arg {boolean} allowOverride
+ * @arg {Array<string>} path
+ */
 function mergeDeep(target, source, allowOverride, path = []) {
   return Object.keys(source)
     .reduce((result, key) => {
@@ -47,9 +55,12 @@ function mergeDeep(target, source, allowOverride, path = []) {
   )
 }
 
+/** @arg {unknown} x @return {x is { [key: string]: unknown }} */
 function isObject(x) {
   const constructor = getConstructor(x)
   return constructor && constructor instanceof constructor
 }
+/** @arg {unknown} x */
 function getConstructor(x) { return isObjectLike(x) && Object.getPrototypeOf(x).constructor }
+/** @arg {unknown} x */
 function isObjectLike(x) { return typeof x === 'object' && x !== null }

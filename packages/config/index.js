@@ -10,6 +10,7 @@ catch (e) { exit(e) }
 
 export default config
 
+/** @arg {Error | string} error */
 function exit(error) {
   console.error(error)
   process.exit(1)

@@ -16,7 +16,8 @@
     "#routing/*": "./packages/routing/*",
     "#auth/*": "./packages/auth/*",
     "#diff": "./packages/diff/diff.js",
-    "#diff/*": "./packages/diff/*"
+    "#diff/*": "./packages/diff/*",
+    "#typescript/*": "./packages/typescript/*"
   },
   "dependencies": {
     "firebase": "^10.12.2",

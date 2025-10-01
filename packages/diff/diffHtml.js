@@ -2,11 +2,16 @@ import { diff } from './diff.js'
 import { mergeChanges } from './merge.js'
 import unicode, { puaStart, puaEnd } from './unicode.js'
 
-/** @import { Change } from './diff.js' */
+/** @import { Change, HtmlChange, TagInfo, ValueTag, ValueText } from './types.ts' */
+
 const tagRegex = /<([/]?)([^ />]+)[^/>]*([/]?)>/
 const tagsRegex = new RegExp(tagRegex, 'g')
 const tagOrNoTagRegex = /(<[^>]+>)|([^<]+)/g
 
+/**
+ * @arg {string} oldValue
+ * @arg {string} newValue
+ */
 export function diffHtml(oldValue, newValue) {
   const info = prepareForDiff(oldValue || '', newValue)
   const changes = calculateChanges(info.oldValue, info.newValue, info.placeholderToTag)
@@ -48,9 +53,12 @@ function prepareForDiff(oldHtml, newHtml) {
 }
 
 /**
- * Runs the actual diff algorithm and then massages the changes to that tag-only changes can be
+ * Runs the actual diff algorithm and then massages the changes so that tag-only changes can be
  * displayed.
  *
+ * @arg {string} oldValue
+ * @arg {string} newValue
+ * @arg {Map<string, TagInfo>} placeholderToTag
  * @returns {Array<HtmlChange>}
  */
 function calculateChanges(oldValue, newValue, placeholderToTag) {
@@ -165,6 +173,10 @@ function calculateChanges(oldValue, newValue, placeholderToTag) {
    { value: "" }
  ]
 */
+/**
+ * @arg {Array<Change>} changes
+ * @arg {Map<string, TagInfo>} placeholderToTag
+ */
 function balanceChanges(changes, placeholderToTag) {
   if (changes.length < 2)
     return changes
@@ -202,7 +214,7 @@ function balanceChanges(changes, placeholderToTag) {
 /**
  * @param {string} currentValue
  * @param {string} otherValue
- * @param {Map<string, { isOpen?: boolean, isClose?: boolean }} placeholderToTag
+ * @param {Map<string, TagInfo} placeholderToTag
  * @param {-1 | 1} direction
  * @returns
  */
@@ -243,6 +255,7 @@ function findMovablePosition(currentValue, otherValue, placeholderToTag, directi
   return direction * position
 }
 
+/** @arg {Change} part */
 function hasChanged(part) {
   return part.added || part.removed
 }
@@ -250,7 +263,7 @@ function hasChanged(part) {
 /**
  * Converts changes into renderable html
  *
- * @param {Array<HtmlChange>} changes
+ * @arg {Array<HtmlChange>} changes
  */
 export function toHtml(changes) {
   let result = ''
@@ -307,25 +320,25 @@ export function toHtml(changes) {
   return result
 }
 
+/** @arg {string} value */
 function ins(value) {
   return '<ins class="diff-added">' + value + '</ins>'
 }
+/** @arg {string} value */
 function del(value) {
   return '<del class="diff-removed">' + value + '</del>'
 }
+/** @arg {string} value */
 function contextChange(value) {
   return '<span class="diff-context-changed">' + value + '</span>'
 }
 
+/** @arg {string} value */
 function getValueSegments(value) {
-  /**
-   * @type {Array<
-   *  { type: 'text', text: string } |
-   *  { type: 'tag', tag: string, isClose: boolean, isOpen: boolean, name: string, isClosed?: true, isClosing?: true }
-   * >}
-   */
+  /** @type {Array<ValueText | ValueTag>} */
   const segments = []
 
+  /** @type {Map<string, ValueTag>} */
   const openTags = new Map()
 
   for (const [_, rawTag, text] of value.matchAll(tagOrNoTagRegex)) {
@@ -338,7 +351,7 @@ function getValueSegments(value) {
     const isClose = Boolean(rawIsClose)
     const isOpen = !isClose && !rawIsSelfClose
 
-    const segment = /** @type {const} */ ({ type: 'tag', tag, isClose, isOpen, name })
+    const segment = /** @type {ValueTag} */ ({ type: 'tag', tag, isClose, isOpen, name })
 
     if (isOpen)
       openTags.set(name, segment)
@@ -354,14 +367,3 @@ function getValueSegments(value) {
 
   return segments
 }
-
-/**
- * @typedef {Change & (
- *  {
- *    contextChanged: boolean
- *    hasText: boolean
- *    hasTags: boolean
- *    hasUnclosedOpenTags: boolean
- *    hasUnopenedCloseTags: boolean
- * })} HtmlChange
- */

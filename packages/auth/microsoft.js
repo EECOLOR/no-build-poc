@@ -16,6 +16,7 @@ async function fetchPublicKeys() {
 
 const max64CharsRegex = /.{1,64}/g
 
+/** @arg {string} x5cCert */
 function convertX5cToPem(x5cCert) {
   const lines = x5cCert.match(max64CharsRegex).join('\n')
   return (
