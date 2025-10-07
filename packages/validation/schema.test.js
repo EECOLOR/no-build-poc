@@ -142,6 +142,17 @@ describe('array Validator', () => {
       issues: [{ kind: 'type', path: [1, 'name'], validator: string }]
     })
   })
+
+  describe('an array-level validator should be able to fail', () => {
+    testFailure({
+      schema: array(string(), notEmpty),
+      input: [],
+      issues: [{ kind: 'validation', path: [], validator: notEmpty }]
+    })
+
+    /** @arg {Array<unknown>} value */
+    function notEmpty(value) { return value.length > 0 }
+  })
 })
 
 describe('object Validator', () => {

@@ -33,10 +33,11 @@ export function string(...validators) {
 
 /**
  * @template T
- * @arg {TypeValidator<T>} validator
+ * @arg {TypeValidator<T>} typeValidator
+ * @arg  {Array<ValueValidator<ResultType<TypeValidator<T>>>>} validators
  * @returns {TypeValidator<TypeValidator<T>>}
  */
-export function array(validator) {
+export function array(typeValidator, ...validators) {
   const parse = createParse(tryParse)
   return { parse, tryParse }
 
@@ -45,9 +46,9 @@ export function array(validator) {
     if (!Array.isArray(value))
       return asConst({ failure: true, issues: [typeIssue(path, array)] })
 
-    const issues = []
+    let issues = []
     for (let i = 0; i < value.length; i++) {
-      const result = validator.tryParse(value[i], path.concat(i))
+      const result = typeValidator.tryParse(value[i], path.concat(i))
       if ('failure' in result)
         issues.push(...result.issues)
     }
@@ -56,6 +57,11 @@ export function array(validator) {
       return asConst({ failure: true, issues })
 
     const typed = /** @type {Expand<ResultType<TypeValidator<T>>>} */ (value)
+    issues = validateValue(typed, path, validators)
+
+    if (issues.length)
+      return asConst({ failure: true, issues })
+
     return asConst({ success: true, typed })
   }
 }

@@ -36,12 +36,12 @@ const { testCases, inMemoryFiles } = createTestCases({
     'array(string()) returns a string[]': `
       const validator = array(string())
       const result = validator.parse(['a', 'b', 'c'])
-      expectAssignable<string[]>(result)
+      expectAssignable<Array<string>>(result)
     `,
     'array(object()) returns a correctly typed object array': `
       const schema = array(object({ name: string() }))
       const result = schema.parse([{ name: 'test' }])
-      expectAssignable<{ name: string }[]>(result)
+      expectAssignable<Array<{ name: string }>>(result)
     `,
   },
   failure: {
@@ -49,7 +49,7 @@ const { testCases, inMemoryFiles } = createTestCases({
       code: `
         const validator = array(string())
         const result = validator.parse(['a', 'b', 'c'])
-        expectAssignable<number[]>(result)
+        expectAssignable<Array<number>>(result)
       `,
       expectedErrors: [
         `Argument of type 'string[]' is not assignable to parameter of type 'number[]'.\n  Type 'string' is not assignable to type 'number'.`
