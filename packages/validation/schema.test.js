@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test'
 import assert from 'node:assert'
-import { string, object, SchemaError, typeIssue, validationIssue, invalid } from './schema.js'
+import { string, object, SchemaError, typeIssue, validationIssue, invalid, number, array } from './schema.js'
 
 /** @import { TypeValidator, TypeIssue, ValidationIssue } from './types.ts' */
 
@@ -41,6 +41,106 @@ describe('string Validator', () => {
 
     /** @arg {string} value */
     function isLargerThan5(value) { return value.length > 5 }
+  })
+
+  describe('an empty string should be valid', () => {
+    testSuccess({
+      schema: string(),
+      input: '',
+      typed: ''
+    })
+  })
+
+  describe('a string with leading/trailing spaces should be valid', () => {
+    testSuccess({
+      schema: string(),
+      input: '  hello  ',
+      typed: '  hello  '
+    })
+  })
+})
+
+describe('number Validator', () => {
+  describe('a valid number should be returned', () => {
+    testSuccess({
+      schema: number(),
+      input: 123,
+      typed: 123
+    })
+  })
+
+  describe('a non-number value should throw a SchemaError', () => {
+    testFailure({
+      schema: number(),
+      input: 'hello',
+      issues: [{ kind: 'type', path: [], validator: number }]
+    })
+  })
+
+  describe('an optional validator should pass', () => {
+    testSuccess({
+      schema: number(isLargerThan10),
+      input: 15,
+      typed: 15
+    })
+
+    /** @arg {number} value } */
+    function isLargerThan10(value) { return value > 10 }
+  })
+
+  describe('an optional validator should fail when it returns false', () => {
+    testFailure({
+      schema: number(isLargerThan10),
+      input: 5,
+      issues: [{ kind: 'validation', path: [], validator: isLargerThan10 }]
+    })
+
+    /** @arg {number} value */
+    function isLargerThan10(value) { return value > 10 }
+  })
+})
+
+describe('array Validator', () => {
+  describe('a valid array of strings should be returned', () => {
+    testSuccess({
+      schema: array(string()),
+      input: ['a', 'b', 'c'],
+      typed: ['a', 'b', 'c']
+    })
+  })
+
+  describe('a non-array value should throw a SchemaError', () => {
+    testFailure({
+      schema: array(string()),
+      input: 'not an array',
+      issues: [{ kind: 'type', path: [], validator: array }]
+    })
+  })
+
+  describe('an array with an invalid item should throw a SchemaError', () => {
+    testFailure({
+      schema: array(string()),
+      input: ['a', 123, 'c'],
+      issues: [{ kind: 'type', path: [1], validator: string }]
+    })
+  })
+
+  describe('an array of objects should be validated correctly', () => {
+    const userSchema = object({ name: string() })
+    testSuccess({
+      schema: array(userSchema),
+      input: [{ name: 'test1' }, { name: 'test2' }],
+      typed: [{ name: 'test1' }, { name: 'test2' }]
+    })
+  })
+
+  describe('an array of objects with an invalid item should throw a SchemaError', () => {
+    const userSchema = object({ name: string() })
+    testFailure({
+      schema: array(userSchema),
+      input: [{ name: 'test1' }, { name: 123 }],
+      issues: [{ kind: 'type', path: [1, 'name'], validator: string }]
+    })
   })
 })
 

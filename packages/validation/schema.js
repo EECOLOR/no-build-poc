@@ -32,6 +32,58 @@ export function string(...validators) {
 }
 
 /**
+ * @template T
+ * @arg {TypeValidator<T>} validator
+ * @returns {TypeValidator<TypeValidator<T>>}
+ */
+export function array(validator) {
+  const parse = createParse(tryParse)
+  return { parse, tryParse }
+
+  /** @arg {unknown} value @arg {Path} path */
+  function tryParse(value, path = []) {
+    if (!Array.isArray(value))
+      return asConst({ failure: true, issues: [typeIssue(path, array)] })
+
+    const issues = []
+    for (let i = 0; i < value.length; i++) {
+      const result = validator.tryParse(value[i], path.concat(i))
+      if ('failure' in result)
+        issues.push(...result.issues)
+    }
+
+    if (issues.length)
+      return asConst({ failure: true, issues })
+
+    const typed = /** @type {Expand<ResultType<TypeValidator<T>>>} */ (value)
+    return asConst({ success: true, typed })
+  }
+}
+
+/**
+ * @arg  {Array<ValueValidator<number>>} validators
+ * @returns {TypeValidator<number>}
+ */
+export function number(...validators) {
+  const parse = createParse(tryParse)
+  return { parse, tryParse }
+
+  /** @arg {unknown} value @arg {Path} path */
+  function tryParse(value, path = []) {
+    if (typeof value !== 'number')
+      return asConst({ failure: true, issues: [typeIssue(path, number)] })
+
+    const typed = /** @type {ResultType<number>} */ (value)
+    const issues = validateValue(typed, path, validators)
+
+    if (issues.length)
+      return asConst({ failure: true, issues })
+
+    return asConst({ success: true, typed })
+  }
+}
+
+/**
  * @template const T
  * @template {T} R
  * @arg {T & ObjectSchema} userSchema
