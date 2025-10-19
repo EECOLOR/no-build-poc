@@ -43,6 +43,27 @@ const { testCases, inMemoryFiles } = createTestCases({
       const result = schema.parse([{ name: 'test' }])
       expectAssignable<Array<{ name: string }>>(result)
     `,
+    'string() validator infers a string': `
+      string(value => { expectAssignable<string>(value); return true })
+    `,
+    'number() validator infers a number': `
+      number(value => { expectAssignable<number>(value); return true })
+    `,
+    'array(string()) validator infers a string[]': `
+      array(string(), value => { expectAssignable<string[]>(value); return true })
+    `,
+    'object({}) validator infers an object': `
+      object({}, value => { expectAssignable<{}>(value); return true })
+    `,
+    'object({ name: string() }) validator infers an object with name property': `
+      object({ name: string() }, value => { expectAssignable<{ readonly name: string }>(value); return true })
+    `,
+    'nested object validator infers a nested object': `
+      object({ user: object({ name: string() }) }, value => { expectAssignable<{ readonly user: { readonly name: string } }>(value); return true })
+    `,
+    'array of objects validator infers an array of objects': `
+      array(object({ name: string() }), value => { expectAssignable<Array<{ readonly name: string }>>(value); return true })
+    `,
   },
   failure: {
     'array(string()) result is not assignable to number[]': {

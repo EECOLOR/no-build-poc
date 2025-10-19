@@ -91,9 +91,8 @@ export function number(...validators) {
 
 /**
  * @template const T
- * @template {T} R
  * @arg {T & ObjectSchema} userSchema
- * @arg {Array<ValueValidator<Expand<ResultType<R>>>>} validators
+ * @arg {Array<ValueValidator<Expand<ResultType<T>>>>} validators
  * @returns {TypeValidator<T>}
  */
 export function object(userSchema, ...validators) {

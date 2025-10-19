@@ -13,6 +13,5 @@ export type Expand<T> =
   ExpandObject<T>
 
 type ExpandObject<T> =
-  keyof T extends never ? unknown :
   T extends infer O ? { [K in keyof O]: Expand<O[K]> } :
   never
