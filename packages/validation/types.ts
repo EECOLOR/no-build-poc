@@ -31,6 +31,8 @@ export type ValueValidator<T> = (value: T) => boolean
 
 export type ResultType<T> =
   T extends string ? T :
+  T extends number ? T :
+  T extends TypeValidator<infer U> ? Array<Expand<ResultType<U>>> :
   T extends ObjectSchema ? ConvertOptionalKeys<{ [key in keyof T]: ResultType<TypeValidatorType<T[key]>> }> :
   never
 

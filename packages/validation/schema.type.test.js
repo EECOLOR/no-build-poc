@@ -7,7 +7,7 @@ import { compileAndGetDiagnostics } from '#typescript/compileCode.js'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const commonSetup = `
-  import { string, object } from '${__dirname}/schema.js'
+  import { string, object, number, array } from '${__dirname}/schema.js'
   function expectAssignable<T>(arg: T): void {}
 `
 
@@ -28,8 +28,43 @@ const { testCases, inMemoryFiles } = createTestCases({
       const result = schema.parse({ user: { name: 'test' } })
       expectAssignable<{ user: { name: string } }>(result)
     `,
+    'number() returns a number': `
+      const validator = number()
+      const result = validator.parse(123)
+      expectAssignable<number>(result)
+    `,
+    'array(string()) returns a string[]': `
+      const validator = array(string())
+      const result = validator.parse(['a', 'b', 'c'])
+      expectAssignable<Array<string>>(result)
+    `,
+    'array(object()) returns a correctly typed object array': `
+      const schema = array(object({ name: string() }))
+      const result = schema.parse([{ name: 'test' }])
+      expectAssignable<Array<{ name: string }>>(result)
+    `,
   },
   failure: {
+    'array(string()) result is not assignable to number[]': {
+      code: `
+        const validator = array(string())
+        const result = validator.parse(['a', 'b', 'c'])
+        expectAssignable<Array<number>>(result)
+      `,
+      expectedErrors: [
+        `Argument of type 'string[]' is not assignable to parameter of type 'number[]'.\n  Type 'string' is not assignable to type 'number'.`
+      ]
+    },
+    'number() result is not assignable to string': {
+      code: `
+        const validator = number()
+        const result = validator.parse(123)
+        expectAssignable<string>(result)
+      `,
+      expectedErrors: [
+        `Argument of type 'number' is not assignable to parameter of type 'string'.`
+      ]
+    },
     'string() result is not assignable to number': {
       code: `
         const validator = string()
