@@ -1,4 +1,14 @@
+import { array, object, string } from '#validation/schema.js'
 import { createWithPublicKeys } from './oauth2.js'
+
+const keysEndpointSchema = object({
+  keys: array(
+    object({
+      kid: string(),
+      x5c: array(string()),
+    })
+  )
+})
 
 export const withPublicKeys = createWithPublicKeys(fetchPublicKeys)
 
@@ -7,7 +17,7 @@ async function fetchPublicKeys() {
     'https://login.microsoftonline.com/01d1e6d7-8e38-4132-8385-a5664abf27ed/discovery/v2.0/keys',
     { headers: { 'Accept': 'application/json' } }
   )
-  const result = await response.json()
+  const result = keysEndpointSchema.parse(await response.json())
 
   return Object.fromEntries( result.keys.map(({ kid, x5c: [x5cCert] }) =>
     [kid, convertX5cToPem(x5cCert)]

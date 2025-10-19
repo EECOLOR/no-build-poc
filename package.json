@@ -17,7 +17,8 @@
     "#auth/*": "./packages/auth/*",
     "#diff": "./packages/diff/diff.js",
     "#diff/*": "./packages/diff/*",
-    "#typescript/*": "./packages/typescript/*"
+    "#typescript/*": "./packages/typescript/*",
+    "#validation/*": "./packages/validation/*"
   },
   "dependencies": {
     "firebase": "^10.12.2",
