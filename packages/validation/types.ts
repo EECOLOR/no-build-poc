@@ -21,20 +21,31 @@ export type ObjectSchema = {
 }
 
 export type TypeValidator<T> = {
-  parse(value: unknown, path?: Path): Expand<ResultType<T>>
-  tryParse(value: unknown, path?: Path):
-    { success: true, typed: Expand<ResultType<T>> } |
-    { failure: true, issues: ReadonlyArray<TypeIssue | ValidationIssue>}
+  parse: ParseType<Expand<ResultType<T>>>
+  tryParse: TryParseType<Expand<ResultType<T>>>
 }
+
+export type ParseType<T> = (value: unknown, path?: Path) => T
+
+export type TryParseType<T> = (value: unknown, path?: Path) =>
+{ success: true, typed: T } |
+{ failure: true, issues: ReadonlyArray<TypeIssue | ValidationIssue>}
+
 
 export type ValueValidator<T> = (value: T) => boolean
 
 export type ResultType<T> =
   T extends string ? T :
   T extends number ? T :
-  T extends TypeValidator<infer U> ? Array<Expand<ResultType<U>>> :
+  T extends TypeValidator<infer U> ? ResultType<U> :
+  T extends Array<infer U> ? Array<ResultType<U>> :
   T extends ObjectSchema ? ConvertOptionalKeys<{ [key in keyof T]: ResultType<TypeValidatorType<T[key]>> }> :
   never
+
+export type GetTryParseType<T> =
+  T extends TryParseType<infer R>
+    ? R
+    : never;
 
 type TypeValidatorType<T> =
   T extends TypeValidator<infer X> ? X : never

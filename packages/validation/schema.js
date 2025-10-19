@@ -1,6 +1,6 @@
 import { asConst } from '#typescript/helpers.js'
 
-/** @import { Path, TypeValidator, ObjectSchema, ResultType, ValidationIssue, ValueValidator, ValidatorFunction, TypeIssue } from './types.ts' */
+/** @import { Path, TypeValidator, ObjectSchema, ResultType, ValidationIssue, ValueValidator, ValidatorFunction, TypeIssue, TryParseType, GetTryParseType, ParseType } from './types.ts' */
 /** @import { Expand } from '#typescript/utils.ts' */
 
 export const codes = {
@@ -16,12 +16,12 @@ export function string(...validators) {
   const parse = createParse(tryParse)
   return { parse, tryParse }
 
-  /** @arg {unknown} value @arg {Path} path */
+  /** @type {TryParseType<string>} */
   function tryParse(value, path = []) {
     if (typeof value !== 'string')
       return asConst({ failure: true, issues: [typeIssue(path, string)] })
 
-    const typed = /** @type {ResultType<string>} */ (value)
+    const typed = value
     const issues = validateValue(typed, path, validators)
 
     if (issues.length)
@@ -34,14 +34,14 @@ export function string(...validators) {
 /**
  * @template T
  * @arg {TypeValidator<T>} typeValidator
- * @arg  {Array<ValueValidator<ResultType<TypeValidator<T>>>>} validators
- * @returns {TypeValidator<TypeValidator<T>>}
+ * @arg  {Array<ValueValidator<Array<Expand<ResultType<TypeValidator<T>>>>>>} validators
+ * @returns {TypeValidator<Array<T>>}
  */
 export function array(typeValidator, ...validators) {
   const parse = createParse(tryParse)
   return { parse, tryParse }
 
-  /** @arg {unknown} value @arg {Path} path */
+  /** @type {TryParseType<Array<Expand<ResultType<TypeValidator<T>>>>>} */
   function tryParse(value, path = []) {
     if (!Array.isArray(value))
       return asConst({ failure: true, issues: [typeIssue(path, array)] })
@@ -56,7 +56,7 @@ export function array(typeValidator, ...validators) {
     if (issues.length)
       return asConst({ failure: true, issues })
 
-    const typed = /** @type {Expand<ResultType<TypeValidator<T>>>} */ (value)
+    const typed = /** @type {Array<Expand<ResultType<TypeValidator<T>>>>} */ (value)
     issues = validateValue(typed, path, validators)
 
     if (issues.length)
@@ -74,12 +74,12 @@ export function number(...validators) {
   const parse = createParse(tryParse)
   return { parse, tryParse }
 
-  /** @arg {unknown} value @arg {Path} path */
+  /** @type {TryParseType<number>} */
   function tryParse(value, path = []) {
     if (typeof value !== 'number')
       return asConst({ failure: true, issues: [typeIssue(path, number)] })
 
-    const typed = /** @type {ResultType<number>} */ (value)
+    const typed = value
     const issues = validateValue(typed, path, validators)
 
     if (issues.length)
@@ -105,7 +105,7 @@ export function object(userSchema, ...validators) {
   const parse = createParse(tryParse)
   return { parse, tryParse }
 
-  /** @arg {unknown} value @arg {Path} path */
+  /** @type {TryParseType<Expand<ResultType<T>>>} */
   function tryParse(value, path = []) {
     if (!isObject(value))
       return asConst({ failure: true, issues: [typeIssue(path, object)] })
@@ -114,6 +114,9 @@ export function object(userSchema, ...validators) {
 
     // Check schemed properties
     for (const [key, keyValidator] of Object.entries(schema)) {
+      if (typeof key !== 'string')
+        continue
+
       const isOptional = key.endsWith('?')
       const actualKey = isOptional ? key.slice(0, -1) : key
 
@@ -155,7 +158,7 @@ export function invalid() {
   const parse = createParse(tryParse)
   return { parse, tryParse }
 
-  /** @arg {unknown} value @arg {Path} path */
+  /** @type {TryParseType<never>} */
   function tryParse(value, path) {
     return asConst({ failure: true, issues: [typeIssue(path, invalid)] })
   }
@@ -184,9 +187,9 @@ export function validationIssue(path, validator) {
 }
 
 /**
- * @template T
- * @arg {TypeValidator<T>['tryParse']} tryParse
- * @returns {TypeValidator<T>['parse']}
+ * @template {TryParseType<any>} T
+ * @arg {T} tryParse
+ * @returns {ParseType<GetTryParseType<T>>}
  */
 function createParse(tryParse) {
 
