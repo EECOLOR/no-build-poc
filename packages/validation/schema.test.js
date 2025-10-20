@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test'
 import assert from 'node:assert'
-import { string, object, SchemaError, typeIssue, validationIssue, invalid, number, array } from './schema.js'
+import { string, object, SchemaError, typeIssue, validationIssue, invalid, number, array, or, constant, boolean, isConstant } from './schema.js'
 
 /** @import { TypeValidator, TypeIssue, ValidationIssue } from './types.ts' */
 
@@ -97,6 +97,106 @@ describe('number Validator', () => {
 
     /** @arg {number} value */
     function isLargerThan10(value) { return value > 10 }
+  })
+})
+
+describe('boolean Validator', () => {
+  describe('a valid boolean should be returned', () => {
+    testSuccess({
+      schema: boolean(),
+      input: true,
+      typed: true
+    })
+  })
+
+  describe('a non-boolean value should throw a SchemaError', () => {
+    testFailure({
+      schema: boolean(),
+      input: 123,
+      issues: [{ kind: 'type', path: [], validator: boolean }]
+    })
+  })
+
+  describe('an optional validator should pass', () => {
+    testSuccess({
+      schema: boolean(isTrue),
+      input: true,
+      typed: true
+    })
+
+    /** @arg {boolean} value } */
+    function isTrue(value) { return value === true }
+  })
+
+  describe('an optional validator should fail when it returns false', () => {
+    testFailure({
+      schema: boolean(isTrue),
+      input: false,
+      issues: [{ kind: 'validation', path: [], validator: isTrue }]
+    })
+
+    /** @arg {boolean} value */
+    function isTrue(value) { return value === true }
+  })
+})
+
+describe('constant Validator', () => {
+  describe('a matching string constant should be returned', () => {
+    testSuccess({
+      schema: constant('SUCCESS'),
+      input: 'SUCCESS',
+      typed: 'SUCCESS'
+    })
+  })
+
+  describe('a non-matching string constant should fail', () => {
+    testFailure({
+      schema: constant('SUCCESS'),
+      input: 'FAILURE',
+      issues: [{ kind: 'validation', path: [], validator: isConstant('SUCCESS') }]
+    })
+  })
+
+  describe('a matching number constant should be returned', () => {
+    testSuccess({
+      schema: constant(42),
+      input: 42,
+      typed: 42
+    })
+  })
+
+  describe('a non-matching number constant should fail', () => {
+    testFailure({
+      schema: constant(42),
+      input: 100,
+      issues: [{ kind: 'validation', path: [], validator: isConstant(42) }]
+    })
+  })
+
+  describe('a matching boolean constant should be returned', () => {
+    testSuccess({
+      schema: constant(true),
+      input: true,
+      typed: true
+    })
+  })
+
+  describe('a value of the wrong type should fail', () => {
+    testFailure({
+      schema: constant('text'),
+      input: 123,
+      issues: [{ kind: 'type', path: [], validator: string }]
+    })
+  })
+
+  describe('an optional validator for a constant should work', () => {
+    testFailure({
+      schema: constant('ab', isLongerThan2),
+      input: 'ab',
+      issues: [{ kind: 'validation', path: [], validator: isLongerThan2 }]
+    })
+    /** @arg {string} value } */
+    function isLongerThan2(value) { return value.length > 2 }
   })
 })
 
@@ -280,6 +380,117 @@ describe('object Validator', () => {
         input: { name: 'test', extraProp: 123 },
         issues: [{ kind: 'type', path: ['extraProp'], validator: string }]
       })
+    })
+  })
+})
+
+describe('or Validator', () => {
+  const stringOrNumber = or(string(), number())
+  const userOrGuest = or(
+    object({ type: string(isUser), name: string() }),
+    object({ type: string(isGuest) })
+  )
+  /** @arg {string} value */
+  function isUser(value) { return value === 'user' }
+  /** @arg {string} value */
+  function isGuest(value) { return value === 'guest' }
+
+  describe('a value matching the first schema should pass', () => {
+    testSuccess({
+      schema: stringOrNumber,
+      input: 'hello',
+      typed: 'hello'
+    })
+  })
+
+  describe('a value matching the second schema should pass', () => {
+    testSuccess({
+      schema: stringOrNumber,
+      input: 123,
+      typed: 123
+    })
+  })
+
+  describe('a value matching neither schema should fail', () => {
+    testFailure({
+      schema: stringOrNumber,
+      input: true,
+      issues: [
+        typeIssue([], string),
+        typeIssue([], number),
+      ]
+    })
+  })
+
+  describe('a complex object matching the first schema should pass', () => {
+    testSuccess({
+      schema: userOrGuest,
+      input: { type: 'user', name: 'Alice' },
+      typed: { type: 'user', name: 'Alice' }
+    })
+  })
+
+  describe('a complex object matching the second schema should pass', () => {
+    testSuccess({
+      schema: userOrGuest,
+      input: { type: 'guest' },
+      typed: { type: 'guest' }
+    })
+  })
+
+  describe('a complex object failing one part of the first schema, but passing the second, should pass', () => {
+    const strictUserOrGuest = or(
+      object({ type: string(isUser), name: string() }),
+      object({ type: string(isGuest), 'name?': string() })
+    )
+    testSuccess({
+      schema: strictUserOrGuest,
+      input: { type: 'guest', name: 'Alice' },
+      typed: { type: 'guest', name: 'Alice' }
+    })
+  })
+
+  describe('a complex object matching neither schema should fail with aggregated issues', () => {
+    testFailure({
+      schema: userOrGuest,
+      input: { type: 'admin', role: 'super' },
+      issues: [
+        validationIssue(['type'], isUser),
+        typeIssue(['name'], string),
+        validationIssue(['type'], isGuest),
+      ]
+    })
+  })
+
+  describe('a null value should fail', () => {
+    testFailure({
+      schema: stringOrNumber,
+      input: null,
+      issues: [
+        typeIssue([], string),
+        typeIssue([], number),
+      ]
+    })
+  })
+
+  describe('an array-level validation for or should work', () => {
+    /** @arg {Array<unknown>} value */
+    function hasMinLength(value) { return value.length >= 2 }
+    const arrayOrString = or(array(string(), hasMinLength), string())
+
+    testSuccess({
+      schema: arrayOrString,
+      input: ['a', 'b'],
+      typed: ['a', 'b']
+    })
+
+    testFailure({
+      schema: arrayOrString,
+      input: ['a'],
+      issues: [
+        validationIssue([], hasMinLength),
+        typeIssue([], string)
+      ]
     })
   })
 })

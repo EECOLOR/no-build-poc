@@ -2,7 +2,7 @@ import { Expand } from '#typescript/utils.ts'
 
 export type Path = Array<string | number | symbol>
 
-export type ValidatorFunction = (...args: Array<any>) => any
+export type ValidatorFunction = (value: any) => any
 
 export type TypeIssue = {
   kind: 'type'
@@ -37,6 +37,7 @@ export type ValueValidator<T> = (value: T) => boolean
 export type ResultType<T> =
   T extends string ? T :
   T extends number ? T :
+  T extends boolean ? T :
   T extends TypeValidator<infer U> ? ResultType<U> :
   T extends Array<infer U> ? Array<ResultType<U>> :
   T extends ObjectSchema ? ConvertOptionalKeys<{ [key in keyof T]: ResultType<TypeValidatorType<T[key]>> }> :
@@ -59,3 +60,6 @@ type RequiredKeys<T> = {
 }
 
 type ConvertOptionalKeys<T> = RequiredKeys<T> & Partial<OptionalKeys<T>>
+
+export type ConstantFunctionValidatorMap<T> =
+  Map<T, (value: T) => boolean>

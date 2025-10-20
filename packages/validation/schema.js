@@ -1,11 +1,49 @@
 import { asConst } from '#typescript/helpers.js'
 
-/** @import { Path, TypeValidator, ObjectSchema, ResultType, ValidationIssue, ValueValidator, ValidatorFunction, TypeIssue, TryParseType, GetTryParseType, ParseType } from './types.ts' */
-/** @import { Expand } from '#typescript/utils.ts' */
+/** @import { Path, TypeValidator, ObjectSchema, ResultType, ValidationIssue, ValueValidator, ValidatorFunction, TypeIssue, TryParseType, GetTryParseType, ParseType, ConstantFunctionValidatorMap } from './types.ts' */
+/** @import { ArrayToUnion, Expand } from '#typescript/utils.ts' */
 
-export const codes = {
-  noObject: 'noObject',
-  noString: 'noString',
+/**
+ * @template const T
+ * @arg {T & (string | boolean | number)} constantValue
+ * @arg  {Array<ValueValidator<T>>} validators
+ * @returns {TypeValidator<T>}
+ */
+export function constant(constantValue, ...validators) {
+  if (typeof constantValue === 'string') {
+    const typedValidators = /** @type {Array<ValueValidator<string>>} */ (validators)
+    return /** @type {TypeValidator<T>} */ (string(isConstant(constantValue), ...typedValidators))
+  }
+  if (typeof constantValue === 'number') {
+    const typedValidators = /** @type {Array<ValueValidator<number>>} */ (validators)
+    return /** @type {TypeValidator<T>} */ (number(isConstant(constantValue), ...typedValidators))
+  }
+  if (typeof constantValue === 'boolean') {
+    const typedValidators = /** @type {Array<ValueValidator<boolean>>} */ (validators)
+    return /** @type {TypeValidator<T>} */ (boolean(isConstant(constantValue), ...typedValidators))
+  }
+
+  return invalid()
+}
+
+// This is needed to be able to map constant validator functions by reference
+/** @type {ConstantFunctionValidatorMap<boolean | string | number>} */
+const constantFunctions = new Map()
+/**
+ * @template const T
+ * @arg {T & (boolean | string | number)} constantValue */
+export function isConstant(constantValue) {
+  if (constantFunctions.has(constantValue))
+    return constantFunctions.get(constantValue)
+
+  constantFunctions.set(constantValue, isConstant)
+  return isConstant
+
+  /** @arg {boolean | string | number} value */
+  function isConstant(value) {
+    return value === constantValue
+  }
+
 }
 
 /**
@@ -90,6 +128,29 @@ export function number(...validators) {
 }
 
 /**
+ * @arg  {Array<ValueValidator<boolean>>} validators
+ * @returns {TypeValidator<boolean>}
+ */
+export function boolean(...validators) {
+  const parse = createParse(tryParse)
+  return { parse, tryParse }
+
+  /** @type {TryParseType<boolean>} */
+  function tryParse(value, path = []) {
+    if (typeof value !== 'boolean')
+      return asConst({ failure: true, issues: [typeIssue(path, boolean)] })
+
+    const typed = value
+    const issues = validateValue(typed, path, validators)
+
+    if (issues.length)
+      return asConst({ failure: true, issues })
+
+    return asConst({ success: true, typed })
+  }
+}
+
+/**
  * @template const T
  * @arg {T & ObjectSchema} userSchema
  * @arg {Array<ValueValidator<Expand<ResultType<T>>>>} validators
@@ -158,8 +219,36 @@ export function invalid() {
   return { parse, tryParse }
 
   /** @type {TryParseType<never>} */
-  function tryParse(value, path) {
+  function tryParse(value, path = []) {
     return asConst({ failure: true, issues: [typeIssue(path, invalid)] })
+  }
+}
+
+/**
+ * @template {Array<TypeValidator<any>>} T
+ * @arg {T} typeValidators
+ * @returns {TypeValidator<ArrayToUnion<T>>}
+ */
+export function or(...typeValidators) {
+  const parse = createParse(tryParse)
+  return { parse, tryParse }
+
+  /** @type {TryParseType<Expand<ResultType<ArrayToUnion<T>>>>} */
+  function tryParse(value, path = []) {
+
+    const issues = []
+
+    for (const typeValidator of typeValidators) {
+      const result = typeValidator.tryParse(value, path)
+      if ('success' in result) {
+        const typed = /** @type {Expand<ResultType<ArrayToUnion<T>>>} */ (result.typed)
+        return asConst({ success: true, typed })
+      }
+
+      issues.push(...result.issues)
+    }
+
+    return asConst({ failure: true, issues })
   }
 }
 
