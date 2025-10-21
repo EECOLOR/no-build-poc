@@ -1,22 +1,16 @@
 
 // TODO: we probably need to add display information for the user here. Things might change over time
+
+/** @import { HistoryDetails, Patch } from '#cms/types.ts' */
+
 /**
  * @template {string} T
  * @typedef {{
  *   fieldType: T,
  *   valueForDiff: any,
- *   patch: object,
+ *   patch: Patch,
  * }} Change
  */
-
-/**
- * @typedef {{
- *   fieldType: string,
- *   valueForDiff: any,
- *   patches: Array<any>,
- * }} Details
- */
-
 
 /** @param {{ databaseActions: import('../database.js').Actions }} params */
 export function createHistoryHandler({ databaseActions }) {
@@ -53,7 +47,7 @@ export function createHistoryHandler({ databaseActions }) {
 
       const timestampStart = result.timestampStart
       const timestampEnd = timestamp
-      /** @type {Details} */
+      /** @type {HistoryDetails} */
       const details = {
         fieldType: change.fieldType,
         valueForDiff: change.valueForDiff,
@@ -69,6 +63,7 @@ export function createHistoryHandler({ databaseActions }) {
     } else {
       const timestampStart = timestamp
       const timestampEnd = timestamp
+      /** @type {HistoryDetails} */
       const details = {
         fieldType: change.fieldType,
         valueForDiff: change.valueForDiff,

@@ -6,10 +6,39 @@ import { css, tags } from '#ui/tags.js'
 import { useCombined, useElementSize } from '#ui/hooks.js'
 import { asConst } from '#cms/client/machinery/typeHelpers.js'
 /** @import { Position, Area } from '#cms/client/machinery/useDrag.js' */
+/** @import { ImageCrop, ImageHotspot, ImageMetadata, Rectangle } from '#cms/types.ts' */
+/** @import { ElementSize } from '#ui/hooks.js' */
+/** @import { DragHandle } from '#cms/client/machinery/useDrag.js' */
+
+/**
+ * @typedef {{
+ *   centerX: number
+ *   centerY: number
+ *   xAxis: number
+ *   yAxis: number
+ * }} Ellipse
+ */
+/**
+ * @typedef {{
+ *   top: number
+ *   left: number
+ *   bottom: number
+ *   right: number
+ * }} Inset
+ */
 
 const { div, img } = tags
 
 const connecting = Symbol('connecting')
+
+/**
+ * @template T
+ * @arg {T | typeof connecting} data
+ * @return {data is T}
+ */
+function isNotConnecting(data) {
+  return data !== connecting
+}
 
 ImageCropAndHotspot.style = css`
   --handle-size: 1rem;
@@ -29,6 +58,14 @@ ImageCropAndHotspot.style = css`
     position: relative;
   }
 `
+/**
+ * @arg {{
+ *   src: string,
+ *   $metadata: Signal<ImageMetadata>,
+ *   onCropChange: (crop: ImageCrop) => void,
+ *   onHotspotChange: (hotspot: ImageHotspot) => void,
+ * }} props
+ */
 export function ImageCropAndHotspot({ src, $metadata, onCropChange, onHotspotChange }) {
   const { ref, $size } = useElementSize()
 
@@ -39,7 +76,9 @@ export function ImageCropAndHotspot({ src, $metadata, onCropChange, onHotspotCha
   return (
     div({ className: 'ImageCropAndHotspot', css: ImageCropAndHotspot.style },
       img({ ref, src }),
-      conditional($displaySize, displaySize => displaySize !== connecting, _ =>
+      conditional($displaySize, isNotConnecting, $displaySize =>
+      conditional($crop, isNotConnecting, $crop =>
+      conditional($hotspot, isNotConnecting, $hotspot =>
         HotspotAndCropOverlay({
           src,
           $displaySize,
@@ -52,11 +91,17 @@ export function ImageCropAndHotspot({ src, $metadata, onCropChange, onHotspotCha
             onHotspotChange(resizeToActualSize(hotspot))
           },
         })
-      )
+      )))
     )
   )
 }
 
+/**
+ * @arg {{
+ *   $metadata: Signal<ImageMetadata>,
+ *   $displaySize: Signal<typeof connecting | ElementSize>,
+ * }} props
+ */
 function useDerivedLocalValues({ $metadata, $displaySize }) {
   const $ratio = useCombined($metadata, $displaySize)
     .derive(([metadata, displaySize]) => {
@@ -73,6 +118,7 @@ function useDerivedLocalValues({ $metadata, $displaySize }) {
       if (ratio === connecting) return connecting
       const metadata = $metadata.get()
       const displaySize = $displaySize.get()
+      if (displaySize === connecting) return connecting
 
       return metadata.crop ? resizeToScreen(metadata.crop, ratio) : addPosition(displaySize)
     })
@@ -82,16 +128,19 @@ function useDerivedLocalValues({ $metadata, $displaySize }) {
       if (crop === connecting) return connecting
       const metadata = $metadata.get()
       const ratio = $ratio.get()
+      if (ratio === connecting) return connecting
 
       return metadata.hotspot ? resizeToScreen(metadata.hotspot, ratio) : crop
     })
 
   return { $crop, $hotspot, resizeToActualSize }
 
+  /** @arg {ElementSize} size */
   function addPosition(size) {
     return { x: 0, y: 0, ...size }
   }
 
+  /** @arg {Rectangle} rect */
   function resizeToActualSize({ x, y, width, height }) {
     const ratio = $ratio.get()
     if (ratio === connecting)
@@ -105,6 +154,7 @@ function useDerivedLocalValues({ $metadata, $displaySize }) {
     }
   }
 
+  /** @arg {Rectangle} rect @arg {{ width: number, height: number }} ratio */
   function resizeToScreen({ x, y, width, height }, ratio) {
     const result = {
       x: Math.round(x / ratio.width),
@@ -116,6 +166,16 @@ function useDerivedLocalValues({ $metadata, $displaySize }) {
   }
 }
 
+/**
+ * @arg {{
+ *   src: string,
+ *   $crop: Signal<ImageCrop>,
+ *   $hotspot: Signal<ImageHotspot>,
+ *   $displaySize: Signal<ElementSize>,
+ *   onCropChange: (value: ImageCrop) => void,
+ *   onHotspotChange: (value: ImageHotspot) => void,
+ * }} props
+ */
 function HotspotAndCropOverlay({ src, $crop, $hotspot, $displaySize, onCropChange, onHotspotChange }) {
   const { corners, rectangle, $inset, $area: $cropArea } =
     useDragableRectangle({ $bounds: $displaySize, $initialRectangle: $crop })
@@ -134,6 +194,7 @@ function HotspotAndCropOverlay({ src, $crop, $hotspot, $displaySize, onCropChang
   ]
 }
 
+/** @arg {Signal<Ellipse>} $ellipse */
 function ellipseAsClipPath($ellipse) {
   return $ellipse.derive(({ xAxis, yAxis, centerX, centerY }) =>
     `ellipse(${xAxis}px ${yAxis}px at ${centerX}px ${centerY}px)`
@@ -152,6 +213,7 @@ HotspotEllipse.style = css`
   & > * { cursor: move; }
   & > .handle { cursor: nwse-resize; }
 `
+/** @arg {{ center: DragHandle, handle: DragHandle, $ellipse: Signal<Ellipse> }} props */
 function HotspotEllipse({ center, handle, $ellipse }) {
   return (
     div({ css: HotspotEllipse.style },
@@ -175,6 +237,7 @@ HotspotArea.style = css`
     clip-path: var(--clipPath);
   }
 `
+/** @arg {{ onMouseDown: (e: MouseEvent) => void, $ellipse: Signal<Ellipse> }} props */
 function HotspotArea({ onMouseDown, $ellipse }) {
   const $localEllipse = $ellipse.derive(({ xAxis, yAxis }) =>
     ({ centerX: xAxis, centerY: yAxis, xAxis, yAxis })
@@ -189,7 +252,13 @@ function HotspotArea({ onMouseDown, $ellipse }) {
     '--clipPath': $clipPath,
   }
 
-  return div({ className: 'HotspotArea', css: HotspotArea.style, onMouseDown, style })
+  return div({
+    className: 'HotspotArea',
+    css: HotspotArea.style,
+    // @ts-expect-error - TODO: The error is a mismatch with react events, we should not use react events
+    onMouseDown,
+    style
+  })
 }
 
 Shadow.style = css`
@@ -205,6 +274,12 @@ Shadow.style = css`
   mask-position: 0 0, var(--rectangle-position);
   mask-composite: subtract;
 `
+/**
+ * @param {{
+ *   $hotspotEllipse: Signal<Ellipse>,
+ *   $cropArea: Signal<Rectangle>,
+ * }} props
+ */
 function Shadow({ $hotspotEllipse, $cropArea }) {
   const style = {
     '--ellipse': $hotspotEllipse.derive(ellipse =>
@@ -229,6 +304,13 @@ CropRectangle.style = css`
   & > .tl, & > .br { cursor: nwse-resize; }
   & > .tr, & > .bl { cursor: nesw-resize; }
 `
+/**
+ * @arg {{
+ *   corners: ReadonlyArray<DragHandle>,
+ *   rectangle: DragHandle,
+ *   $inset: Signal<Inset>,
+ * }} props
+ */
 function CropRectangle({ corners, rectangle, $inset }) {
   return (
     div({ css: CropRectangle.style },
@@ -238,6 +320,7 @@ function CropRectangle({ corners, rectangle, $inset }) {
   )
 }
 
+/** @arg {{ onMouseDown: (e: MouseEvent) => void, $inset: Signal<Inset> }} props */
 function CropArea({ onMouseDown, $inset }) {
   const style = {
     top: $inset.derive(x => x.top),
@@ -246,7 +329,12 @@ function CropArea({ onMouseDown, $inset }) {
     right: $inset.derive(x => x.right),
   }
 
-  return div({ className: 'CropArea', onMouseDown, style })
+  return div({
+    className: 'CropArea',
+    // @ts-expect-error event type error
+    onMouseDown,
+    style
+  })
 }
 
 Handle.style = css`
@@ -266,7 +354,7 @@ Handle.style = css`
     border-radius: var(--borderRadius);
   }
 `
-/** @param {{ handle: any, type?: 'square' | 'circle' }} props */
+/** @param {{ handle: DragHandle, type?: 'square' | 'circle' }} props */
 function Handle({ handle, type = 'square' }) {
   const { id, handleMouseDown, $translate, $position } = handle
   const [handleX, handleY] = $position.get()
@@ -274,6 +362,7 @@ function Handle({ handle, type = 'square' }) {
   return (
     div(
       {
+        // @ts-expect-error Event type error
         onMouseDown: handleMouseDown,
         className: id,
         css: Handle.style,
@@ -291,7 +380,7 @@ function Handle({ handle, type = 'square' }) {
 /**
  * @param {object} props
  * @param {Signal<{ width: number, height: number }>} props.$bounds
- * @param {Signal<{ x: number, y: number, width: number, height: number }>} props.$initialRectangle
+ * @param {Signal<Rectangle>} props.$initialRectangle
  */
  function useDragableRectangle({ $bounds, $initialRectangle }) {
   /* TopLeft, TopRight, BottomLeft, BottomRight */
@@ -362,9 +451,10 @@ function Handle({ handle, type = 'square' }) {
 }
 
 /**
- * @param {object} props
- * @param {Signal<{ x: number, y: number, width: number, height: number }>} props.$bounds
- * @param {Signal<{ x: number, y: number, width: number, height: number }>} props.$initialEllipse
+ * @arg {{
+ *   $bounds: Signal<Rectangle>
+ *   $initialEllipse: Signal<Rectangle>
+ * }} props
  */
 function useDraggableEllipse({ $bounds, $initialEllipse }) {
 
@@ -416,7 +506,7 @@ function useDraggableEllipse({ $bounds, $initialEllipse }) {
   }
 }
 
-/** @param {{ x: number, y: number, width: number, height: number }} initialEllipse */
+/** @arg {Rectangle} initialEllipse */
 function getEllipsePositions(initialEllipse) {
   const { x, y, width, height } = initialEllipse
   const [pointX, pointY] = findPointOnEllipse([width / 2, height / 2])
@@ -428,6 +518,7 @@ function getEllipsePositions(initialEllipse) {
   ])
 }
 
+/** @arg {{ center: DragHandle, handle: DragHandle, $bounds: Signal<Rectangle> }} props */
 function useDerivedEllipsePositions({ center, handle, $bounds }) {
   const $area = useCombined($bounds, center.$position, handle.$position)
     .derive(([bounds, [centerX, centerY], [handleX, handleY]]) => {
@@ -456,6 +547,17 @@ function pipe(args, f) {
   return f.apply(null, args)
 }
 
+/**
+ * @arg {{
+ *   tl: DragHandle,
+ *   tr: DragHandle,
+ *   bl: DragHandle,
+ *   br: DragHandle,
+ *   rectangle: DragHandle,
+ *   $bounds: Signal<{ width: number, height: number }>,
+ *   $initialRectangle: Signal<Rectangle>,
+ * }} props
+ */
 function useRectangle({ tl, tr, bl, br, rectangle, $bounds, $initialRectangle }) {
   const moveWithoutRecursion = createCallWithoutRecursion()
 
@@ -486,6 +588,7 @@ function useRectangle({ tl, tr, bl, br, rectangle, $bounds, $initialRectangle })
     for (const unsubscribe of subscriptions) unsubscribe()
   })
 
+  /** @arg {DragHandle} corner @arg {{ xAxis: DragHandle, yAxis: DragHandle }} info */
   function bind(corner, { xAxis, yAxis }) {
     return corner.$position.subscribe(([newX, newY]) =>
       moveWithoutRecursion(() => {
@@ -495,6 +598,15 @@ function useRectangle({ tl, tr, bl, br, rectangle, $bounds, $initialRectangle })
     )
   }
 
+  /**
+    * @arg {{
+    *   tl: DragHandle,
+    *   tr: DragHandle,
+    *   bl: DragHandle,
+    *   br: DragHandle,
+    *   rectangle: DragHandle,
+    * }} props
+    */
   function bindRectangle({ tl, tr, bl, br, rectangle }) {
     return rectangle.$position.subscribe(([newX, newY]) =>
       moveWithoutRecursion(() => {
@@ -512,6 +624,14 @@ function useRectangle({ tl, tr, bl, br, rectangle, $bounds, $initialRectangle })
   }
 }
 
+/**
+ * @arg {{
+ *   center: DragHandle,
+ *   handle: DragHandle,
+ *   $bounds: Signal<Rectangle>,
+ *   $initialEllipse: Signal<Rectangle>,
+ * }} props
+ */
 function useBindEllipse({ center, handle, $bounds, $initialEllipse }) {
   const moveWithoutRecursion = createCallWithoutRecursion()
 
@@ -546,6 +666,7 @@ function useBindEllipse({ center, handle, $bounds, $initialEllipse }) {
 function createCallWithoutRecursion() {
   let active = false
 
+  /** @arg {() => void} f */
   return function callWithoutRecursion(f) {
     if (active) return
 
@@ -555,6 +676,13 @@ function createCallWithoutRecursion() {
   }
 }
 
+/**
+ * @arg {{
+ *   tl: DragHandle,
+ *   br: DragHandle,
+ *   $bounds: Signal<{ width: number, height: number }>
+ * }} props
+ */
 function useDerivedRectanglePositions({ tl, br, $bounds }) {
   const $minMax = useCombined(tl.$position, br.$position)
 
@@ -572,6 +700,7 @@ function useDerivedRectanglePositions({ tl, br, $bounds }) {
   return { $area, $inset }
 }
 
+/** @arg {Position} position */
 function findEllipseSemiAxes([x, y]) {
   const major = Math.max(x, y)
   const minor = Math.min(x, y)
@@ -601,6 +730,7 @@ function findPointOnEllipse([horizontalSemiAxis, verticalSemiAxis]) {
     : [minorValue, majorValue]
 }
 
+/** @arg {Rectangle} area */
 function areaToCornerPositions(area) {
   const { x, y, width, height } = area
   const [minX, minY, maxX, maxY] = [x, y, x + width, y + height]

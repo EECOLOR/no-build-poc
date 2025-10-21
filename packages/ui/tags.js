@@ -24,7 +24,13 @@ export function raw(value) { return new Raw(value) }
 /**
  * @template {object} T
  * @template {keyof T} key
- * @typedef {key extends 'style' ? ({ [k: `--${string}`]: string } & { [k in keyof T[key]]: T[key][k] | Signal<T[key][k]> }) : T[key]} AllowCustomPropertiesInStyles
+ * @typedef {key extends 'style'
+ *   ? (
+ *     { [k: `--${string}`]: string | Signal<string> } &
+ *     { [k in keyof T[key]]: T[key][k] | Signal<T[key][k]> }
+ *   )
+ *   : T[key]
+ * } AllowCustomPropertiesInStyles
  */
 
 /**
@@ -60,15 +66,20 @@ export function raw(value) { return new Raw(value) }
 /** @template T @typedef {Array<Child<any>>} Children */
 /** @typedef {keyof JSX.IntrinsicElements} TagNames */
 /**
- * @template T @template {TagNames} tagName
+ * @template T
+ * @template {TagNames} tagName
  * @typedef {T extends PlainObject ? Attributes<tagName> : Child<T>} ChildOrAttributes
+ */
+
+/**
+ * @template {TagNames} TagName
+ * @typedef {<T, X extends Children<X>>(childOrAttributes?: ChildOrAttributes<T, TagName>, ...children: X) => Tag<TagName>} TagConstructor
  */
 
 export const tags = new Proxy(
   /**
    * @type {{
-   *   [tagName in TagNames]: <T, X extends Children<X>>
-   *     (childOrAttributes?: ChildOrAttributes<T, tagName>, ...children: X) => Tag<tagName>
+   *   [tagName in TagNames]: TagConstructor<tagName>
    * }}
    */
   ({}),
@@ -120,7 +131,7 @@ export function css(...args) {
   return String.raw(...args)
 }
 
-/** @arg {Array<string | Signal<string>>} classNames */
+/** @arg {Array<false | string | Signal<false | string>>} classNames */
 export function cx(...classNames) {
   const signals = classNames.filter(x => x instanceof Signal)
   if (!signals.length)
@@ -131,8 +142,8 @@ export function cx(...classNames) {
 
 /**
  * @template T
- * @arg {Array<Signal<string> | string>} potentialSignals
- * @arg {(values: Array<string>) => T} callback
+ * @arg {Array<false | string | Signal<false | string>>} potentialSignals
+ * @arg {(values: Array<false | string>) => T} callback
  */
 function mergeSignals(potentialSignals, callback) {
   const signals = potentialSignals

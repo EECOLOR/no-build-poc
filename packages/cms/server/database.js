@@ -156,6 +156,7 @@ function createHistoryActions({ database, streams }) {
     updateHistory,
   }
 
+  /** @arg {{ documentId: string }} props */
   function listHistoryByDocumentId({ documentId }) {
     const result = database
       .prepare(`
@@ -176,6 +177,7 @@ function createHistoryActions({ database, streams }) {
     }))
   }
 
+  /** @arg {{ documentId: string, userId: string, fieldPath: string }} props */
   function getFieldHistoryChangedInTheLastMinute({ documentId, userId, fieldPath }) {
     const timestamp = Date.now()
 

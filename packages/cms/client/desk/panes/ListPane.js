@@ -4,6 +4,7 @@ import { context } from '../../context.js'
 import { ListItem } from './list/ListItem.js'
 
 /** @import { DeskStructure } from '../../cmsConfigTypes.ts' */
+/** @import { PanePath } from '../../../types.ts' */
 
 /**
  * @typedef {{
@@ -34,6 +35,12 @@ export function renderListPane({ pane, path }) {
 ListPane.style = css`
   max-width: 20rem;
 `
+/**
+ * @arg {{
+ *   items: Array<ListPaneItemConfig<DeskStructure.PaneTypes>>,
+ *   path: PanePath
+ * }} props
+ */
 export function ListPane({ items, path }) {
   return (
     List({

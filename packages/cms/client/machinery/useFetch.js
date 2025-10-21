@@ -1,12 +1,16 @@
 import { useOnDestroy } from '#ui/dynamic.js'
 import { createSignal } from '#ui/signal.js'
+/** @import { ResultType, TypeValidator } from '#validation/types.ts' */
+/** @import { Expand } from '#typescript/utils.ts' */
 
 /**
- * @param {Parameters<typeof fetch>[0]} url
- * @param {Parameters<typeof fetch>[1]} options
+ * @template T
+ * @arg {Parameters<typeof fetch>[0]} url
+ * @arg {{ fetchOptions?: Parameters<typeof fetch>[1], schema: TypeValidator<T> }} props
  */
-export function useFetch(url, options = undefined) {
-  /** @type {{ status: number, body: string, json?: any } | Error | null} */
+export function useFetch(url, { schema, fetchOptions }) {
+  /** @typedef {{ status: number, body: string, json?: ReturnType<schema['parse']> }} Result */
+  /** @type {Result | Error | null} */
   const typedNull = null
   const [$state, setState] = createSignal(typedNull)
 
@@ -14,16 +18,16 @@ export function useFetch(url, options = undefined) {
     return $state
 
   const controller = new AbortController()
-  if (options?.signal)
+  if (fetchOptions?.signal)
     throw new Error(`No support has been provided to combine abort signals, if you really need this, implement a combineSignals function (listen for the signals and call abort on another controller)`)
 
   useOnDestroy(() => controller.abort('Component destroyed'))
 
-  fetch(url, { ...options, signal: controller.signal })
+  fetch(url, { ...fetchOptions, signal: controller.signal })
     .then(async response => {
       const body = await response.text()
-      const result = { status: response.status, body }
-      try { result.json = JSON.parse(body) } catch (e) { }
+      const result = /** @type {Result} */ ({ status: response.status, body })
+      try { result.json = schema.parse(JSON.parse(body)) } catch (e) { }
       setState(result)
     })
     .catch(e => {

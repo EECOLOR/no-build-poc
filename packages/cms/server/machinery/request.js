@@ -1,9 +1,9 @@
 import { decodeAndVerifyJwt } from '#auth/jwt.js'
-import config from '#config'
 import crypto from 'node:crypto'
 
 /** @import { WithPublicKeys } from '#auth/oauth2.js' */
 /** @import { IncomingMessage } from 'node:http' */
+/** @import { AuthInfo } from '../../types.ts' */
 
 /**
  * @arg {IncomingMessage} req
@@ -65,10 +65,8 @@ export function getCookies(req) {
  * @arg {IncomingMessage} req
  * @arg {{ [provider: string]: WithPublicKeys }} pubicKeyProviders
  * @arg {(
-*    info:
-*      { authenticated: true, idProvider: string, user: { email: string, name: string, id: string } } |
-*      { authenticated: false, hint: string },
-*    error?: Error
+*    info: AuthInfo,
+*    error?: Error,
  * ) => void} callback
  */
 export function withAuthInfo(req, pubicKeyProviders, callback) {

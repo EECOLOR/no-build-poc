@@ -42,6 +42,7 @@ function defaultIsEqual(a, b) {
 /**
  * @template T
  * @arg {T | (() => T)} initialValue
+ * @arg {(a: T, b: T) => boolean} isEqual
  * @returns {[Signal<T>, setSignalValue<T>]}
  */
 export function createSignal(initialValue, isEqual = defaultIsEqual) {

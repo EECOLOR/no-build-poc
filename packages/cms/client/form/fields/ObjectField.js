@@ -2,7 +2,9 @@ import { css, tags } from '#ui/tags.js'
 import { Field } from './Field.js'
 import { FlexSectionHorizontal, FlexSectionProperties, FlexSectionVertical } from '#cms/client/ui/FlexSection.js'
 import { indented } from '#cms/client/ui/indented.js'
+import { Signal } from '#ui/signal.js'
 /** @import { DocumentSchema } from '../../cmsConfigTypes.ts' */
+/** @import { DocumentContainer, DocumentPath } from '#cms/types.ts' */
 
 const { strong } = tags
 
@@ -17,6 +19,13 @@ const { strong } = tags
  */
 
 ObjectField.canCollapse = true
+/**
+ * @arg {{
+ *   document: DocumentContainer,
+ *   field: DocumentSchema.Field<'object'>,
+ *   $path: Signal<DocumentPath>,
+ * }} props
+ */
 export function ObjectField({ document, field, $path }) {
   return (
     indented.div({ className: 'ObjectField' },
@@ -25,6 +34,13 @@ export function ObjectField({ document, field, $path }) {
   )
 }
 
+/**
+ * @arg {{
+*   document: DocumentContainer,
+*   field: { title?: string } & ObjectFieldConfig,
+*   $path: Signal<DocumentPath>,
+* }} props
+*/
 export function Object({ document, field, $path }) {
   return (
     FlexSectionVertical({ className: 'Object' },
@@ -34,6 +50,13 @@ export function Object({ document, field, $path }) {
   )
 }
 
+/**
+ * @arg {{
+*   document: DocumentContainer,
+*   fields: Array<DocumentSchema.Field<DocumentSchema.FieldTypes>>,
+*   $path: Signal<DocumentPath>,
+* }} props
+*/
 export function ObjectFields({ document, fields, $path }) {
 
   return (
@@ -49,6 +72,7 @@ ObjectHeader.style = css`
   justify-content: space-between;
   align-items: center;
 `
+/** @arg {{ title: string }} props */
 function ObjectHeader({ title }) {
   return FlexSectionHorizontal({ className: 'ObjectHeader', css: ObjectHeader.style },
     strong(title),

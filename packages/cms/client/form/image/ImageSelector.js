@@ -138,7 +138,6 @@ function Details({ $selected, onSelect, onChoose }) {
       return
 
     // TODO: prevent large files from being uploaded
-
     const response = await fetch(`${context.api.images()}?${new URLSearchParams({ name: file.name })}`, {
       method: 'POST',
       headers: {

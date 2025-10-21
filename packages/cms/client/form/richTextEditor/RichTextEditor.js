@@ -16,7 +16,7 @@ import { extractNodeViews, schemaPlugins } from './schema.js'
 const { div } = tags
 
 /**
- * @typedef {(data: { clientId, steps: readonly Step[], version: number }) => {
+ * @typedef {(data: { clientId: string | number, steps: readonly Step[], version: number }) => {
  *   result: Promise<{ success: boolean }>,
  *   abort(reason?: string): void,
  * }} Synchronize
@@ -117,7 +117,7 @@ export function RichTextEditor({ id, initialValue, $steps, synchronize, onChange
  * }} props
  */
 function useSynchronization({ synchronize }) {
-  let synchronizationRequest = null
+  let synchronizationRequest = /** @type {{ abort(reason?: string): void }} */ (null)
 
   useOnDestroy(() => { if (synchronizationRequest) synchronizationRequest.abort() })
 
@@ -186,22 +186,27 @@ RichTextEditor.toJson = function toJson(doc) {
   return doc.toJSON()
 }
 /**
- * @param {Schema} schema
+ * @arg {Schema} schema
+ * @arg {null | { content?: Array<{ type: string }> }} json
  * @returns {Node}
  */
 RichTextEditor.fromJson = function fromJson(schema, json) {
-  if (!json) return json
+  if (!json) return /** @type {null} */ (json)
 
   const checkedContent = json.content?.map(x =>
     x.type in schema.nodes ? x : { type: 'unknown', attrs: { node: x } }
   )
   return Node.fromJSON(schema, { ...json, content: checkedContent })
 }
-/** @param {Step} step */
+/** @arg {Step} step */
 RichTextEditor.stepToJson = function stepToJson(step) {
   return step.toJSON()
 }
-/** @returns {Step} */
+/**
+ * @arg {Schema} schema
+ * @arg {any} json
+ * @returns {Step}
+ */
 RichTextEditor.stepFromJson = function stepFromJson(schema, json) {
   if (!json) return json
   return Step.fromJSON(schema, json)

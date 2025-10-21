@@ -1,16 +1,17 @@
 import { scrollable } from '#cms/client/ui/scrollable.js'
 import { context } from '#cms/client/context.js'
-import { connecting, useImageMetadata } from '#cms/client/data.js'
+import { connecting, isNotConnecting, useImageMetadata } from '#cms/client/data.js'
 import { createImageSrc } from '#cms/client/form/image/createImgSrc.js'
 import { ImageCropAndHotspot } from '#cms/client/form/image/ImageCropAndHotspot.js'
 import { debounce } from '#cms/client/machinery/debounce.js'
 import { useSubscriptions } from '#cms/client/machinery/signalHooks.js'
 import { conditional, useOnDestroy } from '#ui/dynamic.js'
 import { useCombined, useElementSize } from '#ui/hooks.js'
-import { createSignal } from '#ui/signal.js'
+import { createSignal, Signal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
 import { FlexSectionHorizontal } from '#cms/client/ui/FlexSection.js'
 /** @import { DeskStructure } from '../../cmsConfigTypes.ts' */
+/** @import { ImageCrop, ImageHotspot, ImageMetadata, PanePath } from '#cms/types.ts' */
 
 const { img } = tags
 
@@ -28,6 +29,7 @@ ImagePane.style = css`
     width: 50%;
   }
 `
+/** @arg {{ id: string, path: PanePath }} props */
 export function ImagePane({ id: filename, path }) {
   const src = context.api.images.single({ filename })
 
@@ -35,7 +37,7 @@ export function ImagePane({ id: filename, path }) {
   // Seems this is a general pattern when we listen for live changes
   const $serverMetadata = useImageMetadata({ filename })
   const [$clientMetadata, setClientMetadata] = createSignal({})
-  const [$previewMetadata, setPreviewMetadata] = createSignal({})
+  const [$previewMetadata, setPreviewMetadata] = createSignal(/** @type {ImageMetadata} */ ({}))
 
   useSubscriptions(
     useCombined($serverMetadata, $clientMetadata)
@@ -58,6 +60,7 @@ export function ImagePane({ id: filename, path }) {
     )
   )
 
+  /** @arg {ImageMetadata} metadata */
   function saveMetadata(metadata) {
     console.log('⎙ save', metadata)
     fetch(context.api.images.single.metadata({ filename }), {
@@ -70,6 +73,14 @@ export function ImagePane({ id: filename, path }) {
   }
 }
 
+/**
+ * @arg {{
+ *   src: string,
+ *   $serverMetadata: Signal<typeof connecting | ImageMetadata>,
+ *   onCropChange: (crop: ImageCrop) => void,
+ *   onHotspotChange: (hotspot: ImageHotspot) => void,
+ * }} props
+ */
 function ImageEditor({ src, $serverMetadata, onCropChange, onHotspotChange }) {
   // TODO: if you balance your height just right, a flickr will start
   // images are shown by ratio, so when the scrollbar is there (and padding is added), the width
@@ -78,8 +89,8 @@ function ImageEditor({ src, $serverMetadata, onCropChange, onHotspotChange }) {
   // to be greater, requiring a scrollbar. (recursion)
   return (
     scrollable.div({ className: 'ImageEditor' },
-      conditional($serverMetadata, metadata => metadata !== connecting,
-        _ => ImageCropAndHotspot({ src, $metadata: $serverMetadata, onCropChange, onHotspotChange }),
+      conditional($serverMetadata, isNotConnecting,
+        $metadata => ImageCropAndHotspot({ src, $metadata, onCropChange, onHotspotChange }),
       )
     )
   )
@@ -92,6 +103,7 @@ ImagePreview.style = css`
   & > * { flex-grow: 1; flex-basis:30%; }
   & > :last-child { flex-basis: 100%; }
 `
+/** @arg {{ filename: string, $metadata: Signal<ImageMetadata> }} props */
 function ImagePreview({ filename, $metadata }) {
 
   return (
@@ -104,6 +116,13 @@ function ImagePreview({ filename, $metadata }) {
   )
 }
 
+/**
+ * @arg {{
+ *   filename: string,
+ *   aspectRatio: `${number} / ${number}`,
+ *   $metadata: Signal<ImageMetadata>,
+ * }} props
+ */
 function PreviewImage({ filename, aspectRatio, $metadata }) {
   const { ref, $size } = useElementSize()
   const $src = useDebounced(useCombined($size, $metadata)).derive(([size, metadata]) =>
@@ -112,6 +131,11 @@ function PreviewImage({ filename, aspectRatio, $metadata }) {
   return img({ src: $src, ref, style: { aspectRatio } })
 }
 
+/**
+ * @template T
+ * @arg {Signal<T>} signal
+ * @arg {number} [milliseconds]
+ */
 function useDebounced(signal, milliseconds = 200) {
   const [$debounced, setDebounced] = createSignal(signal.get())
 

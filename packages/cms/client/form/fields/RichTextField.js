@@ -4,12 +4,17 @@ import { useEventSourceAsSignal } from '#cms/client/machinery/useEventSourceAsSi
 import { useCombined } from '#ui/hooks.js'
 import { RichTextEditor } from '../richTextEditor/RichTextEditor.js'
 import { useConditionalDerive, useFieldValue } from './useFieldValue.js'
-import { DOMSerializer, Schema as ProsemirrorSchema } from 'prosemirror-model'
+import { DOMSerializer, Node as ProsemirrorNode, Schema as ProsemirrorSchema } from 'prosemirror-model'
 import { Plugin as ProsemirrorPlugin, EditorState, NodeSelection } from 'prosemirror-state'
 import { EditorView } from 'prosemirror-view'
 import { css, tags } from '#ui/tags.js'
 import { Signal } from '#ui/signal.js'
-/** @import { EditorConfig, EditorConfigMark, EditorConfigNode } from '../richTextEditor/richTextConfig.js' */
+import { asConst } from '#typescript/helpers.js'
+/** @import { EditorConfig, EditorConfigGroup, EditorConfigMark, EditorConfigNode } from '../richTextEditor/richTextConfig.js' */
+/** @import { DocumentContainer, DocumentPath, RichTextSteps } from '#cms/types.ts' */
+/** @import { DocumentSchema } from '#cms/client/cmsConfigTypes.ts' */
+/** @import { Synchronize } from '../richTextEditor/RichTextEditor.js' */
+/** @import { Event } from '#cms/client/machinery/useEventSourceAsSignal.js' */
 
 const { div, span } = tags
 
@@ -25,13 +30,20 @@ const { div, span } = tags
  * }} RichTextFieldConfig
  */
 
-/** @param {{ document, field: RichTextFieldConfig<any>, $path, id }} props */
+/**
+ * @arg {{
+ *   document: DocumentContainer,
+ *   field: { name: string, type: DocumentSchema.FieldTypes } & RichTextFieldConfig<any>,
+ *   $path: Signal<DocumentPath>,
+ *   id: string,
+ * }} props
+ */
 export function RichTextField({ document, field, $path, id }) {
   const { schema, createPlugins, configs } = field
   const $richTextArgs = $path.derive(path => getRichTextArgs({ document, fieldPath: path }))
 
   const [$value, setValue] = useFieldValue({
-    document, field, $path, initialValue: null,
+    document, field, $path, initialValue: /** @type {ProsemirrorNode} */ (null),
     serializeValue: RichTextEditor.toJson,
     extractValueForDiff,
   })
@@ -40,6 +52,8 @@ export function RichTextField({ document, field, $path, id }) {
     channel: 'document/rich-text',
     argsSignal: $richTextArgs,
     events: ['steps'],
+    initialValue: /** @type {null} */ (null),
+    type: /** @type {RichTextSteps} */ (null),
     info: { version: $value.get()?.attrs?.version || 0 },
   })
 
@@ -68,10 +82,12 @@ export function RichTextField({ document, field, $path, id }) {
     )
   )
 
+  /** @arg {ProsemirrorNode} doc */
   function handleChange(doc) {
     setValue(doc)
   }
 
+  /** @arg {ProsemirrorNode} value */
   function extractValueForDiff(value) {
     const serializer = DOMSerializer.fromSchema(schema)
     const content = serializer.serializeFragment(value.content)
@@ -82,6 +98,7 @@ export function RichTextField({ document, field, $path, id }) {
     return serialized
   }
 
+  /** @type {Synchronize} */
   function synchronize({ clientId, steps, version }) {
     const controller = new AbortController()
     const [type, id, encodedFieldPath] = $richTextArgs.get()
@@ -115,6 +132,7 @@ export function RichTextField({ document, field, $path, id }) {
   }
 }
 
+/** @arg {Event<RichTextSteps>} value @arg {ProsemirrorSchema} schema */
 function parseStepsData(value, schema) {
   return {
     steps: value.data.steps.map(step => RichTextEditor.stepFromJson(schema, step)),
@@ -123,22 +141,33 @@ function parseStepsData(value, schema) {
   }
 }
 
+/**
+ * @arg {{
+ *   document: DocumentContainer,
+ *   fieldPath: DocumentPath,
+ * }} props
+ */
 function getRichTextArgs({ document, fieldPath }) {
   // instead of using path as an id for prosemirror document handing, we should probably use a unique id for each document, that would prevent problems handling stuff nested in arrays
   return [document.schema.type, document.id, encodeURIComponent(fieldPath)]
 }
 
+/**
+ * @arg {Signal<ProsemirrorNode>} $fieldValue
+ * @arg {Signal<RichTextSteps>} $steps
+ */
 function useInitialValue($fieldValue, $steps) {
 
   // This signal only has a value once both versions align
   const $allignedDocumentAndSteps = useCombined($fieldValue, $steps)
     .derive(([value, steps]) => {
-      return (value?.attrs?.version || 0) === steps?.version && (value || { type: 'doc' })
+      return (value?.attrs?.version || 0) === steps?.version && (value || asConst({ type: 'doc' }))
     })
 
   // This signal will return the first aligned value and then keep it at that first value
   const $stableAlignedDocumentAndSteps = useConditionalDerive(
     $allignedDocumentAndSteps,
+    /** @arg {any} newValue @arg {any} oldValue */
     function shouldUpdate(newValue, oldValue) {
       return !oldValue && newValue
     }
@@ -185,6 +214,12 @@ function Mark({ $editorViewState, config }) {
   )
 }
 
+/**
+ * @arg {{
+ *   $editorViewState: Signal<{ view: EditorView, state: EditorState }>,
+ *   config: EditorConfigNode<any>,
+ * }} props
+ */
 function Node({ $editorViewState, config }) {
   const $active = $editorViewState.derive(({ state }) => Boolean(state && config.isActive?.(state)))
   const $enabled = $editorViewState.derive(({ state }) => Boolean(state && config.command(state)))
@@ -202,17 +237,27 @@ function Node({ $editorViewState, config }) {
   )
 }
 
+/**
+ * @arg {{
+*   $editorViewState: Signal<{ view: EditorView, state: EditorState }>,
+*   config: EditorConfigGroup<any>,
+* }} props
+*/
 function Group({ $editorViewState, config }) {
   return div(
     config.Component({ config, canRenderItem, renderItem: createRenderItem($editorViewState) })
   )
 }
 
+/** @arg {EditorConfig<any>} item */
 function canRenderItem(item) {
   return Boolean(item.Component)
 }
 
+/** @arg {Signal<{ view: EditorView, state: EditorState }>} $editorViewState */
 function createRenderItem($editorViewState) {
+
+  /** @arg {EditorConfig<any>} config */
   return function renderItem(config) {
     switch (config.type) {
       case 'mark':
@@ -222,6 +267,7 @@ function createRenderItem($editorViewState) {
       case 'group':
         return Group({ $editorViewState, config })
       default:
+        // @ts-expect-error
         throw new Error(`Do not know how to render a menu item with type '${config.type}'`)
     }
   }

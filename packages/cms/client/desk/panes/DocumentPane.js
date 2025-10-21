@@ -1,14 +1,15 @@
 import { ButtonChevron, ButtonDelete } from '#cms/client/ui/Button.js'
 import { getSchema } from '#cms/client/context.js'
-import { connecting, patchDocument, useDocument } from '#cms/client/data.js'
+import { connecting, isNotConnecting, patchDocument, useDocument } from '#cms/client/data.js'
 import { DocumentForm } from '#cms/client/form/DocumentForm.js'
 import { DocumentHistory } from '#cms/client/history/DocumentHistory.js'
 import { renderOnValue } from '#cms/client/machinery/renderOnValue.js'
 import { conditional, derive } from '#ui/dynamic.js'
-import { createSignal } from '#ui/signal.js'
+import { createSignal, Signal } from '#ui/signal.js'
 import { css, tags } from '#ui/tags.js'
 import { FlexSectionHorizontal } from '#cms/client/ui/FlexSection.js'
-/** @import { DeskStructure } from '../../cmsConfigTypes.ts' */
+/** @import { DeskStructure, DocumentSchema } from '../../cmsConfigTypes.ts' */
+/** @import { DocumentContainer } from '#cms/types.ts' */
 
 const { div, h1 } = tags
 
@@ -49,20 +50,23 @@ DocumentPane.style = css`
     width: 20rem;
   }
 `
+/** @arg {{ id: string, schemaType: string }} props */
 export function DocumentPane({ id, schemaType }) {
   const $document = useDocument({ id, schemaType })
-  const document = { id, schema: getSchema(schemaType), $value: $document }
   const [$showHistory, setShowHistory] = createSignal(false)
 
   return (
     div({ className: 'DocumentPane', css: DocumentPane.style },
-      conditional($document, doc => doc !== connecting, _ => [
-        DocumentHeader({ document, $showHistory, onShowHistoryClick: _ => setShowHistory(x => !x) }),
-        DocumentForm({ document }),
-        renderOnValue($showHistory,
-          _ => DocumentHistory({ id, schemaType }),
-        )
-      ])
+      conditional($document, isNotConnecting, $document => {
+        const document = { id, schema: getSchema(schemaType), $value: $document }
+        return [
+          DocumentHeader({ document, $showHistory, onShowHistoryClick: () => setShowHistory(x => !x) }),
+          DocumentForm({ document }),
+          renderOnValue($showHistory,
+            _ => DocumentHistory({ id, schemaType }),
+          )
+        ]
+      })
     )
   )
 }
@@ -71,6 +75,13 @@ DocumentHeader.style = css`
   justify-content: space-between;
   align-items: center;
 `
+/**
+ * @arg {{
+ *   document: DocumentContainer,
+ *   $showHistory: Signal<boolean>,
+ *   onShowHistoryClick: () => void
+ * }} props
+ */
 function DocumentHeader({ document, $showHistory, onShowHistoryClick }) {
   const $title = document.$value.derive(doc => document.schema.preview(doc).title)
 

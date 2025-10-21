@@ -1,4 +1,5 @@
 import { css, tags } from '#ui/tags.js'
+/** @import { Children } from '#ui/tags.js' */
 
 const { div } = tags
 
@@ -6,6 +7,7 @@ FlexSectionHorizontal.style = css`
   display: flex;
   gap: var(--default-gap);
 `
+/** @arg {{ className: string, css: string }} props @arg {Children<any>} children */
 export function FlexSectionHorizontal({ className, css }, ...children) {
   return div({ className, css: [FlexSectionHorizontal.style, css] }, ...children)
 }
@@ -15,6 +17,7 @@ FlexSectionVertical.style = css`
   flex-direction: column;
   gap: var(--default-gap);
 `
+/** @arg {{ className: string, css?: string }} props @arg {Children<any>} children */
 export function FlexSectionVertical({ className, css = undefined }, ...children) {
   return div({ className, css: [FlexSectionVertical.style, css] }, ...children)
 }
@@ -24,6 +27,7 @@ FlexSectionProperties.style = css`
   flex-direction: column;
   gap: calc(var(--default-gap) * 2);
 `
+/** @arg {{ className: string, css?: string }} props @arg {Children<any>} children */
 export function FlexSectionProperties({ className, css = undefined }, ...children) {
   return div({ className, css: [FlexSectionProperties.style, css] }, ...children)
 }
@@ -37,6 +41,7 @@ FlexSectionBorderedHorizontal.style = css`
     border-right: var(--default-border);
   }
 `
+/** @arg {{ className: string, css: string }} props @arg {Children<any>} children */
 export function FlexSectionBorderedHorizontal({ className, css }, ...children) {
   return div({ className, css: [FlexSectionBorderedHorizontal.style, css] }, ...children)
 }
@@ -51,6 +56,7 @@ FlexSectionBorderedVertical.style = css`
     border-bottom: var(--default-border);
   }
 `
+/** @arg {{ className: string, css: string | Array<string> }} props @arg {Children<any>} children */
 export function FlexSectionBorderedVertical({ className, css }, ...children) {
   return div({ className, css: [FlexSectionBorderedVertical.style, css] }, ...children)
 }

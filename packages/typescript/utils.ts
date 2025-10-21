@@ -15,3 +15,10 @@ export type Expand<T> =
 type ExpandObject<T> =
   T extends infer O ? { [K in keyof O]: Expand<O[K]> } :
   never
+
+export type ArrayToUnion<T extends Array<any>> =
+  T extends [infer Head, ...infer Tail] ? Head | ArrayToUnion<Tail> :
+  never
+
+export type RemoveIntersection<T, ToRemove> =
+  T extends (ToRemove & infer X) ? X : never

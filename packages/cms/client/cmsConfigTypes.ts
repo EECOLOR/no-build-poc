@@ -1,3 +1,4 @@
+import { PanePath, DocumentPath } from '#cms/types.ts'
 import { Signal } from '#ui/signal.js'
 import { builtInPaneTypes } from './desk/panes/builtInPaneTypes.js'
 import { builtInFieldTypes } from './form/fields/builtInFieldTypes.js'
@@ -13,7 +14,7 @@ export interface CmsConfig {
   documentView: DocumentView
 }
 
-interface DeskStructure {
+export interface DeskStructure {
   pane: DeskStructure.Pane<DeskStructure.PaneTypes>
 }
 
@@ -32,9 +33,9 @@ export type FieldTypes = {
   }
 }
 
-type DocumentSchemas = Array<DocumentSchema.DocumentSchema>
+export type DocumentSchemas = Array<DocumentSchema.DocumentSchema>
 
-interface DocumentView {
+export interface DocumentView {
 
 }
 
@@ -52,7 +53,7 @@ export namespace DeskStructure {
     (props: { config: T, context: { nextPathSegment: string } }) => { child?: Pane<PaneTypes> }
 
   export type PaneRenderer<T> =
-    (props: { pane: T, path: Array<string> }) => any
+    (props: { pane: T, path: PanePath }) => any
 }
 
 export namespace DocumentSchema {
@@ -71,7 +72,8 @@ export namespace DocumentSchema {
     {} & Fields[T]
 
   export type FieldRenderer<T> =
-    (props: { document: any, field: T, $path: Signal<string>, id: string }) => any
+    ((props: { document: any, field: T, $path: Signal<DocumentPath>, id: string }) => any) &
+    { canCollapse: boolean }
 }
 
 export type Simplify<T> =

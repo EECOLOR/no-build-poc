@@ -1,5 +1,7 @@
 import { Signal } from './signal.js';
 
+/** @import { ExtractSignalType } from './types.ts' */
+
 /** @typedef {() => void} Callback */
 
 /** @type {Array<Array<Callback>>} */
@@ -41,7 +43,6 @@ export class Dynamic {
 
 /**
  * @template T
- * @template X
  * @arg {Signal<Array<T>>} signal
  * @arg {(value: T) => any} getKey
  * @arg {(value: Signal<T>, key: any) => any} renderItem
@@ -51,12 +52,12 @@ export function loop(signal, getKey, renderItem) {
 }
 
 /**
- * @template T
- * @template {Signal<T>} S
+ * @template {Signal<any>} S
+ * @template {ExtractSignalType<S>} X
  * @arg {S} signal
- * @arg {(value: T) => boolean} predicate
- * @arg {($value: S, key: boolean) => any} renderItem
- * @returns {Dynamic<T, boolean>}
+ * @arg {(value: ExtractSignalType<S>) => value is X} predicate
+ * @arg {($value: Signal<X>, key: boolean) => any} renderItem
+ * @returns {Dynamic<X, boolean>}
  */
 export function conditional(signal, predicate, renderItem) {
   return new Dynamic(signal.derive(x => predicate(x) ? [x] : []), predicate, renderItem)

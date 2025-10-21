@@ -14,6 +14,7 @@ Desk.style = [
   `
 ]
 
+/** @arg {{ basePath: string }} props */
 export function ConfiguredCms({ basePath }) {
   const { deskStructure, paneTypes, documentSchemas, fieldTypes, documentView } = createCmsConfig()
 

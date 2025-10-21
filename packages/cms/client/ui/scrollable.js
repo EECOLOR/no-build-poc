@@ -1,9 +1,11 @@
 import { tags, css, Tag } from '#ui/tags.js'
 import { combineRefs, separatePropsAndChildren } from '#ui/utils.js'
 import { useElementSize } from '#ui/hooks.js'
+/** @import { TagNames, TagConstructor } from '#ui/tags.js' */
 
 /** @type {typeof tags & (<T extends (...args:any[]) => any>(element: T) => (...args: Parameters<T>) => Tag<any>)} */
 export const scrollable = new Proxy(/** @type {any} */ (function(){}), {
+  /** @arg {typeof tags} target @arg {keyof tags} p */
   get(target, p) {
     return Scrollable.bind(null, tags[p])
   },
@@ -20,6 +22,11 @@ Scrollable.styles = css`
     padding-right: var(--default-padding);
   }
 `
+/**
+ * @template {TagNames} tagName
+ * @arg {TagConstructor<tagName>} element
+ * @arg {[any, ...any]} params
+ */
 function Scrollable(element, ...params) {
   const { props, children } = separatePropsAndChildren(params)
   const { ref: scrollbarRef, $hasScrollbar } = useHasScrollbar()

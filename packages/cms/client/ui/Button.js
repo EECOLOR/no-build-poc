@@ -1,6 +1,7 @@
 /** @import { Attributes } from '#ui/tags.js' */
 
 import { arrowDown, arrowUp, chevronLeft, chevronRight, chevronUp, indent, listOl, listUl, outdent, plus, trash } from '#cms/client/ui/icons.js'
+import { Signal } from '#ui/signal.js'
 import { tags, css, Tag } from '#ui/tags.js'
 import { withIcon } from './icon.js'
 
@@ -24,15 +25,16 @@ Button.style = css`
   border: outset 1px lightgray;
 `
 /**
- * @param {Attributes<'button'> & { label: any }} props
+ * @arg {Attributes<'button'> & { label: any }} props
  * @returns {Tag<'button'>}
  */
 export function Button({ label, ...props }) {
   return button({ ...props, type: 'button', css: [Button.style, props.css] }, label)
 }
 
+/** @arg {string} icon @arg {{ rotation?: number }} [options] */
 function createIconButton(icon, { rotation = 0 } = {}) {
-  /** @param {Attributes<'button'> & { rotation?: number }} props */
+  /** @arg {Attributes<'button'> & { rotation?: number | Signal<number> }} props */
   return function IconButton(props) {
     return withIcon(icon, { rotation: props.rotation || rotation })
       .button({ ...props, type: 'button', css: [Button.style, props.css] })

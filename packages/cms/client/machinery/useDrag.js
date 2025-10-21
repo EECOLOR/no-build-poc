@@ -1,5 +1,6 @@
+import { asConst } from '#typescript/helpers.js'
 import { useOnDestroy } from '#ui/dynamic.js'
-import { createSignal } from '#ui/signal.js'
+import { createSignal, Signal } from '#ui/signal.js'
 
 /**
  * @typedef {number} x
@@ -11,17 +12,26 @@ import { createSignal } from '#ui/signal.js'
  */
 
 /**
- * @param {Position} initialPosition
- * @param {object} options
- * @param {() => Area} [options.getBounds]
- * @param {any} [options.id]
+ * @typedef {{
+ *   handleMouseDown: (e: MouseEvent) => void,
+ *   $translate: Signal<Position>,
+ *   $position: Signal<Position>,
+ *   move: (newValueOrFunction: Position | ((position: Position) => Position)) => void,
+ *   id?: string,
+ * }} DragHandle
+ */
+
+/**
+ * @arg {Position} initialPosition
+ * @arg {object} options
+ * @arg {() => Area} [options.getBounds]
+ * @arg {any} [options.id]
  */
 export function useDrag([initialX, initialY], options = undefined) {
   const [$position, setPosition] = createSignal(/** @type {Position} */ ([initialX, initialY]), pointsEqual)
-  const $translate = $position.derive(([x, y]) => [x - initialX, y - initialY])
+  const $translate = $position.derive(([x, y]) => asConst([x - initialX, y - initialY]))
 
-  /** @type {{ offset: Position, parent: Area }} */
-  let state = null
+  let state = /** @type {{ offset: Position, parent: Area }} */ (null)
   useOnDestroy(removeListeners)
 
   return {

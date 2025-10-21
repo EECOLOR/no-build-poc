@@ -3,6 +3,7 @@ import { routeMap } from '../routeMap.js'
 
 const { div, a } = tags
 
+/** @arg {{ basePath: string }} props */
 export function Login({ basePath }) {
   return (
     div(

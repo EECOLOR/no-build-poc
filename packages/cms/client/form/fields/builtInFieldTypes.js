@@ -35,7 +35,7 @@ export const builtInFieldTypes = /** @type {const} */ ({
     renderField: ReferenceField,
   },
   'rich-text': {
-    Type: /** @type {RichTextFieldConfig} */ (null),
+    Type: /** @type {RichTextFieldConfig<any>} */ (null),
     renderField: RichTextField,
   },
 })

@@ -4,7 +4,14 @@
  * @template {TagNames} TagName
  * @template T
  * @template {Children<X>} X
- * @arg {[ChildOrAttributes<T, TagName>, ...children: X]} params
+ * @typedef {[ChildOrAttributes<T, TagName>, ...children: X]} Params
+ */
+
+/**
+ * @template {TagNames} TagName
+ * @template T
+ * @template {Children<X>} X
+ * @arg {Params<TagName, T, X>} params
  */
 export function separatePropsAndChildren(params) {
   const [propsOrChild, ...children] = params
@@ -12,7 +19,7 @@ export function separatePropsAndChildren(params) {
 
   return {
     props: hasProps ? propsOrChild: null,
-    children: hasProps ? children : params
+    children: hasProps ? children : /** @type {Children<X>} */ (params)
   }
 }
 

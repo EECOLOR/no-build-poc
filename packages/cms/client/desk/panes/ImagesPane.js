@@ -5,6 +5,7 @@ import { css, tags } from '#ui/tags.js'
 import { ListItem } from './list/ListItem.js'
 import { pane } from '#cms/client/cmsConfig.js'
 /** @import { DeskStructure } from '../../cmsConfigTypes.ts' */
+/** @import { PanePath } from '../../../types.ts' */
 
 const { div, img } = tags
 
@@ -27,6 +28,7 @@ ImagesPane.style = css`
   max-width: 10rem;
   min-width: 10rem;
 `
+/** @arg {{ path: PanePath }} props */
 export function ImagesPane({ path }) {
   const $images = useImages()
 
@@ -43,6 +45,7 @@ export function ImagesPane({ path }) {
   )
 }
 
+/** @arg {{ filename: string, path: PanePath }} props */
 function ImageItem({ filename, path }) {
   return (
     ListItem({

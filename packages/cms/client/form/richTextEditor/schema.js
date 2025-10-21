@@ -7,14 +7,22 @@ import { toggleMark, chainCommands, lift, setBlockType } from 'prosemirror-comma
 import { wrapInList, liftListItem, sinkListItem, splitListItem } from 'prosemirror-schema-list'
 import { Button, ButtonIndent, ButtonListOl, ButtonListUl, ButtonOutdent } from '#cms/client/ui/Button.js'
 
-/** @import { NodeSpec, MarkSpec, MarkType, NodeType } from 'prosemirror-model' */
-/** @import { EditorConfig } from './richTextConfig.js' */
+/** @import { NodeSpec, MarkSpec, MarkType, NodeType, Node, Mark } from 'prosemirror-model' */
+/** @import { EditorConfig, EditorConfigBase, EditorConfigGroup, EditorConfigMark, EditorConfigNode } from './richTextConfig.js' */
+/** @import { Command } from 'prosemirror-state' */
+/** @import { Attributes } from '#ui/tags.js' */
 
 const generateUuid = Symbol('generateUuid')
 const nodeView = Symbol('nodeView')
 
-// TODO: add selectedcontent to global types
-const { select, button, option, span, selectedcontent } = tags
+const {
+  select,
+  button,
+  option,
+  span,
+  // @ts-expect-error TODO: add selectedcontent to global types
+  selectedcontent,
+} = tags
 
 schema.paragraph = paragraph
 schema.node = node
@@ -53,6 +61,7 @@ export function defaultMarkConfigs(schema) {
       mark: schema.marks.strong,
       title: 'Bold',
       command: toggleMark(schema.marks.strong),
+      /** @arg {EditorState} state */
       isActive: state => isMarkActive(state, schema.marks.strong),
       shortcut: 'Mod-b',
       Component: MarkStrong,
@@ -62,6 +71,7 @@ export function defaultMarkConfigs(schema) {
       mark: schema.marks.em,
       title: 'Italic',
       command: toggleMark(schema.marks.em),
+      /** @arg {EditorState} state */
       isActive: state => isMarkActive(state, schema.marks.em),
       shortcut: 'Mod-i',
       Component: MarkEm,
@@ -85,16 +95,19 @@ export function defaultNodeConfigs(schema) {
           type: 'node',
           node: schema.nodes.paragraph,
           command: setBlockType(schema.nodes.paragraph),
+          /** @arg {EditorState} state */
           isActive: state => isNodeActive(state, schema.nodes.paragraph),
           title: 'Normal',
           Component: Normal,
         },
-        ...Array.from(Array(3), (_, i) => {
-          const h = i + 2
+        ...Array.from(Array(3), /** @arg {0 | 1 | 2} i*/ (_, i) => {
+          const h = /** @type {2 | 3 | 4} */ (i + 2)
+
           return /** @type {const} */ ({
             type: 'node',
             node: schema.nodes.heading,
             command: setBlockType(schema.nodes.heading, { level: h }),
+            /** @arg {EditorState} state */
             isActive: state => isNodeActive(state, schema.nodes.heading, { level: h }),
             title: `H${h}`,
             Component: createHeadingComponent(h),
@@ -111,6 +124,7 @@ export function defaultNodeConfigs(schema) {
         unwrapFromList(schema.nodes.orderedList),
         wrapInList(schema.nodes.orderedList)
       ),
+      /** @arg {EditorState} state */
       isActive: state => isListActive(state, schema.nodes.orderedList),
       shortcut: 'Shift-Mod-7',
       Component: OrderedList,
@@ -123,6 +137,7 @@ export function defaultNodeConfigs(schema) {
         unwrapFromList(schema.nodes.unorderedList),
         wrapInList(schema.nodes.unorderedList),
       ),
+      /** @arg {EditorState} state */
       isActive: state => isListActive(state, schema.nodes.unorderedList),
       shortcut: 'Shift-Mod-8',
       Component: UnorderedList,
@@ -212,7 +227,7 @@ export function schema(customSchema) {
   return new Schema({
     nodes: {
       doc: schema.doc(
-        schema.content('paragraph', 'unknown', Object.keys(customSchema?.nodes || {})),
+        schema.content('paragraph', 'unknown', ...Object.keys(customSchema?.nodes || {})),
       ),
       text: {},
       paragraph: schema.paragraph(),
@@ -234,17 +249,19 @@ export function schema(customSchema) {
   })
 }
 
+/** @arg {Schema} schema */
 export function schemaPlugins(schema) {
   return [
     createUuidPlugin.isNeededFor(schema) && createUuidPlugin(schema)
   ].filter(Boolean)
 }
 
-/** @param {Schema} schema */
+/** @arg {Schema} schema */
 createUuidPlugin.isNeededFor = function isNeededFor(schema) {
   return Object.values(schema.nodes).some(x => x.spec.hasOwnProperty(generateUuid))
 }
 
+/** @arg {Schema} schema */
 function createUuidPlugin(schema) {
   /** @type {Map<NodeSpec, { attributeName: string }>} */
   const targetTypes = new Map(getApplicableEntries(schema.nodes)) // get from schema
@@ -272,13 +289,16 @@ function createUuidPlugin(schema) {
     },
   })
 
-  /** @param {Schema['nodes']} nodes */
+  /** @arg {Schema['nodes']} nodes */
   function getApplicableEntries(nodes) {
-    return Object.values(nodes).flatMap(node =>
-      node.spec.hasOwnProperty(generateUuid) ? [/** @type const */([node, node.spec[generateUuid]])] : [] // ts error is because the type definition uses { [name: string]: ... }
+    return Object.values(nodes).flatMap(node => node.spec.hasOwnProperty(generateUuid)
+      // @ts-expect-error ts error is because the type definition uses { [name: string]: ... }
+      ? [/** @type const */([node, node.spec[generateUuid]])]
+      : []
     )
   }
 
+  /** @arg {Node} node @arg {string} attrName */
   function nodeHasAttribute(node, attrName) {
     return node.attrs && node.attrs[attrName]
   }
@@ -288,9 +308,11 @@ function createUuidPlugin(schema) {
   }
 }
 
+/** @arg {Schema} schema */
 export function extractNodeViews(schema) {
   return Object.fromEntries(
     Object.entries(schema.nodes).map(([name, node]) =>
+      // @ts-expect-error ts error is because the type definition uses { [name: string]: ... }
       [name, node.spec[nodeView]] // https://github.com/ProseMirror/prosemirror-model/commit/c8c7b62645d2a8293fa6b7f52aa2b04a97821f34#r148502417
     )                             // if link does not jump (https://github.com/orgs/community/discussions/139005#discussioncomment-11092579)
   )                               // src/schema.ts line 432
@@ -325,6 +347,7 @@ function heading(variants = [1, 2, 3, 4, 5, 6], spec) {
     content: 'text*',
     defining: true,
     attrs: { level: { default: 1, validate: 'number' } },
+    /** @arg {Node} node */
     toDOM(node) { return /** @type const */ ([`h${node.attrs.level}`, 0]) },
     parseDOM: variants.map(variant => ({ tag: `h${variant}`, attrs: { level: variant } })),
     ...spec,
@@ -347,13 +370,14 @@ function listItem(content, spec) {
   return schema.node('li', { content, ...spec })
 }
 
+/** @arg {Array<string>} nodeTypes */
 function content(...nodeTypes) {
   return `(${nodeTypes.flat().join(' | ')})+`
 }
 
 /**
  * @param {string} name
- * @param {(props: { id: string, $selected }) => Tag<any>} Component
+ * @param {(props: { id: string, $selected: Signal<boolean> }) => Tag<any>} Component
  */
 function customComponent(name, Component) {
   return schema.nodeViewNode(name, node => {
@@ -386,9 +410,11 @@ function nodeViewNode(name, nodeViewConstructor) {
     marks: '', // disallow marks
 
     attrs: { id: { validate: 'string|null|undefined' } },
+    /** @arg {Node} node */
     toDOM(node) { return /** @type const */ ([`custom-${name}`, { id: node.attrs.id }]) },
     parseDOM: [{
       tag: `custom-${name}`,
+      /** @arg {HTMLElement} dom */
       getAttrs(dom) { return { id: dom.getAttribute('id') } },
     }],
 
@@ -409,14 +435,16 @@ function mark(tag, spec) {
   }
 }
 
-function link(spec) {
+function link() {
   return {
     inclusive: false,
 
     attrs: { href: { validate: 'string' } },
-    toDOM(node) { return /** @type const */ (['a', { href: node.attrs.href }, 0]) },
+    /** @arg {Mark} node @arg {boolean} inline */
+    toDOM(node, inline) { return /** @type const */ (['a', { href: node.attrs.href }, 0]) },
     parseDOM: [{
       tag: 'a[href]',
+      /** @arg {HTMLElement} dom */
       getAttrs(dom) { return { href: dom.getAttribute('href') } },
     }],
   }
@@ -436,7 +464,9 @@ function doc(content) {
 }
 
 // TODO: move to generic utils / machinery
+/** @arg {NodeType} nodeType */
 function unwrapFromList(nodeType) {
+  /** @type {Command} */
   return (state, dispatch, view) => {
     const {$from, $to} = state.selection
     const range = $from.blockRange($to, node => node.type === nodeType)
@@ -447,7 +477,9 @@ function unwrapFromList(nodeType) {
 }
 
 // TODO: move to generic utils / machinery
+/** @arg {NodeType} nodeType */
 export function inject(nodeType) {
+  /** @type {Command} */
   return (state, dispatch, view) => {
     if (dispatch)
       dispatch(
@@ -460,8 +492,8 @@ export function inject(nodeType) {
 }
 
 /**
- * @param {EditorState} state
- * @param {MarkType} mark
+ * @arg {EditorState} state
+ * @arg {MarkType} mark
  */
 export function isMarkActive(state, mark) {
   const { from, $from, to, empty } = state.selection
@@ -500,10 +532,20 @@ const enabledText = css`
     color: unset;
   }
 `
+/**
+ * @typedef {{
+ *   config: EditorConfigBase<any>,
+ *   $enabled: Signal<boolean>,
+ *   $active: Signal<boolean>,
+ *   onClick: () => void
+ * }} BaseProps
+ */
+
 
 MarkStrong.style = css`
   font-weight: bold;
 `
+/** @arg {BaseProps} props */
 function MarkStrong({ config, $enabled, $active, onClick }) {
   return Mark({ label: 'B', css: MarkStrong.style, config, $enabled, $active, onClick })
 }
@@ -511,6 +553,7 @@ function MarkStrong({ config, $enabled, $active, onClick }) {
 MarkEm.style = css`
   font-style: italic;
 `
+/** @arg {BaseProps} props */
 function MarkEm({ config, $enabled, $active, onClick }) {
   return Mark({ label: 'I', css: MarkEm.style, config, $enabled, $active, onClick })
 }
@@ -519,6 +562,7 @@ Mark.style = css`
   width: 2em;
   height: 2em;
 `
+/** @arg {{ label: string, css: string } & BaseProps} props */
 function Mark({ label, css, config, $enabled, $active, onClick }) {
   return Button({
     css: [Mark.style, activeBackground, css],
@@ -530,27 +574,32 @@ function Mark({ label, css, config, $enabled, $active, onClick }) {
   })
 }
 
+/** @arg {BaseProps} props */
 function OrderedList({ config, $enabled, $active, onClick }) {
   return IconButton({ button: ButtonListOl, config, $enabled, $active, onClick })
 }
 
+/** @arg {BaseProps} props */
 function UnorderedList({ config, $enabled, $active, onClick }) {
   return IconButton({ button: ButtonListUl, config, $enabled, $active, onClick })
 }
 
+/** @arg {BaseProps} props */
 function Indent({ config, $enabled, $active, onClick }) {
-  return IconButton({ button: ButtonIndent, config, $enabled, onClick })
+  return IconButton({ button: ButtonIndent, config, $enabled, $active, onClick })
 }
 
+/** @arg {BaseProps} props */
 function Outdent({ config, $enabled, $active, onClick }) {
-  return IconButton({ button: ButtonOutdent, config, $enabled, onClick })
+  return IconButton({ button: ButtonOutdent, config, $enabled, $active, onClick })
 }
 
 IconButton.style = css`
   --width: 2em;
   --height: 2em;
 `
-function IconButton({ button, config, $enabled, $active = undefined, onClick }) {
+/** @arg {{ button: (props: Attributes<"button">) => Tag<"button"> } & BaseProps} props */
+function IconButton({ button, config, $enabled, $active, onClick }) {
   return button({
     css: [IconButton.style, activeBackground],
     className: cx('IconButton', asString($active, 'active')),
@@ -571,12 +620,20 @@ Select.style = css`
     appearance: base-select;
   }
 `
+/**
+ * @arg {{
+ *   config: EditorConfigGroup<any>,
+ *   canRenderItem: (item: EditorConfig<any>) => boolean,
+ *   renderItem: (item: EditorConfig<any>) => any,
+ * }} props
+ */
 function Select({ config, canRenderItem, renderItem }) {
   return select({ className: 'Select', css: Select.style },
     button(selectedcontent()),
     config.items.filter(canRenderItem).map(item =>
       renderItem({
         ...item,
+        /** @arg {Omit<BaseProps, 'config'>} props */
         Component({ $enabled, $active, onClick }) {
           return option({ selected: $active }, item.Component({ config: item, $enabled, $active, onClick }))
         }
@@ -585,6 +642,7 @@ function Select({ config, canRenderItem, renderItem }) {
   )
 }
 
+/** @arg {BaseProps} props */
 function Normal({ config, $enabled, $active, onClick }) {
   return span(
     {
@@ -607,7 +665,9 @@ function asString($signal, string) {
   return $signal?.derive(value => value && string)
 }
 
+/** @arg {1 | 2 | 3 | 4} level */
 function createHeadingComponent(level) {
+  /** @arg {BaseProps} props */
   function Heading({ config, $enabled, $active, onClick }) {
     return tags[`h${level}`](
       {

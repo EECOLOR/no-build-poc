@@ -57,7 +57,7 @@ import { Plugin } from 'prosemirror-state'
  *     config: EditorConfig<T>,
  *     canRenderItem: (item: EditorConfig<T>) => boolean,
  *     renderItem: (item: EditorConfig<T>) => any,
- *   })
+ *   }) => any
  * }} EditorConfigGroup
 */
 

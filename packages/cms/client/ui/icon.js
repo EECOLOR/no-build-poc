@@ -2,14 +2,16 @@ import { Signal } from '#ui/signal.js'
 import { useStyle } from '#ui/styles/shared.js'
 import { tags, css, cx } from '#ui/tags.js'
 import { separatePropsAndChildren } from '#ui/utils.js'
+/** @import { Params } from '#ui/utils.js' */
 
 /**
  * @param {string} icon Single line SVG
- * @param {{ rotation?: number }} [props] Rotation in degrees
+ * @param {{ rotation?: number | Signal<number> }} [props] Rotation in degrees
  * @returns {typeof tags}
  */
 export function withIcon(icon, props = {}) {
   return new Proxy(tags, {
+    /** @arg {typeof tags} target @arg {keyof tags} p */
     get(target, p) {
       return Icon.bind(null, icon, props, target[p])
     }
@@ -50,7 +52,10 @@ Icon.style = css`
 `
 /**
  * @template {(...args: any[]) => any} T
- * @param {T} element
+ * @arg {string} icon
+ * @arg {{ rotation: number | Signal<number> }} options
+ * @arg {T} element
+ * @arg {import('#ui/utils.js').Params<any, any, any>} params
  * @returns {ReturnType<T>} */
 function Icon(icon, { rotation }, element, ...params) {
   const { props, children } = separatePropsAndChildren(params)
@@ -71,6 +76,12 @@ function Icon(icon, { rotation }, element, ...params) {
   )
 }
 
+/**
+ * @template T
+ * @template R
+ * @arg {T | Signal<T>} x
+ * @arg {(value: T) => R} f
+ */
 function map(x, f) {
   return x instanceof Signal ? x.derive(f) : f(x)
 }

@@ -5,11 +5,25 @@ import { getAtPath } from './utils.js'
 import { createSignal } from '#ui/signal.js'
 import { useOnDestroy } from '#ui/dynamic.js'
 /** @import { Signal } from '#ui/signal.js' */
+/** @import { DocumentContainer, DocumentPath } from '#cms/types.ts' */
+/** @import { DocumentSchema } from '#cms/client/cmsConfigTypes.ts' */
 
 // TODO: think: if we don't send updates to ourselves, we don't need to check for dirtyness
 // - maybe useFieldValue is used in other places as well. We like the reactivity from the server,
 //   even for our own changes.
 
+/**
+ * @template T
+ * @arg {{
+ *   document: DocumentContainer,
+ *   field: DocumentSchema.Field<DocumentSchema.FieldTypes>,
+ *   $path: Signal<DocumentPath>,
+ *   initialValue: T,
+ *   compareValues?: (local: T, document: T) => boolean,
+ *   serializeValue?: (value: T) => unknown,
+ *   extractValueForDiff?: (value: T) => unknown,
+ * }} props
+ */
 export function useFieldValue({
   document,
   field,
@@ -20,7 +34,7 @@ export function useFieldValue({
   extractValueForDiff = value => value,
 }) {
   const $documentAndPath = useCombined(document.$value, $path)
-  const $valueFromDocument = $documentAndPath.derive(([doc, path]) => getAtPath(doc, path) || initialValue)
+  const $valueFromDocument = $documentAndPath.derive(([doc, path]) => valueOrInitialValue(getAtPath(doc, path)))
   let localValue = $valueFromDocument.get()
   let dirty = false
 
@@ -40,6 +54,20 @@ export function useFieldValue({
 
   return /** @type const */ ([$value, setValue])
 
+  /** @arg {unknown} value */
+  function valueOrInitialValue(value) {
+    if (isFound(value))
+      return value
+
+    return initialValue
+  }
+
+  /** @arg {unknown} value @returns {value is T} */
+  function isFound(value) {
+    return Boolean(value)
+  }
+
+  /** @arg {T} rawValue */
   function setValue(rawValue) {
     dirty = true
     localValue = rawValue
@@ -47,7 +75,7 @@ export function useFieldValue({
     const valueForDiff = extractValueForDiff(rawValue)
     const value = serializeValue(rawValue)
 
-    patchDocumentDebounced({ document, fieldType: field.type, path: $path.get(), value, valueForDiff })
+    patchDocumentDebounced({ document, fieldType: field.type, op: 'replace', path: $path.get(), value, valueForDiff })
   }
 }
 

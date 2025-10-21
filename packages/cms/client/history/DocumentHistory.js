@@ -1,17 +1,20 @@
 import { derive } from '#ui/dynamic.js'
-import { css, raw, tags } from '#ui/tags.js'
+import { css, raw, Tag, tags } from '#ui/tags.js'
 import { getPathInfo, getSchema } from '../context.js'
 import { useEventSourceAsSignal } from '../machinery/useEventSourceAsSignal.js'
 import { ListSignal } from '../ui/List.js'
 import { mergeChanges } from '#diff/merge.js'
 import { diff } from '#diff'
 import { diffHtml, toHtml } from '#diff/diffHtml.js'
+/** @import { HistoryItem, Patch } from '#cms/types.ts' */
+/** @import { DocumentSchema } from '../cmsConfigTypes.ts' */
 
 const { div, span, pre, code, del, ins, time, em } = tags
 
 DocumentHistory.style = css`
   --gap: 1rem;
 `
+/** @arg {{ id: string, schemaType: string }} props */
 export function DocumentHistory({ id, schemaType }) {
   const $history = useDocumentHistory({ id, schemaType })
     .derive(prepareHistory)
@@ -36,6 +39,7 @@ export function DocumentHistory({ id, schemaType }) {
 HistoryItem.style = css`
   padding: 0.2rem;
 `
+/** @arg {{ historyItem: PreparedHistoryItem, schema: DocumentSchema.DocumentSchema }} props */
 function HistoryItem({ historyItem, schema }) {
   // TODO: history items that are not a minute old can still change, we should probably make them reactive (or not, probably not important for real use cases, maybe introduce a refresh button, I don't know)
   return (
@@ -59,6 +63,7 @@ HistoryItemHeader.style = css`
     font-size: 0.85em;
   }
 `
+/** @arg {{ historyItem: PreparedHistoryItem, schema: DocumentSchema.DocumentSchema }} props */
 function HistoryItemHeader({ historyItem, schema }) {
 
   return (
@@ -75,9 +80,10 @@ function HistoryItemHeader({ historyItem, schema }) {
   )
 }
 
+/** @arg {{ historyItem: PreparedHistoryItem }} props */
 function Action({ historyItem }) {
   const { patches = [], oldValue, newValue } = historyItem
-  const [patch] = patches.slice(-1) // TODO: think: do we need to merge patches of a sinle edit session?
+  const [patch] = patches.slice(-1) // TODO: think: do we need to merge patches of a single edit session?
   const { op } = patch || {}
 
   return (
@@ -93,6 +99,7 @@ function Action({ historyItem }) {
   )
 }
 
+/** @arg {{ fieldPath: string, schema: DocumentSchema.DocumentSchema }} props */
 function Path({ fieldPath, schema }) {
   // TODO: schema might have changed. We probably need to do this on storing the history item
   const pathInfo = getPathInfo(schema, fieldPath)
@@ -106,18 +113,20 @@ function Path({ fieldPath, schema }) {
 }
 
 // TODO: Change this to the correct field type (based on schema)
+/** @type {{ [type: string]: (props: { historyItem: PreparedHistoryItem, schema: DocumentSchema.DocumentSchema }) => any }} */
 const itemRenderers = {
   'string': StringItem,
   'object': ObjectItem,
   'rich-text': RichTextItem,
   default: UnsupportedTypeItem,
 }
-
+/** @arg {{ historyItem: PreparedHistoryItem, schema: DocumentSchema.DocumentSchema }} props */
 function HistoryItemBody({ historyItem, schema }) {
   const renderer = itemRenderers[historyItem.fieldType] || itemRenderers.default
   return renderer({ historyItem, schema })
 }
 
+/** @arg {{ historyItem: PreparedHistoryItem, schema: DocumentSchema.DocumentSchema }} props */
 function UnsupportedTypeItem({ historyItem, schema }) {
   return (
     pre({ css: css`max-width: 35rem; overflow: scroll; max-height: 20rem;` },
@@ -133,6 +142,7 @@ DateTime.style = css`
   display: inline-flex;
   gap: 1ex;
 `
+/** @arg {{ timestamp: number }} props */
 function DateTime({ timestamp }) {
   const [dateString, timeString] = new Date(timestamp).toISOString().split('T')
   return (
@@ -150,6 +160,7 @@ Author.style = css`
   border-radius: 1.5rem;
   background-color: var(--color);
 `
+/** @arg {{ userId: string }} props */
 function Author({ userId }) {
   return span({ style: { '--color': `#${userId.slice(0, 6)}` }, css: Author.style, title: userId })
 }
@@ -158,6 +169,7 @@ StringItem.style = css`
   & > ins { background-color: lightgreen; }
   & > del { background-color: lightcoral; }
 `
+/** @arg {{ historyItem: PreparedHistoryItem, schema: DocumentSchema.DocumentSchema }} props */
 function StringItem({ historyItem, schema }) {
   const { oldValue, newValue } = historyItem
   if (!newValue)
@@ -186,6 +198,7 @@ RichTextItem.style = css`
     padding: revert;
   }
 `
+/** @arg {{ historyItem: PreparedHistoryItem, schema: DocumentSchema.DocumentSchema }} props */
 function RichTextItem({ historyItem, schema }) {
   const { oldValue, newValue } = historyItem
   if (!newValue)
@@ -198,6 +211,7 @@ function RichTextItem({ historyItem, schema }) {
   )
 }
 
+/** @arg {{ historyItem: PreparedHistoryItem, schema: DocumentSchema.DocumentSchema }} props */
 function ObjectItem({ historyItem, schema }) {
   const { patches = [] } = historyItem
 
@@ -220,16 +234,35 @@ function ObjectItem({ historyItem, schema }) {
   }
 }
 
+/** @arg {{ id: string, schemaType: string }} props */
 function useDocumentHistory({ id, schemaType }) {
   return useEventSourceAsSignal({
     channel: 'document/history',
     args: [schemaType, id],
     events: ['history'],
+    initialValue: /** @type {null} */ (null),
+    type: /** @type {Array<HistoryItem>} */ (null),
   }).derive(x => x?.data || [])
 }
 
+/**
+ * @typedef {{
+ *   fieldPath: string,
+ *   userId: string,
+ *   timestampStart: number,
+ *   timestampEnd: number,
+ *   fieldType: string,
+ *   newValue: any,
+ *   oldValue?: any,
+ *   patches: Array<Patch>,
+ *   key: string,
+ * }} PreparedHistoryItem
+ */
+
+/** @arg {Array<HistoryItem>} history */
 function prepareHistory(history) {
   const preparedHistory = []
+  /** @type {Record<string, PreparedHistoryItem>} */
   const lookup = {}
 
   // history is sorted newest to oldest
@@ -260,6 +293,7 @@ function prepareHistory(history) {
   return preparedHistory
 }
 
+/** @arg {string} oldValue @arg {string} newValue */
 function createHtmlDiffAsDiv(oldValue, newValue) {
   const html = toHtml(diffHtml(oldValue, newValue))
 

@@ -10,7 +10,8 @@ if (typeof window !== 'undefined') {
 
 export const $pathname = $pathnameSignal
 
-export function pushState(state, unused, pathname = undefined) {
+/** @arg {any} state @arg {undefined} unused @arg {string} [pathname] */
+export function pushState(state, unused, pathname) {
   window.history.pushState(state, unused, pathname)
   setPathname(window.location.pathname)
 }

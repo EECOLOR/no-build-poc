@@ -4,6 +4,7 @@ import { context } from '../context.js'
 import { $pathname } from '../machinery/history.js'
 import { FlexSectionBorderedHorizontal } from '../ui/FlexSection.js'
 /** @import { DeskStructure, PaneTypes } from '../cmsConfigTypes.ts' */
+/** @import { PanePath, Path } from '../../types.ts' */
 
 Panes.style = css`
   overflow-x: auto;
@@ -16,6 +17,7 @@ Panes.style = css`
     flex-grow: 1;
   }
 `
+/** @arg {{ firstPane: DeskStructure.Pane<DeskStructure.PaneTypes>, paneTypes: PaneTypes }} props */
 export function Panes({ firstPane, paneTypes }) {
   const $panesWithPath = $pathname.derive(pathname => {
     const pathSegments = pathname.replace(context.basePath, '').slice(1).split('/')
@@ -34,13 +36,14 @@ export function Panes({ firstPane, paneTypes }) {
 }
 
 /**
- * @param {DeskStructure.Pane<DeskStructure.PaneTypes>} firstPane
- * @param {PaneTypes} paneTypes
- * @returns {Array<{ pane: any, path: Array<string> }>}
+ * @arg {DeskStructure.Pane<DeskStructure.PaneTypes>} firstPane
+ * @arg {Array<string>} pathSegments
+ * @arg {PaneTypes} paneTypes
+ * @returns {Array<{ pane: any, path: PanePath }>}
  */
 function resolvePanes(firstPane, pathSegments, paneTypes) {
   let pane = firstPane
-  let path = []
+  let path = /** @type {PanePath} */ ([])
   let remainingPathSegments = pathSegments
 
   const panes = [{ pane, path }]
@@ -68,7 +71,7 @@ function resolvePanes(firstPane, pathSegments, paneTypes) {
 }
 
 /**
- * @param {{ pane: DeskStructure.Pane<DeskStructure.PaneTypes>, path: Array<string> }} info
+ * @param {{ pane: DeskStructure.Pane<DeskStructure.PaneTypes>, path: PanePath }} info
  * @param {PaneTypes} paneTypes
  */
 function renderPane({ pane, path }, paneTypes) {

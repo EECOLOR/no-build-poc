@@ -3,6 +3,8 @@
  * @import { ArrayObjectConfig } from './form/fields/ArrayField.js'
  */
 
+import { asConst } from '#typescript/helpers.js'
+
 /** @param {CmsConfig} config */
 export function cmsConfig(config) {
   return config
@@ -51,34 +53,42 @@ export function arrayObject(type, props) {
 
 /**
  * @template {DocumentSchema.FieldTypes} T
- * @param {string} name
- * @param {T} type
- * @param {RequiredParams<Omit<DocumentSchema.Field<T>, 'name' | 'type'>>} typeParams
+ * @arg {string} name
+ * @arg {T} type
+ * @arg {RequiredParams<Omit<DocumentSchema.Field<T>, 'name' | 'type'>>} typeParams
  * @returns {AsReturnType<DocumentSchema.Field<T>>}
  */
 export function field(name, type, ...typeParams) {
   const [props] = typeParams
+  // @ts-expect-error The world changed and now this is not type checking any more
   return { ...defaults(type), ...props, title: props?.title ?? capitalize(name), type, name }
 }
 
-// TODO: this is a more correct version than the previous one, but the return types do not work, seems typescript has changed because the previous one does not work anymore
 /**
- * @template T
- * @param {DocumentSchema.FieldTypes} type
+ * @template {DocumentSchema.FieldTypes} T
+ * @arg {T} type
  * @returns {AsReturnType<DocumentSchema.FieldConfig<T>>}
  */
 function defaults(type) {
   switch (type) {
     case 'object':
-      return {
+      const result = /** @type {AsReturnType<DocumentSchema.FieldConfig<'object'>>} */ ({
         options: {
           collapsible: true,
           showObjectHeader: false,
-        }
-      }
+        },
+      })
+      // @ts-expect-error 'type' is not correctly narrowed to 'object' here, This used to be working when we had `@arg {DocumentSchema.FieldTypes} type @returns {SomeType<typeof type>}`
+      return result
     default:
+      // @ts-expect-error 'type' is not correctly narrowed to exclude 'object' here, This used to be working when we had `@arg {DocumentSchema.FieldTypes} type @returns {SomeType<typeof type>}`
       return {}
   }
+}
+
+/** @template T @arg {T & DocumentSchema.FieldTypes} type @returns {type is DocumentSchema.FieldTypes} */
+function isFieldType(type) {
+  return true
 }
 
 /** @param {string} s */

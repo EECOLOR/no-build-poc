@@ -2,21 +2,25 @@ import { useOnDestroy } from '#ui/dynamic.js'
 import { createSignal, Signal } from '#ui/signal.js'
 import { context } from '../context.js'
 
-/** @typedef {{ event: string, data: any }} Event */
-
 /**
  * @template T
- * @param {({ args: any[] } | { argsSignal: Signal<any[]> }) &
- *   { channel: string, events: Array<string>, initialValue?: T, info?: any }
+ * @typedef {{ event: string, data: T }} Event
+ */
+
+/**
+ * @template const T
+ * @template const I
+ * @arg {({ args: any[] } | { argsSignal: Signal<any[]> }) &
+ *   { channel: string, events: Array<string>, initialValue: I, info?: any, type: T }
  * } params
- * @returns {Signal<T | Event>}
+ * @returns {Signal<I | Event<T>>}
  */
 export function useEventSourceAsSignal(params) {
   const { channel, events, initialValue = null, info = null } = params
 
   const argsIsSignal = 'argsSignal' in params
 
-  const [$signal, setValue] = createSignal(/** @type {T | Event} */ (initialValue))
+  const [$signal, setValue] = createSignal(/** @type {I | Event<T>} */ (initialValue))
 
   const args = argsIsSignal ? params.argsSignal.get() : params.args
   let unsubscribeEvents = context.events.subscribe(channel, args, info, events, setValue)

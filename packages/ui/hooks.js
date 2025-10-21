@@ -26,7 +26,9 @@ export function useRef(hint) {
   }
 }
 
-/** @type {null | { width: number, height: number, element: HTMLElement }} */
+/** @typedef {{ width: number, height: number, element: HTMLElement }} ElementSize */
+
+/** @type {null | ElementSize} */
 const initialElementSizeValue = null
 
 export function useElementSize() {

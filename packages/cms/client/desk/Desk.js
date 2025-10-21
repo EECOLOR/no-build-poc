@@ -3,9 +3,12 @@ import { context } from '../context.js'
 import { routeMap } from '../routeMap.js'
 import { FlexSectionBorderedVertical } from '../ui/FlexSection.js'
 import { Panes } from './Panes.js'
+/** @import { DeskStructure, PaneTypes } from '../cmsConfigTypes.ts' */
+/** @import { AuthenticatedInfo } from '../../types.ts' */
 
 const { div, a, span } = tags
 
+/** @type {string | Array<string>} */
 Desk.style = css`
   padding: var(--default-padding);
 
@@ -14,6 +17,7 @@ Desk.style = css`
     min-height: 0;
   }
 `
+/** @arg {{ deskStructure: DeskStructure, paneTypes: PaneTypes, auth: AuthenticatedInfo }} props */
 export function Desk({ deskStructure, paneTypes, auth }) {
   return (
     FlexSectionBorderedVertical({ className: 'Desk', css: Desk.style },
@@ -33,6 +37,7 @@ DeskHeader.style = css`
     gap: 1em;
   }
 `
+/** @arg {{ auth: AuthenticatedInfo }} props */
 function DeskHeader({ auth }) {
   return div({ className: 'DeskHeader', css: DeskHeader.style },
     'CMS',

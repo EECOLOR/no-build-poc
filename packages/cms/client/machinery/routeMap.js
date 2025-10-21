@@ -1,9 +1,13 @@
+/** @import { Const } from '#typescript/utils.ts' */
+/** @import { ProvideParamsToRouteMap } from './routeMapTypes.ts' */
+
 /**
  * @template R
  * @template T
- * @param {R} routeOrRouteMap
- * @param {import('#typescript/utils.ts').Const<T>} params
- * @returns {import('./routeMapTypes.ts').ProvideParamsToRouteMap<R, T>}
+ * @arg {string} basePath
+ * @arg {R} routeOrRouteMap
+ * @arg {Const<T>} params
+ * @returns {ProvideParamsToRouteMap<R, T>}
  */
 export function withParamsAndPrefix(basePath, routeOrRouteMap, params) {
   return new Proxy(/** @type {any} */ (routeOrRouteMap), {

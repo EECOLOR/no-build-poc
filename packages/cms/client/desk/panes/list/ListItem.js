@@ -3,6 +3,7 @@ import { Link } from '#cms/client/machinery/Link.js'
 import { ButtonChevronRight } from '#cms/client/ui/Button.js'
 import { Signal } from '#ui/signal.js'
 import { css } from '#ui/tags.js'
+/** @import { Child } from '#ui/tags.js' */
 
 ListItem.style = css`
   display: flex;
@@ -20,6 +21,7 @@ ListItem.style = css`
 
   }
 `
+/** @arg {{ href: string | Signal<string>, title: Child<any> | Signal<Child<any>> }} props */
 export function ListItem({ href, title }) {
   const $className = $pathname.derive(pathname => {
     const activeHref = href instanceof Signal ? href.get() : href

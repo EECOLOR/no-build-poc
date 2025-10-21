@@ -1,6 +1,8 @@
 import { useOnDestroy, withOnDestroyCapture } from '#ui/dynamic.js'
 import { createSignal, Signal } from '#ui/signal.js'
+/** @import { Callback } from '#ui/dynamic.js' */
 
+/** @arg {Array<() => void>} subscriptions */
 export function useSubscriptions(...subscriptions) {
   useOnDestroy(() => {
     for (const unsubscribe of subscriptions) unsubscribe()
@@ -16,7 +18,7 @@ export function useSubscriptions(...subscriptions) {
    */
 export function useDynamicSignalHook(signal, constructSignalHook) {
   // TODO: check this code, it seems to leave an additional connection open (could also be the fact that we opened too many connections and just reached the threshold)
-  let capturedOnDestroyCallbacks = []
+  let capturedOnDestroyCallbacks = /** @type {Array<import('#ui/dynamic.js').Callback>} */ ([])
   let hookSignal = createSignalHook(signal.get())
   const [$result, setResult] = createSignal(() => hookSignal?.get())
   let hookSignalUnsubscribe = hookSignal?.subscribe(setResult)

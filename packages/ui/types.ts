@@ -11,5 +11,10 @@ export type ExtractSignalTypes<T extends Array<Signal<any>>> =
     ? Tail extends Array<Signal<any>>
       ? [Head, ...ExtractSignalTypes<Tail>]
       : [Head]
+    :
+  T extends Array<Signal<infer X>>
+    ? Array<X>
     : []
 
+export type ExtractSignalType<T extends Signal<any>> =
+  T extends Signal<infer X> ? X : never
