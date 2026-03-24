@@ -1,20 +1,25 @@
 import crypto from 'node:crypto'
-
+import { createWebSocket } from './socket.js'
 /** @import stream from 'node:stream' */
 /** @import http from 'node:http' */
-
+/** @import { Message } from './parser.js' */
 
 /** @typedef {stream.Duplex} WebSocket */
 
 const supportedWebsocketVersion = '13'
+
 /**
- * @arg {http.IncomingMessage} req
- * @arg {WebSocket} socket
- * @arg {NonSharedBuffer} head
+ * @arg {{
+ *   req: http.IncomingMessage,
+ *   socket: WebSocket,
+ *   initialBytes: NonSharedBuffer,
+ *   onMessage(message: Message): void,
+ *   fragmentSize?: number,
+ * }} options
  */
-export function handleWebSocket(req, socket, head) {
+export function handleUpgrade({ req, socket, initialBytes, onMessage, fragmentSize }) {
   // TODO: do we need to clear head? If I understand correctly we only need to read socket after the accept has been sent
-  if (!req.url.startsWith('/ws'))
+  if (!req.url?.startsWith('/ws'))
     return sendWebsocketNotFoundResponse(socket)
 
   const { key, isValid, isVersionValid } = validateWebSocketHeaders(req.headers)
@@ -23,6 +28,7 @@ export function handleWebSocket(req, socket, head) {
 
   sendAcceptWebsocketHeaders(socket, { key })
 
+  return createWebSocket({ socket, onMessage, initialBytes, fragmentSize })
 }
 
 /**
@@ -62,15 +68,14 @@ function sendAcceptWebsocketHeaders(socket, { key }) {
  * @arg {{ isVersionValid: boolean }} context
  */
 function sendInvalidWebsocketResponse(socket, { isVersionValid }) {
-  if (!isVersionValid)
-    return (
-      writeHead(socket, 426, 'Upgrade Required', {
-        'sec-websocket-version': supportedWebsocketVersion
-      })
-      .end()
-    )
-
-  writeHead(socket, 400, 'Bad Request').end()
+  if (isVersionValid) {
+    writeHead(socket, 400, 'Bad Request').end()
+  } else {
+    writeHead(socket, 426, 'Upgrade Required', {
+      'sec-websocket-version': supportedWebsocketVersion
+    })
+    .end()
+  }
 }
 
 /** @arg {string} key */
@@ -99,9 +104,12 @@ function createAcceptValue(key) {
     host &&
     upgrade?.toLowerCase() === 'websocket' &&
     connection?.toLowerCase() === 'upgrade' &&
-    secWebsocketKey?.length == 24 && // base64 decoded byte length is allways 16
+    isKeyValid(secWebsocketKey) &&
     isVersionValid
   )
+
+  if (!isValid)
+    return { isValid, isVersionValid }
 
   return {
     isValid,
@@ -110,4 +118,9 @@ function createAcceptValue(key) {
     protocols: secWebsocketProtocol,
     key: secWebsocketKey,
   }
- }
+}
+
+/** @arg {string} [key] @returns {key is string} */
+function isKeyValid(key) {
+  return key?.length === 24 // base64 decoded byte length is allways 16
+}
