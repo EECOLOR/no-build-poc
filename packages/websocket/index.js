@@ -2,23 +2,52 @@ import crypto from 'node:crypto'
 import { createWebSocket } from './socket.js'
 /** @import stream from 'node:stream' */
 /** @import http from 'node:http' */
-/** @import { Message } from './parser.js' */
-
-/** @typedef {stream.Duplex} WebSocket */
+/** @import { WebSocket } from './socket.js' */
 
 const supportedWebsocketVersion = '13'
 
 /**
  * @arg {{
- *   req: http.IncomingMessage,
- *   socket: WebSocket,
- *   initialBytes: NonSharedBuffer,
- *   onMessage(message: Message): void,
- *   fragmentSize?: number,
- * }} options
+ *   onConnection(webSocket: WebSocket): void,
+ *   onError(webSocket: WebSocket, e: Error): void,
+ *   fragmentSize?: number
+ * }} configuration
  */
-export function handleUpgrade({ req, socket, initialBytes, onMessage, fragmentSize }) {
-  // TODO: do we need to clear head? If I understand correctly we only need to read socket after the accept has been sent
+export function createWebSocketServer({ onConnection, onError, fragmentSize }) {
+  const sockets = new Set()
+
+  return { handleUpgrade, close }
+
+  /**
+   * @arg {http.IncomingMessage} req
+   * @arg {stream.Duplex} socket
+   * @arg {Buffer} initialBytes
+   */
+  function handleUpgrade(req, socket, initialBytes) {
+    const upgraded = tryToUpgrade(req, socket)
+    if (!upgraded)
+      return
+
+    sockets.add(socket)
+    socket.on('close', () => { sockets.delete(socket) })
+
+    const webSocket = createWebSocket({ socket, initialBytes, fragmentSize })
+    socket.on('error', e => { onError(webSocket, e) })
+    onConnection(webSocket)
+  }
+
+  function close() {
+    for (const socket of sockets) {
+      socket.end()
+    }
+  }
+}
+
+/**
+ * @arg {http.IncomingMessage} req
+ * @arg {stream.Duplex} socket
+ */
+function tryToUpgrade(req, socket) {
   if (!req.url?.startsWith('/ws'))
     return sendWebsocketNotFoundResponse(socket)
 
@@ -28,11 +57,11 @@ export function handleUpgrade({ req, socket, initialBytes, onMessage, fragmentSi
 
   sendAcceptWebsocketHeaders(socket, { key })
 
-  return createWebSocket({ socket, onMessage, initialBytes, fragmentSize })
+  return true
 }
 
 /**
- * @arg {WebSocket} socket
+ * @arg {stream.Duplex} socket
  * @arg {number} statusCode
  * @arg {string} statusMessage
  * @arg {http.OutgoingHttpHeaders} [headers]
@@ -46,13 +75,13 @@ function writeHead(socket, statusCode, statusMessage, headers = {}) {
   return socket
 }
 
-/** @arg {WebSocket} socket */
+/** @arg {stream.Duplex} socket */
 function sendWebsocketNotFoundResponse(socket) {
   writeHead(socket, 404, 'Not Found').end()
 }
 
 /**
- * @arg {WebSocket} socket
+ * @arg {stream.Duplex} socket
  * @arg {{ key: string }} contexts
  */
 function sendAcceptWebsocketHeaders(socket, { key }) {
@@ -64,7 +93,7 @@ function sendAcceptWebsocketHeaders(socket, { key }) {
 }
 
 /**
- * @arg {WebSocket} socket
+ * @arg {stream.Duplex} socket
  * @arg {{ isVersionValid: boolean }} context
  */
 function sendInvalidWebsocketResponse(socket, { isVersionValid }) {

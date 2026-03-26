@@ -9,45 +9,60 @@ import { createApi } from './sender.js'
 // TODO: Think about how to deal with errors that occur in the `on('data', chunk => ...)` handler.
 //       Do we want to deal with it here or at the socket level where the `handleWebSocketFrames` is passed in?
 
+/** @typedef {ReturnType<typeof createWebSocket>} WebSocket */
 /** @typedef {ReturnType<typeof createState>} State */
 
 /**
  * @arg {{
  *   socket: stream.Duplex,
  *   initialBytes: Buffer,
- *   onMessage(message: Message): void
  *   fragmentSize?: number,
  * }} config
  */
-export function createWebSocket({ socket, initialBytes, onMessage, fragmentSize = defaultFragmentSize }) {
+export function createWebSocket({ socket, initialBytes, fragmentSize = defaultFragmentSize }) {
   const api = createApi(socket, fragmentSize)
 
-  const heartbeat = startHeartbeat({
-    ping: api.sendPing,
-    onNoHeartbeat() { socket.end() }
-  })
-  socket.on('close', heartbeat.stopHeartbeat)
+  let listening = false
 
-  const state = createState({
-    onMessage,
-    onPing: api.sendPong,
-    onPong: heartbeat.pong,
-    close(status, message = undefined) {
-      api.sendClose(status, message).catch(noop).then(_ => { socket.end() })
-    },
-    onPause() { socket.pause() },
-    onResume() { socket.resume() },
-  })
+  return {
+    ...api,
+    start,
+  }
 
-  handleChunk(initialBytes)
-  socket.on('data', handleChunk)
+  /**
+   * @arg {(message: Message) => void} onMessage
+   */
+  function start(onMessage) {
+    if (listening)
+      throw new Error(`Already listening`)
 
-  return api
+    listening = true
 
-  /** @arg {Buffer} chunk */
-  function handleChunk(chunk) {
-    state.buffer.write(chunk)
-    parse(state)
+    const heartbeat = startHeartbeat({
+      ping: api.sendPing,
+      onNoHeartbeat() { socket.end() }
+    })
+    socket.on('close', heartbeat.stopHeartbeat)
+
+    const state = createState({
+      onMessage,
+      onPing: api.sendPong,
+      onPong: heartbeat.pong,
+      close(status, message = undefined) {
+        api.sendClose(status, message).catch(noop).then(_ => { socket.end() })
+      },
+      onPause() { socket.pause() },
+      onResume() { socket.resume() },
+    })
+
+    handleChunk(initialBytes)
+    socket.on('data', handleChunk)
+
+    /** @arg {Buffer} chunk */
+    function handleChunk(chunk) {
+      state.buffer.write(chunk)
+      parse(state)
+    }
   }
 
   /** @arg {{ ping(): void, onNoHeartbeat(): void }} options */
@@ -124,7 +139,6 @@ function createState({ onMessage, onPing, onPong, close, onPause, onResume }) {
       output.pendingFragmentWriter = null
     },
     closeActiveWriter() {
-      console.log('close active writer')
       output.activeWriter?.close()
       output.activeWriter = null
     },
