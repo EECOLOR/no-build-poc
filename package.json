@@ -18,7 +18,8 @@
     "#diff": "./packages/diff/diff.js",
     "#diff/*": "./packages/diff/*",
     "#typescript/*": "./packages/typescript/*",
-    "#validation/*": "./packages/validation/*"
+    "#validation/*": "./packages/validation/*",
+    "#websocket": "./packages/websocket/index.js"
   },
   "dependencies": {
     "firebase": "^10.12.2",
