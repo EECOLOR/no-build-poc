@@ -22,3 +22,14 @@ export type ArrayToUnion<T extends Array<any>> =
 
 export type RemoveIntersection<T, ToRemove> =
   T extends (ToRemove & infer X) ? X : never
+
+export type TupleOf<Count extends number, Offset extends number = 0, T extends any[] = []> =
+  T['length'] extends Count ? T : TupleOf<Count, Offset, [...T, Add<T['length'], Offset>]>;
+
+export type Subtract<A extends number, B extends number> =
+  TupleOf<A> extends [...TupleOf<B>, ...infer Rest] ? Rest['length'] : never
+
+export type Add<A extends number, B extends number> =
+  [...TupleOf<A>, ...TupleOf<B>] extends [...infer Rest] ? Rest['length'] : never
+
+export type UnionOf<N extends number, O extends number = 0> = ArrayToUnion<TupleOf<N, O>>

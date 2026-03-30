@@ -5,6 +5,7 @@ import path from 'node:path'
 import { render } from '#ui/render/serverRenderer.js'
 import { handleShutdown } from '#utils/shutdown.js'
 import { mapAsync } from '#utils/index.js'
+import { createWebSocketServer } from '#websocket'
 
 const staticPath = '/static/'
 const clientPath = `${staticPath}client/`
@@ -19,12 +20,27 @@ export async function startServer({ indexFiles, allowedPackages, allowedLibrarie
   const indices = await collectIndices(indexFiles)
   indices.sort((a, b) => b.indexPath.length - a.indexPath.length)
 
+  const wss = createWebSocketServer({
+    onConnection(ws) {
+      ws.start(async message => {
+        const text = await message.text()
+        console.log('message', text)
+        ws.sendText(text)
+      })
+    },
+    onError(ws, e) {
+      console.error(e)
+    }
+  })
+
   const server = http.createServer(requestHandler)
+  server.on('upgrade', wss.handleUpgrade)
   server.listen(8000, () => { console.log('server started at port 8000') })
   server.on('error', e => { console.error(e) })
 
   handleShutdown(() => {
     console.log('Shutdown detected, closing server')
+    wss.close()
     server.close(e => { e ? console.error(e) : console.log('Server closed') })
     server.closeAllConnections()
   })

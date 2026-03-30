@@ -1,7 +1,4 @@
 {
-  "typeAcquisition": {
-    "enable": true
-  },
   "include": [
     "./*.js",
     "./code/**/*",
@@ -9,7 +6,6 @@
     "./packages/**/*",
   ],
   "compilerOptions": {
-    "noImplicitAny": true,
     "module": "NodeNext",
     "moduleResolution": "nodenext",
     "target": "esnext",
@@ -25,6 +21,8 @@
     "allowJs": true,
     "checkJs": true,
     "noEmit": true,
+    "strict": true,
+    "useUnknownInCatchVariables": false,
     "allowImportingTsExtensions": true,
     "downlevelIteration": true,
     "paths": {

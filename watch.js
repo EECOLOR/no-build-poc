@@ -9,6 +9,7 @@ spawn(
     '--watch-preserve-output',
     '--experimental-sqlite',
     '--experimental-import-meta-resolve',
+    '--stack-trace-limit=50',
     './index.js'
   ],
   { stdio: ['inherit', 'inherit', 'inherit', 'ipc'] },

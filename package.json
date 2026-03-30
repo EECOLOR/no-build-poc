@@ -18,7 +18,8 @@
     "#diff": "./packages/diff/diff.js",
     "#diff/*": "./packages/diff/*",
     "#typescript/*": "./packages/typescript/*",
-    "#validation/*": "./packages/validation/*"
+    "#validation/*": "./packages/validation/*",
+    "#websocket": "./packages/websocket/index.js"
   },
   "dependencies": {
     "firebase": "^10.12.2",
@@ -35,7 +36,7 @@
   },
   "devDependencies": {
     "@types/diff": "^5.2.2",
-    "@types/node": "^22.5.5",
+    "@types/node": "^24.0.0",
     "@types/react": "^18.3.11",
     "typescript": "^5.9.2"
   }
